@@ -1,5 +1,20 @@
 <template>
-  <section id="hero-intro" class="hero-intro">
+  <section
+    id="hero-intro"
+    class="hero-intro"
+    :class="{ 'is-title-visible': isTitleVisible }"
+  >
+    <div ref="introTitleRef" class="hero-intro-title" aria-label="Welcome to shennn">
+      <span
+        v-for="(word, index) in introWords"
+        :key="word"
+        class="intro-word"
+        :style="{ '--word-index': index }"
+      >
+        {{ word }}
+      </span>
+    </div>
+
     <div class="container">
       <div class="hero-grid">
         <div class="hero-left">
@@ -60,30 +75,116 @@
           </div>
         </div>
       </div>
-
-      <div class="scroll-indicator">
-        <div class="scroll-bar" />
-        <span class="scroll-label">探索更多</span>
-      </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import Card3D from './ui/Card3D.vue'
+
+const introWords = ['welcome', 'to', 'shennn']
+const introTitleRef = ref<HTMLElement | null>(null)
+const isTitleVisible = ref(false)
+let introObserver: IntersectionObserver | null = null
+
+onMounted(() => {
+  const target = introTitleRef.value
+  if (!target || typeof IntersectionObserver === 'undefined') {
+    isTitleVisible.value = true
+    return
+  }
+
+  introObserver = new IntersectionObserver(
+    ([entry]) => {
+      if (!entry?.isIntersecting) return
+      isTitleVisible.value = true
+      introObserver?.disconnect()
+      introObserver = null
+    },
+    {
+      rootMargin: '0px 0px -18% 0px',
+      threshold: 0.25,
+    },
+  )
+  introObserver.observe(target)
+})
+
+onBeforeUnmount(() => {
+  introObserver?.disconnect()
+})
 </script>
 
 <style scoped>
 #hero-intro {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  padding-top: calc(var(--nav-h) + 2rem);
   position: relative;
+  display: block;
+  min-height: min(980px, calc(100vh + 4rem));
+  padding-top: clamp(2.25rem, 6vh, 4.5rem);
+  padding-bottom: clamp(3rem, 6vh, 5rem);
   overflow: hidden;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+#hero-intro::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.56), transparent 30%),
+    radial-gradient(circle at 84% 24%, rgba(191, 58, 30, 0.07), transparent 34%);
+}
+
+.hero-intro-title {
+  position: relative;
+  z-index: 8;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 0.22em;
+  width: min(1280px, calc(100% - 2rem));
+  margin: 0 auto clamp(2.25rem, 5vh, 4rem);
+  overflow: visible;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 5.4vw, 5rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  perspective: 900px;
+  pointer-events: none;
+}
+
+.intro-word {
+  display: inline-block;
+  flex: 0 0 auto;
+  opacity: 0;
+  transform: translate3d(10px, 51px, -60px) rotateY(60deg) rotateX(-40deg);
+  transform-origin: 50% 50% -150px;
+  will-change: opacity, transform;
+}
+
+.is-title-visible .intro-word {
+  animation: introWordReveal 0.88s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation-delay: calc(var(--word-index) * 0.06s);
+}
+
+@keyframes introWordReveal {
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotateY(0deg) rotateX(0deg);
+  }
 }
 
 .container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
   max-width: var(--max-w);
   margin: 0 auto;
   padding: 0 3rem;
@@ -95,12 +196,10 @@ import Card3D from './ui/Card3D.vue'
   gap: clamp(2rem, 4vw, 3.25rem);
   align-items: center;
   width: 100%;
-  padding-top: 0;
   transform: translateY(-2rem);
 }
 
 .hero-left {
-  padding-top: 0;
   padding-left: clamp(1rem, 3vw, 3rem);
 }
 
@@ -110,20 +209,19 @@ import Card3D from './ui/Card3D.vue'
   align-items: center;
   justify-content: center;
   min-height: 640px;
-  padding-top: 0;
   transform: translateX(-1.75rem);
 }
 
 .hero-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
   gap: 1rem;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  text-transform: uppercase;
 }
 
 .hero-eyebrow::before {
@@ -134,13 +232,13 @@ import Card3D from './ui/Card3D.vue'
 }
 
 .hero-name {
+  margin-bottom: 0.5rem;
   font-family: var(--font-display);
   font-size: clamp(4rem, 9vw, 8rem);
   font-weight: 900;
   line-height: 0.9;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: var(--ink);
-  margin-bottom: 0.5rem;
 }
 
 .hero-name span {
@@ -153,64 +251,13 @@ import Card3D from './ui/Card3D.vue'
 }
 
 .hero-tagline {
+  max-width: 380px;
+  margin: 1.5rem 0 2rem;
   font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 300;
-  color: var(--ink-light);
-  margin: 1.5rem 0 2rem;
-  max-width: 380px;
   line-height: 1.8;
-}
-
-.hero-cta-group {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn-primary {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0.75rem 1.8rem;
-  background: var(--ink);
-  color: var(--bg);
-  border: 1px solid var(--ink);
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.btn-primary:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.btn-ghost {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0.75rem 1.8rem;
-  background: transparent;
-  color: var(--ink);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.btn-ghost:hover {
-  border-color: var(--ink);
-}
-
-/* Hero right */
-.hero-right {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 640px;
-  transform: translateX(-1.75rem);
+  color: var(--ink-light);
 }
 
 .card-wrapper {
@@ -220,12 +267,12 @@ import Card3D from './ui/Card3D.vue'
 
 .ring-outer {
   position: absolute;
+  z-index: 1;
   width: 620px;
   height: 620px;
   border: 1px solid var(--border);
   border-radius: 50%;
   animation: rotate 50s linear infinite;
-  z-index: 1;
 }
 
 .ring-outer::before {
@@ -233,67 +280,66 @@ import Card3D from './ui/Card3D.vue'
   position: absolute;
   top: -8px;
   left: 50%;
-  transform: translateX(-50%);
   width: 16px;
   height: 16px;
   background: var(--accent);
   border-radius: 50%;
-  box-shadow: 0 0 16px rgba(191,58,30,0.5);
+  box-shadow: 0 0 16px rgba(191, 58, 30, 0.5);
+  transform: translateX(-50%);
 }
 
 .ring-inner {
   position: absolute;
+  z-index: 1;
   width: 540px;
   height: 540px;
   border: 1px solid var(--border);
   border-radius: 50%;
   animation: rotate 35s linear infinite reverse;
-  z-index: 1;
 }
 
 .ring-inner::before {
   content: '';
   position: absolute;
-  bottom: -6px;
   right: 50%;
-  transform: translateX(50%);
+  bottom: -6px;
   width: 10px;
   height: 10px;
   background: var(--ink);
   border-radius: 50%;
+  transform: translateX(50%);
 }
 
 .ring-square {
   position: absolute;
+  z-index: 1;
   width: 320px;
   height: 320px;
   border: 1px solid var(--border);
-  transform: rotate(45deg);
   animation: rotate 18s linear infinite;
-  z-index: 1;
+  transform: rotate(45deg);
 }
 
 .hero-deco-number {
   position: absolute;
+  right: -6rem;
+  bottom: -2rem;
+  z-index: 0;
   font-family: var(--font-display);
   font-size: 18rem;
   font-weight: 900;
-  color: var(--ink);
-  opacity: 0.025;
   line-height: 1;
+  color: var(--ink);
   user-select: none;
+  opacity: 0.025;
   pointer-events: none;
-  z-index: 0;
-  right: -6rem;
-  bottom: -2rem;
 }
 
-/* Floating logos */
 .hero-stat-float {
   position: absolute;
   z-index: 3;
-  border: none;
   padding: 0;
+  border: none;
   border-radius: 0;
   box-shadow: none;
 }
@@ -303,69 +349,64 @@ import Card3D from './ui/Card3D.vue'
   bottom: 6%;
   width: 96px;
   height: 96px;
-  border-radius: 0;
   overflow: hidden;
   animation: float 5s ease-in-out infinite 1.2s;
 }
 
 .sf-3 {
-  right: 3%;
   top: 6%;
+  right: 3%;
   width: 96px;
   height: 96px;
-  border-radius: 0;
   overflow: hidden;
   animation: float 3.5s ease-in-out infinite 0.6s;
 }
 
 .sf-4 {
-  left: calc(50% + 262px);
   top: calc(50% - 48px);
+  left: calc(50% + 262px);
   width: 96px;
   height: 96px;
-  border-radius: 0;
   overflow: hidden;
   animation: float 4.5s ease-in-out infinite 0.9s;
 }
 
 .sf-5 {
-  left: calc(50% - 358px);
   top: calc(50% - 48px);
+  left: calc(50% - 358px);
   width: 96px;
   height: 96px;
-  border-radius: 0;
   overflow: hidden;
   animation: float 3.8s ease-in-out infinite 1.5s;
 }
 
 .float-logo {
+  display: block;
   width: 72px;
   height: 72px;
   object-fit: contain;
-  display: block;
 }
 
-/* Card editor styles */
 .card-face {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow: hidden;
   box-shadow:
-    0 2px 4px rgba(20,18,16,0.03),
-    0 8px 24px rgba(20,18,16,0.06),
-    0 24px 60px rgba(20,18,16,0.08),
-    inset 0 1px 0 rgba(255,255,255,0.6);
+    0 2px 4px rgba(20, 18, 16, 0.03),
+    0 8px 24px rgba(20, 18, 16, 0.06),
+    0 24px 60px rgba(20, 18, 16, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .card-face::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
+  left: 0;
   height: 5px;
   background: linear-gradient(
     90deg,
@@ -377,8 +418,8 @@ import Card3D from './ui/Card3D.vue'
     var(--accent-dark) 100%
   );
   background-size: 300% 100%;
-  animation: barFlow 3s ease-in-out infinite;
   border-radius: 8px 8px 0 0;
+  animation: barFlow 3s ease-in-out infinite;
 }
 
 .card-editor-titlebar {
@@ -393,9 +434,9 @@ import Card3D from './ui/Card3D.vue'
 .editor-dot {
   width: 9px;
   height: 9px;
-  border-radius: 50%;
   flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
 }
 
 .dot-red { background: #c0392b; }
@@ -403,24 +444,24 @@ import Card3D from './ui/Card3D.vue'
 .dot-green { background: #27ae60; }
 
 .editor-filename {
+  margin-left: 0.3rem;
   font-family: var(--font-mono);
   font-size: 0.6rem;
-  color: var(--ink-muted);
   letter-spacing: 0.05em;
-  margin-left: 0.3rem;
+  color: var(--ink-muted);
 }
 
 .card-editor-body {
-  padding: 0.85rem 1.4rem;
   min-height: 0;
+  padding: 0.85rem 1.4rem;
 }
 
 .code-line {
+  overflow: hidden;
   font-family: var(--font-mono);
   font-size: 0.8rem;
   line-height: 1.75;
   white-space: nowrap;
-  overflow: hidden;
 }
 
 .code-indent { padding-left: 1.4rem; }
@@ -433,13 +474,12 @@ import Card3D from './ui/Card3D.vue'
 .c-str { color: #b0542a; }
 .c-fn { color: var(--accent-dark); font-weight: 600; }
 .c-prop { color: var(--ink); font-weight: 500; }
-.c-num { color: #7a5c3a; }
 .c-comment { color: var(--ink-muted); font-style: italic; }
 
 .card-editor-footer {
   padding: 0.5rem 1.1rem;
-  border-top: 1px solid var(--border);
   background: var(--bg-alt);
+  border-top: 1px solid var(--border);
 }
 
 .editor-cmd {
@@ -448,51 +488,30 @@ import Card3D from './ui/Card3D.vue'
   color: var(--ink-muted);
 }
 
-.cmd-prompt { color: var(--accent); margin-right: 0.5rem; font-weight: 600; }
-
-/* Scroll indicator */
-.scroll-indicator {
-  position: absolute;
-  bottom: 1.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.scroll-bar {
-  width: 1px;
-  height: 3rem;
-  background: linear-gradient(
-    to bottom,
-    var(--accent-dark) 0%,
-    var(--accent) 15%,
-    #d4863a 35%,
-    #e8a87c 55%,
-    rgba(232,168,124,0.3) 75%,
-    transparent 100%
-  );
-  background-size: 100% 300%;
-  animation: scrollFlow 2.5s ease-in-out infinite;
-}
-
-.scroll-label {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
-@keyframes scrollFlow {
-  0% { background-position: 0% 0%; }
-  50% { background-position: 0% 100%; }
-  100% { background-position: 0% 0%; }
+.cmd-prompt {
+  margin-right: 0.5rem;
+  font-weight: 600;
+  color: var(--accent);
 }
 
 @media (max-width: 768px) {
+  #hero-intro {
+    min-height: auto;
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+  }
+
+  .hero-intro-title {
+    gap: 0.18em;
+    width: calc(100% - 1rem);
+    margin-bottom: 2rem;
+    font-size: clamp(1.28rem, 8.4vw, 2.7rem);
+  }
+
+  .container {
+    padding: 0 1.25rem;
+  }
+
   .hero-grid {
     grid-template-columns: 1fr;
     gap: 2rem;
@@ -502,29 +521,37 @@ import Card3D from './ui/Card3D.vue'
   .hero-left {
     padding-left: 0;
   }
-  
+
   .hero-right {
     min-height: 420px;
     transform: none;
   }
-  
+
   .ring-outer {
     width: 360px;
     height: 360px;
   }
-  
+
   .ring-inner {
     width: 300px;
     height: 300px;
   }
-  
+
   .hero-deco-number {
     font-size: 14rem;
   }
-  
+
   .card-wrapper {
     width: 320px;
     height: 210px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-word {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
   }
 }
 </style>

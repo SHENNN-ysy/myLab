@@ -329,7 +329,7 @@ onMounted(() => {
 
 <style scoped>
 #influencer {
-  padding: 100px 0;
+  padding: 72px 0 100px;
 }
 
 .container {

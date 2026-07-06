@@ -1,8 +1,10 @@
 <template>
   <section
+    ref="heroCinemaRef"
     id="hero-cinema"
     class="hero-cinema"
     :class="{ 'is-loaded': isReady }"
+    :style="heroCinemaStyle"
   >
     <div class="hero-cinema__bg-stack" aria-hidden="true">
       <img
@@ -92,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import HeroWordmark from './HeroWordmark.vue'
 
 const slides = [
@@ -112,11 +114,44 @@ const lockedIndex = ref(-1)
 const isReady = ref(false)
 const reducedMotion = ref(false)
 const isVisible = ref(false)
+const heroCinemaRef = ref<HTMLElement | null>(null)
+const exitProgress = ref(0)
 
 let timerId: number | null = null
 let observer: IntersectionObserver | null = null
 let fallbackTimer: number | null = null
 let motionQuery: MediaQueryList | null = null
+let scrollRaf = 0
+
+const heroCinemaStyle = computed(() => {
+  const progress = exitProgress.value
+  const topLeft = 14 * progress
+  const topRight = 100 - 28 * progress
+  const bottomRightX = 100 - 12 * progress
+  const bottomRightY = 100 - 10 * progress
+  const bottomLeftY = 100 - 5 * progress
+
+  return {
+    clipPath: `polygon(${topLeft}% 0%, ${topRight}% 0%, ${bottomRightX}% ${bottomRightY}%, 0% ${bottomLeftY}%)`,
+    borderRadius: `0 0 ${40 * progress}% ${10 * progress}%`,
+  }
+})
+
+function updateExitProgress() {
+  scrollRaf = 0
+  const el = heroCinemaRef.value
+  if (!el) return
+
+  const rect = el.getBoundingClientRect()
+  const height = Math.max(1, rect.height)
+  const next = Math.min(1, Math.max(0, -rect.top / height))
+  exitProgress.value = next
+}
+
+function scheduleExitProgress() {
+  if (scrollRaf) return
+  scrollRaf = window.requestAnimationFrame(updateExitProgress)
+}
 
 function preloadIndex(index: number) {
   if (typeof Image === 'undefined') return
@@ -219,12 +254,19 @@ onMounted(() => {
 
   const root = document.getElementById('hero-cinema')
   if (root) setupObserver(root)
+
+  updateExitProgress()
+  window.addEventListener('scroll', scheduleExitProgress, { passive: true })
+  window.addEventListener('resize', scheduleExitProgress)
 })
 
 onBeforeUnmount(() => {
   stopTimer()
+  if (scrollRaf) window.cancelAnimationFrame(scrollRaf)
   if (fallbackTimer !== null) window.clearTimeout(fallbackTimer)
   motionQuery?.removeEventListener('change', onMotionPreferenceChange)
+  window.removeEventListener('scroll', scheduleExitProgress)
+  window.removeEventListener('resize', scheduleExitProgress)
   observer?.disconnect()
 })
 </script>
