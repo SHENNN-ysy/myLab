@@ -1,5 +1,5 @@
 <template>
-  <section id="hero">
+  <section id="hero-intro" class="hero-intro">
     <div class="container">
       <div class="hero-grid">
         <div class="hero-left">
@@ -74,11 +74,11 @@ import Card3D from './ui/Card3D.vue'
 </script>
 
 <style scoped>
-#hero {
+#hero-intro {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding-top: var(--nav-h);
+  padding-top: calc(var(--nav-h) + 2rem);
   position: relative;
   overflow: hidden;
 }

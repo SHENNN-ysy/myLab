@@ -1,5 +1,5 @@
 /* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* Tailwind base */
 @tailwind base;
@@ -129,4 +129,20 @@ a {
 @keyframes linkedBubbleFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
+}
+
+/* ════════════════════════════════════════
+   HERO CINEMA — SHENNN 书法 wordmark 主题色
+   与 taozhiyy heroWordmarkTheme 的 peach-gold (#1) 对齐
+   适配香港太平山夜景（冷蓝紫底 + 蜜金高光）
+════════════════════════════════════════ */
+:root {
+  --hero-wordmark-stroke: rgba(255, 255, 255, 0.98);
+  --hero-wordmark-stroke-mid: rgba(226, 244, 255, 0.96);
+  --hero-wordmark-stroke-end: rgba(255, 255, 255, 0.94);
+  --hero-wordmark-fill: rgba(244, 249, 255, 0.62);
+  --hero-wordmark-fill-mid: rgba(209, 225, 239, 0.5);
+  --hero-wordmark-fill-end: rgba(255, 255, 255, 0.46);
+  --hero-wordmark-glow: rgba(210, 229, 255, 0.86);
+  --hero-wordmark-veil: rgba(7, 16, 34, 0.2);
 }

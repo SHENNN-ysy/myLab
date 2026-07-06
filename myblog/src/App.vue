@@ -3,10 +3,11 @@
     <Navigation />
     <!-- <SkillProjectConnector /> -->
     <main>
-      <Hero />
+      <HeroCinema />
       <div class="page-divider">
         <div class="divider-line" />
       </div>
+      <Hero id="hero-intro" />
       <About />
       <Skills />
       <Projects />
@@ -22,6 +23,7 @@
 <script setup lang="ts">
 import Navigation from './components/Navigation.vue'
 // import SkillProjectConnector from './components/ui/SkillProjectConnector.vue'
+import HeroCinema from './components/HeroCinema.vue'
 import Hero from './components/Hero.vue'
 import About from './components/About.vue'
 import Skills from './components/Skills.vue'
