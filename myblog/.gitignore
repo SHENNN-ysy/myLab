@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 临时/工作素材：相机默认命名的原始素材不入库（产物请用产物命名入 hero/ 等目录）
+/public/assets/IMG_*
