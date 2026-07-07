@@ -85,33 +85,27 @@
 
       <div ref="aboutRevealPanelsRef" class="about-reveal-panels">
         <article ref="profilePanelRef" class="about-reveal-panel about-profile-panel">
-          <div class="about-reveal-heading">
-            <span class="about-reveal-kicker">Profile</span>
-            <h2>关于我</h2>
-          </div>
-          <div class="about-card">
-            <div class="about-card-left">
+          <div class="about-reveal-grid">
+            <div class="about-reveal-heading">
+              <span class="about-reveal-kicker">Profile</span>
+              <h2>关于我</h2>
               <div class="about-avatar">
                 <img src="/assets/avatar.png" alt="DNSamuel" />
               </div>
             </div>
-            <div class="about-card-right">
-              <h3 class="about-name">杨舒云</h3>
-              <p class="about-bio">
-                男，1年C#/.NET上位机开发经验，半年java/Spring Boot后端开发经验，目前全栈开发、agent开发实践中...
-              </p>
-              <ul class="about-bio about-bio-list">
-                <li>目前研究生在读，负责为实验室内若干项目进行软件开发</li>
-                <li>爱好自然观光、city walk，喜欢探索这个世界的美</li>
-                <li>同时也是一名游戏爱好者，FPS、MOBA、单机杂食系玩家，在游戏探索中有时也能获得心灵上的宁静</li>
-              </ul>
-              <p class="about-bio">
-                努力成为一名技术探索者，故事叙事者。
-              </p>
-              <div class="about-tags">
-                <span class="about-tag">某研究生</span>
-                <span class="about-tag">自然爱好者</span>
-                <span class="about-tag">游戏爱好者</span>
+            <div class="about-card">
+              <div class="about-card-right">
+                <p class="about-bio">
+                  男，1年C#/.NET上位机开发经验，半年java/Spring Boot后端开发经验，目前全栈开发、agent开发实践中...
+                </p>
+                <ul class="about-bio about-bio-list">
+                  <li>目前研究生在读，负责为实验室内若干项目进行软件开发</li>
+                  <li>爱好自然观光、city walk，喜欢探索这个世界的美</li>
+                  <li>同时也是一名游戏爱好者，FPS、MOBA、单机杂食系玩家，在游戏探索中有时也能获得心灵上的宁静</li>
+                </ul>
+                <p class="about-bio">
+                  努力成为一名技术探索者，故事叙事者。
+                </p>
               </div>
             </div>
           </div>
@@ -513,8 +507,8 @@ onMounted(() => {
       .to(
         [travelerPanel, visualPanel],
         {
-          filter: 'blur(12px)',
-          opacity: 0.18,
+          filter: 'blur(6px)',
+          opacity: 0.42,
           duration: 0.68,
           ease: 'none',
         },
@@ -588,8 +582,8 @@ onMounted(() => {
       .to(
         [travelerPanel, visualPanel],
         {
-          filter: 'blur(10px)',
-          opacity: 0.12,
+          filter: 'blur(5px)',
+          opacity: 0.32,
           duration: 0.68,
           ease: 'none',
         },
@@ -1121,6 +1115,36 @@ onBeforeUnmount(() => {
   padding: 1.25rem 1.4rem 0;
 }
 
+.about-reveal-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.34fr) 1fr;
+  column-gap: clamp(1.25rem, 2.6vw, 1.85rem);
+  align-items: start;
+  padding: 1.25rem 1.6rem 1.45rem;
+}
+
+.about-reveal-grid .about-reveal-heading {
+  padding: 0;
+}
+
+.about-reveal-grid .about-avatar {
+  width: 160px;
+  margin: 0.5rem 0 0;
+}
+
+.about-reveal-grid .about-avatar img {
+  display: block;
+  width: 160px;
+  height: 160px;
+}
+
+.about-reveal-grid .about-card {
+  display: block;
+  min-height: 0;
+  padding: 0;
+}
+
+
 .about-reveal-kicker {
   display: block;
   margin-bottom: 0.45rem;
@@ -1149,12 +1173,9 @@ onBeforeUnmount(() => {
 }
 
 .about-card {
-  display: grid;
-  grid-template-columns: 178px 1fr;
-  gap: 1.65rem;
-  align-items: start;
-  min-height: 270px;
-  padding: 1.05rem 1.6rem 1.45rem;
+  display: block;
+  min-height: 0;
+  padding: 0;
 }
 
 .about-card-left {
@@ -1173,15 +1194,6 @@ onBeforeUnmount(() => {
   object-fit: cover;
   border-radius: 4px;
   box-shadow: 0 12px 40px rgba(27, 58, 75, 0.1);
-}
-
-.about-name {
-  margin: 0 0 0.78rem;
-  font-family: var(--font-display);
-  font-size: clamp(1.58rem, 2vw, 2.05rem);
-  font-weight: 900;
-  line-height: 1.1;
-  color: var(--ink);
 }
 
 .about-bio {
@@ -1234,7 +1246,7 @@ onBeforeUnmount(() => {
 
 .linked-card {
   position: relative;
-  height: 280px;
+  height: 380px;
   margin: 1rem 1.4rem 1.4rem;
   overflow: hidden;
   background: linear-gradient(135deg, #1B4965 0%, #0D1B2A 100%);
@@ -1247,12 +1259,13 @@ onBeforeUnmount(() => {
 
 .linked-card-track {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 50%;
   width: 1060px;
   height: 380px;
   pointer-events: none;
-  transform: scale(0.64);
-  transform-origin: top left;
+  transform: translateX(-50%) scale(1);
+  transform-origin: top center;
 }
 
 .linked-dot {
@@ -1481,6 +1494,12 @@ onBeforeUnmount(() => {
     max-height: calc(100dvh - 1rem);
   }
 
+  .about-reveal-grid {
+    grid-template-columns: 1fr;
+    row-gap: 0.75rem;
+    padding: 0.75rem 0.85rem 0.85rem;
+  }
+
   .about-reveal-heading {
     padding: 0.95rem 1rem 0;
   }
@@ -1494,21 +1513,24 @@ onBeforeUnmount(() => {
     line-height: 1.55;
   }
 
-  .about-card {
-    grid-template-columns: 72px 1fr;
-    gap: 0.7rem;
-    min-height: 0;
+  .about-reveal-grid {
+    grid-template-columns: 1fr;
+    row-gap: 0.75rem;
     padding: 0.75rem 0.85rem 0.85rem;
   }
 
-  .about-avatar img {
-    width: 68px;
-    height: 68px;
+  .about-reveal-grid .about-card-right {
+    padding-top: 0;
   }
 
-  .about-name {
-    margin-bottom: 0.45rem;
-    font-size: 1.1rem;
+  .about-reveal-grid .about-avatar {
+    width: 68px;
+    margin: 0.4rem 0 0;
+  }
+
+  .about-reveal-grid .about-avatar img {
+    width: 68px;
+    height: 68px;
   }
 
   .about-bio {
@@ -1528,12 +1550,12 @@ onBeforeUnmount(() => {
   }
 
   .linked-card {
-    height: 160px;
+    height: 180px;
     margin: 0.65rem 0.85rem 0.85rem;
   }
 
   .linked-card-track {
-    transform: scale(0.28);
+    transform: translateX(-50%) scale(0.45);
   }
 }
 

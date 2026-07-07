@@ -112,8 +112,26 @@ onMounted(() => {
 
 <style scoped>
 #skills {
+  position: relative;
+  background: transparent;
+  padding: 80px 0 80px;
+}
+
+#skills::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
   background: linear-gradient(180deg, #1B4965 0%, #0D1B2A 100%);
-  padding: 100px 0;
+  pointer-events: none;
+}
+
+#skills > * {
+  position: relative;
+  z-index: 1;
 }
 
 #skills .section-title {

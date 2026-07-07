@@ -477,9 +477,9 @@ onBeforeUnmount(() => {
   font-size: clamp(3.9rem, 5.25vw, 5rem);
   font-weight: 500;
   letter-spacing: 0.32em;
-  color: rgba(255, 250, 242, 0.7);
+  color: rgba(255, 250, 242, 0.96);
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(0, 0, 0, 0.4),
     0 8px 24px rgba(0, 0, 0, 0.45),
     0 18px 48px rgba(0, 0, 0, 0.35);
   user-select: none;
@@ -490,7 +490,8 @@ onBeforeUnmount(() => {
 .hero-cinema__watermark-sep {
   margin: 0 0.4em;
   font-weight: 400;
-  color: rgba(255, 240, 220, 0.5);
+  color: rgba(255, 245, 230, 0.78);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
 }
 
 @media (max-width: 767px) {
