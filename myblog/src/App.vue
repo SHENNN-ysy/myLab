@@ -18,7 +18,6 @@
           <span>DOWN</span>
         </div>
       </section>
-      <Hero />
       <About />
       <Skills />
       <Projects />
@@ -36,7 +35,6 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import Navigation from './components/Navigation.vue'
 // import SkillProjectConnector from './components/ui/SkillProjectConnector.vue'
 import HeroCinema from './components/HeroCinema.vue'
-import Hero from './components/Hero.vue'
 import About from './components/About.vue'
 import Skills from './components/Skills.vue'
 import Projects from './components/Projects.vue'

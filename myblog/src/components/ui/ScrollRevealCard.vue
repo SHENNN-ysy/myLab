@@ -69,12 +69,14 @@ const screenWindowRef = ref<HTMLElement | null>(null)
 let mm: gsap.Context | null = null
 
 onMounted(() => {
-  if (!containerRef.value) return
+  const container = containerRef.value
+  const screenWindow = screenWindowRef.value
+  if (!container || !screenWindow) return
 
   mm = gsap.context(() => {
     const tl = gsap.timeline({
       scrollTrigger: {
-        trigger: '.hero-reveal-container',
+        trigger: container,
         start: 'center center',
         end: `+=${props.scrollDistance} center`,
         scrub: 1,
@@ -84,7 +86,7 @@ onMounted(() => {
       }
     })
 
-    tl.to('.hero-screen-window', {
+    tl.to(screenWindow, {
       width: '100vw',
       height: '100vh',
       borderRadius: 0,
@@ -118,7 +120,7 @@ onMounted(() => {
       opacity: 0,
       duration: 0.3,
     }, 0.3)
-  }, containerRef.value)
+  }, container)
 })
 
 onBeforeUnmount(() => {
