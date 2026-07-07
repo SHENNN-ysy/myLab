@@ -156,7 +156,7 @@ onMounted(() => {
 
 .section-title em {
   font-style: italic;
-  color: var(--accent);
+  color: #FF6B6B;
 }
 
 .section-desc {

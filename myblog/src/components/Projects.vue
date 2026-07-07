@@ -261,7 +261,7 @@ const clearLinks = () => {
 
 .section-title em {
   font-style: italic;
-  color: var(--accent);
+  color: #FF6B6B;
 }
 
 .section-desc {
@@ -306,7 +306,7 @@ const clearLinks = () => {
 .project-card {
   position: relative;
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(91, 164, 230, 0.15);
   border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
@@ -323,7 +323,7 @@ const clearLinks = () => {
 
 .project-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 18px 48px rgba(27, 58, 75, 0.12);
   border-color: var(--accent);
 }
 
@@ -344,12 +344,12 @@ const clearLinks = () => {
   object-fit: cover;
   display: block;
   transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.4s;
-  filter: saturate(0.85);
+  filter: saturate(0.8) hue-rotate(5deg);
 }
 
 .project-card:hover .project-thumb img {
   transform: scale(1.06);
-  filter: saturate(1);
+  filter: saturate(1) hue-rotate(0deg);
 }
 
 .project-view {
@@ -358,8 +358,8 @@ const clearLinks = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(20, 18, 16, 0.55);
-  color: var(--bg-card);
+  background: rgba(27, 58, 75, 0.65);
+  color: rgba(255, 255, 255, 0.95);
   font-family: var(--font-mono);
   font-size: 0.78rem;
   letter-spacing: 0.15em;
@@ -388,7 +388,7 @@ const clearLinks = () => {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.18rem 0.55rem;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(91, 164, 230, 0.3);
   color: var(--ink-muted);
 }
 
@@ -480,8 +480,8 @@ const clearLinks = () => {
   gap: 0.5rem;
   margin-top: 1rem;
   padding: 0.75rem 1.4rem;
-  background: var(--ink);
-  color: var(--bg-card);
+  background: linear-gradient(135deg, var(--accent), #2EC4B6);
+  color: #fff;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.12em;
@@ -489,12 +489,13 @@ const clearLinks = () => {
   border-radius: 100px;
   border: none;
   cursor: pointer;
-  transition: background 0.25s, transform 0.25s;
+  transition: background 0.25s, transform 0.25s, box-shadow 0.25s;
 }
 
 .modal-cta:hover {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent-dark), var(--accent));
   transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(91, 164, 230, 0.3);
 }
 
 @media (max-width: 980px) {

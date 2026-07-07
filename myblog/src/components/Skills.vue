@@ -21,6 +21,7 @@
             class="skill-item"
             :data-pct="skill.percentage"
             :data-link-skill="skill.name"
+            :class="skill.barStyle ? `has-gradient-bar has-${skill.barStyle}-bar` : ''"
             @mouseenter="showSkillLinks(skill.name)"
             @mouseleave="clearLinks"
             @focusin="showSkillLinks(skill.name)"
@@ -111,7 +112,7 @@ onMounted(() => {
 
 <style scoped>
 #skills {
-  background: var(--ink);
+  background: linear-gradient(180deg, #1B4965 0%, #0D1B2A 100%);
   padding: 100px 0;
 }
 
@@ -161,7 +162,7 @@ onMounted(() => {
 
 .section-title em {
   font-style: italic;
-  color: var(--accent);
+  color: #FF6B6B;
 }
 
 .section-desc {
@@ -181,8 +182,8 @@ onMounted(() => {
 
 .skill-item {
   position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: rgba(13, 27, 42, 0.6);
+  border: 1px solid rgba(91, 164, 230, 0.2);
   border-radius: 12px;
   padding: 1.6rem 1.4rem 1.2rem;
   display: flex;
@@ -190,8 +191,18 @@ onMounted(() => {
   gap: 0.8rem;
   transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
               box-shadow 0.3s,
-              border-color 0.3s;
+              border-color 0.3s,
+              background 0.3s;
   cursor: default;
+}
+
+.skill-name {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
 }
 
 .skill-new-badge {
@@ -202,17 +213,17 @@ onMounted(() => {
   align-items: center;
   gap: 0.25rem;
   padding: 0.22rem 0.48rem;
-  border: 1px solid rgba(191, 58, 30, 0.45);
+  border: 1px solid rgba(46, 196, 182, 0.5);
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(191, 58, 30, 0.12), rgba(255, 255, 255, 0.9));
-  color: var(--accent);
+  background: linear-gradient(135deg, rgba(46, 196, 182, 0.15), rgba(255, 255, 255, 0.1));
+  color: #2EC4B6;
   font-family: var(--font-mono);
   font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1;
   overflow: hidden;
-  box-shadow: 0 4px 14px rgba(191, 58, 30, 0.12);
+  box-shadow: 0 4px 14px rgba(46, 196, 182, 0.15);
 }
 
 .skill-new-badge::after {
@@ -239,8 +250,33 @@ onMounted(() => {
 
 .skill-item:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 12px 32px rgba(91, 164, 230, 0.15);
   border-color: var(--accent);
+  background: rgba(91, 164, 230, 0.12);
+}
+
+.has-gradient-bar .skill-track {
+  height: 7px;
+  background: rgba(91, 164, 230, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.4rem;
+  position: relative;
+}
+
+.has-gradient-bar .skill-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0;
+  transition: width 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.has-coral-bar .skill-fill {
+  background: linear-gradient(90deg, #5BA4E6, #f0a090) !important;
+}
+
+.has-teal-bar .skill-fill {
+  background: linear-gradient(90deg, #5BA4E6, #2EC4B6) !important;
 }
 
 .skill-icon {
@@ -249,7 +285,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink);
+  color: #fff;
   flex-shrink: 0;
 }
 
@@ -267,14 +303,14 @@ onMounted(() => {
   font-family: var(--font-body);
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--ink);
+  color: #fff;
   line-height: 1.3;
   letter-spacing: -0.005em;
 }
 
 .skill-track {
   height: 5px;
-  background: rgba(0, 0, 0, 0.07);
+  background: rgba(91, 164, 230, 0.15);
   border-radius: 100px;
   overflow: hidden;
   margin-top: 0.4rem;
@@ -287,16 +323,16 @@ onMounted(() => {
   transition: width 1.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.skill-fill.proficient {
-  background: var(--accent);
+.skill-item .skill-fill.proficient {
+  background: linear-gradient(90deg, var(--accent), #2EC4B6);
 }
 
-.skill-fill.competent {
-  background: rgba(0, 0, 0, 0.65);
+.skill-item .skill-fill.competent {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .skill-fill.novice {
-  background: rgba(0, 0, 0, 0.40);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .skill-meta {
@@ -311,7 +347,7 @@ onMounted(() => {
   font-family: var(--font-mono);
   font-size: 0.66rem;
   letter-spacing: 0.05em;
-  color: var(--ink-muted);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .skill-level {
@@ -319,9 +355,9 @@ onMounted(() => {
   font-size: 0.62rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: #f0a090;
   padding: 0.15rem 0.5rem;
-  border: 1px solid var(--accent);
+  border: 1px solid rgba(240, 160, 144, 0.5);
 }
 
 @keyframes badgeShine {
@@ -335,12 +371,12 @@ onMounted(() => {
   0%, 100% {
     opacity: 0.65;
     transform: scale(0.86) rotate(0deg);
-    filter: drop-shadow(0 0 0 rgba(191, 58, 30, 0));
+    filter: drop-shadow(0 0 0 rgba(46, 196, 182, 0));
   }
   45% {
     opacity: 1;
     transform: scale(1.18) rotate(18deg);
-    filter: drop-shadow(0 0 6px rgba(191, 58, 30, 0.55));
+    filter: drop-shadow(0 0 6px rgba(46, 196, 182, 0.6));
   }
 }
 

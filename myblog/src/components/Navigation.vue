@@ -290,17 +290,17 @@ watch(drawerVisible, (visible) => {
   }
 }
 
-/* 滚出 hero：加 pill 背景（暖白 + 蜜金描边 + 阴影） */
+/* 滚出 hero：加 pill 背景（清澈海水 + 蓝色描边 + 阴影） */
 .navigation.is-raised {
-  background-color: rgba(252, 246, 236, 0.78);
+  background-color: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
-  border-color: rgba(247, 210, 124, 0.32);
+  border-color: rgba(91, 164, 230, 0.35);
   box-shadow:
-    0 8px 28px rgba(20, 18, 16, 0.18),
-    0 2px 6px rgba(20, 18, 16, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  color: rgba(40, 30, 22, 0.92);
+    0 8px 28px rgba(27, 58, 75, 0.12),
+    0 2px 6px rgba(27, 58, 75, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: rgba(27, 58, 75, 0.92);
 }
 
 /* 向下滚动：nav 整体滑出（+ 淡出，参考 GSAP 同时改 y/opacity） */
@@ -328,12 +328,12 @@ watch(drawerVisible, (visible) => {
   aspect-ratio: 1 / 1;
   border-radius: 50%;
   object-fit: cover;
-  /* 蜜金描边 + 微光晕：pill 抬起时与底色相称；透明时仍可见 */
-  border: 1.5px solid rgba(247, 210, 124, 0.55);
+  /* 天空蓝描边 + 微光晕：pill 抬起时与底色相称；透明时仍可见 */
+  border: 1.5px solid rgba(91, 164, 230, 0.6);
   box-shadow:
-    0 0 0 1px rgba(20, 18, 16, 0.18),
-    0 4px 14px rgba(20, 18, 16, 0.28),
-    inset 0 0 0 1px rgba(255, 250, 242, 0.18);
+    0 0 0 1px rgba(27, 58, 75, 0.12),
+    0 4px 14px rgba(27, 58, 75, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3);
   transition:
     border-color 0.4s ease,
     box-shadow 0.4s ease,
@@ -342,7 +342,7 @@ watch(drawerVisible, (visible) => {
 
 .nav-logo:hover .nav-logo-img {
   transform: scale(1.04);
-  border-color: rgba(247, 210, 124, 0.85);
+  border-color: rgba(91, 164, 230, 0.9);
 }
 
 /* 文字标签：紧贴头像右侧，垂直居中 */
@@ -352,27 +352,27 @@ watch(drawerVisible, (visible) => {
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1;
-  /* 默认：顶部透明态——米白色调，与 hero 夜景融合 */
-  color: rgba(255, 250, 242, 0.94);
+  /* 默认：顶部透明态——清澈蓝色调，与海天背景融合 */
+  color: rgba(255, 255, 255, 0.96);
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.45),
-    0 0 14px rgba(247, 210, 124, 0.18);
+    0 1px 0 rgba(27, 58, 75, 0.5),
+    0 0 18px rgba(91, 164, 230, 0.25);
   transition: color 0.4s ease, text-shadow 0.4s ease;
 }
 
-/* pill 抬起：文字切到墨黑，去掉夜空光晕 */
+/* pill 抬起：文字切到深海色，去掉海面光晕 */
 .navigation.is-raised .nav-logo-label {
-  color: rgba(40, 30, 22, 0.92);
+  color: rgba(27, 58, 75, 0.92);
   text-shadow: none;
 }
 
-/* pill 抬起：头像描边切到朱砂，去掉黑色环 */
+/* pill 抬起：头像描边换成天空蓝，去掉暗环 */
 .navigation.is-raised .nav-logo-img {
-  border-color: rgba(191, 58, 30, 0.7);
+  border-color: rgba(91, 164, 230, 0.75);
   box-shadow:
-    0 0 0 1px rgba(255, 248, 236, 0.85),
-    0 4px 12px rgba(20, 18, 16, 0.18),
-    inset 0 0 0 1px rgba(255, 248, 236, 0.6);
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 4px 12px rgba(27, 58, 75, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7);
 }
 
 /* ============ 链接（推到右侧） ============ */
@@ -394,7 +394,7 @@ watch(drawerVisible, (visible) => {
   font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.04em;
-  color: rgba(255, 250, 242, 0.86);
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
   white-space: nowrap;
   padding: 0.35rem 0;
@@ -408,14 +408,14 @@ watch(drawerVisible, (visible) => {
   bottom: -2px;
   height: 1.5px;
   width: 100%;
-  background: rgba(255, 232, 190, 0.9);
+  background: rgba(91, 164, 230, 0.95);
   transform: scaleX(0);
   transform-origin: bottom right;
   transition: transform 0.3s cubic-bezier(0.65, 0.05, 0.36, 1);
 }
 
 .nav-hover-btn:hover {
-  color: rgba(255, 250, 242, 1);
+  color: rgba(255, 255, 255, 1);
 }
 
 .nav-hover-btn:hover::after {
@@ -423,15 +423,15 @@ watch(drawerVisible, (visible) => {
   transform-origin: bottom left;
 }
 
-/* pill 抬起：链接色切到深色，hover 下划线换成蜜金/朱砂 */
+/* pill 抬起：链接色切到深色，hover 下划线换成天空蓝 */
 .navigation.is-raised .nav-hover-btn {
-  color: rgba(40, 30, 22, 0.78);
+  color: rgba(27, 58, 75, 0.82);
 }
 .navigation.is-raised .nav-hover-btn:hover {
-  color: rgba(40, 30, 22, 0.95);
+  color: rgba(27, 58, 75, 0.98);
 }
 .navigation.is-raised .nav-hover-btn::after {
-  background: rgba(191, 58, 30, 0.85);
+  background: rgba(91, 164, 230, 0.9);
 }
 
 /* ============ 右侧：汉堡按钮 ============ */
@@ -453,10 +453,10 @@ watch(drawerVisible, (visible) => {
   width: 38px;
   height: 38px;
   padding: 0;
-  border: 1px solid rgba(255, 250, 242, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 12px;
-  background: rgba(20, 18, 16, 0.2);
-  color: rgba(255, 250, 242, 0.95);
+  background: rgba(27, 58, 75, 0.25);
+  color: rgba(255, 255, 255, 0.95);
   cursor: pointer;
   transition:
     border-color 0.3s ease,
@@ -464,8 +464,8 @@ watch(drawerVisible, (visible) => {
     color 0.3s ease;
 }
 .nav-menu-btn:hover {
-  background: rgba(20, 18, 16, 0.32);
-  border-color: rgba(255, 250, 242, 0.7);
+  background: rgba(27, 58, 75, 0.4);
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
 .nav-menu-btn-bar {
@@ -478,13 +478,13 @@ watch(drawerVisible, (visible) => {
 }
 
 .navigation.is-raised .nav-menu-btn {
-  border-color: rgba(40, 30, 22, 0.35);
-  background: rgba(255, 248, 236, 0.45);
-  color: rgba(40, 30, 22, 0.9);
+  border-color: rgba(91, 164, 230, 0.4);
+  background: rgba(91, 164, 230, 0.1);
+  color: rgba(27, 58, 75, 0.9);
 }
 .navigation.is-raised .nav-menu-btn:hover {
-  background: rgba(255, 248, 236, 0.7);
-  border-color: rgba(40, 30, 22, 0.55);
+  background: rgba(91, 164, 230, 0.2);
+  border-color: rgba(91, 164, 230, 0.6);
 }
 
 /* ============ 响应式：移动端只显示头像 + 汉堡 ============ */
@@ -568,11 +568,11 @@ watch(drawerVisible, (visible) => {
   padding: 1.25rem 1.25rem 1.5rem;
   background: linear-gradient(
     160deg,
-    rgba(252, 246, 236, 0.98) 0%,
-    rgba(248, 240, 226, 0.98) 100%
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(232, 244, 253, 0.98) 100%
   );
-  border-left: 1px solid rgba(247, 210, 124, 0.4);
-  box-shadow: -16px 0 40px rgba(20, 18, 16, 0.18);
+  border-left: 1px solid rgba(91, 164, 230, 0.3);
+  box-shadow: -16px 0 40px rgba(27, 58, 75, 0.12);
   transform: translateX(100%);
   transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -593,7 +593,7 @@ watch(drawerVisible, (visible) => {
   font-family: var(--font-display);
   font-size: 0.95rem;
   letter-spacing: 0.08em;
-  color: rgba(40, 30, 22, 0.78);
+  color: rgba(27, 58, 75, 0.82);
 }
 .nav-mobile-close {
   width: 32px;
@@ -601,10 +601,10 @@ watch(drawerVisible, (visible) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(40, 30, 22, 0.2);
+  border: 1px solid rgba(27, 58, 75, 0.2);
   border-radius: 999px;
   background: transparent;
-  color: rgba(40, 30, 22, 0.85);
+  color: rgba(27, 58, 75, 0.9);
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
@@ -612,8 +612,8 @@ watch(drawerVisible, (visible) => {
 }
 .nav-mobile-close:hover,
 .nav-mobile-close:focus-visible {
-  background: rgba(247, 210, 124, 0.18);
-  border-color: rgba(191, 58, 30, 0.5);
+  background: rgba(91, 164, 230, 0.15);
+  border-color: rgba(91, 164, 230, 0.5);
   outline: none;
 }
 
@@ -632,7 +632,7 @@ watch(drawerVisible, (visible) => {
   font-size: 0.95rem;
   font-weight: 500;
   letter-spacing: 0.04em;
-  color: rgba(40, 30, 22, 0.85);
+  color: rgba(27, 58, 75, 0.88);
   text-decoration: none;
   transition:
     background 0.18s ease,
@@ -641,8 +641,8 @@ watch(drawerVisible, (visible) => {
 }
 .nav-mobile-link:hover,
 .nav-mobile-link:focus-visible {
-  background: rgba(247, 210, 124, 0.18);
-  color: rgba(140, 42, 18, 1);
+  background: rgba(91, 164, 230, 0.12);
+  color: rgba(91, 164, 230, 1);
   outline: none;
 }
 .nav-mobile-link:active {

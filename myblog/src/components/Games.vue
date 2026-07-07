@@ -119,7 +119,7 @@ const bgGames = computed(() => [
 
 .section-title em {
   font-style: italic;
-  color: var(--accent);
+  color: #FF6B6B;
 }
 
 .section-desc {
@@ -183,12 +183,12 @@ const bgGames = computed(() => [
   min-height: 190px;
   cursor: pointer;
   transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s ease;
-  box-shadow: 0 4px 20px rgba(20, 18, 16, 0.06);
+  box-shadow: 0 4px 20px rgba(27, 58, 75, 0.08);
 }
 
 .game-card:hover {
   transform: translateY(-8px);
-  box-shadow: 0 16px 40px rgba(20, 18, 16, 0.12);
+  box-shadow: 0 16px 40px rgba(27, 58, 75, 0.12);
 }
 
 .game-card img {
@@ -237,11 +237,11 @@ const bgGames = computed(() => [
   top: 1.25rem;
   margin: 0;
   padding: 0.9rem 1rem;
-  background: rgba(244, 240, 235, 0.92);
+  background: rgba(232, 244, 253, 0.95);
   color: var(--ink);
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid #FF6B6B;
   border-radius: 8px;
-  box-shadow: 0 14px 34px rgba(20, 18, 16, 0.22);
+  box-shadow: 0 14px 34px rgba(27, 58, 75, 0.15);
   font-size: 0.88rem;
   line-height: 1.65;
   font-weight: 400;
@@ -261,8 +261,8 @@ const bgGames = computed(() => [
   font-size: 0.6rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--accent);
-  background: rgba(191, 58, 30, 0.15);
+  color: #FF6B6B;
+  background: rgba(255, 107, 107, 0.15);
   padding: 0.25rem 0.6rem;
   border-radius: 4px;
   display: inline-block;

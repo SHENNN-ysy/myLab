@@ -127,7 +127,7 @@ onBeforeUnmount(() => {
 .modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(20, 18, 16, 0.55);
+  background: rgba(27, 58, 75, 0.5);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   opacity: 0;
@@ -150,8 +150,8 @@ onBeforeUnmount(() => {
   width: min(1180px, 70vw);
   height: 100vh;
   background: var(--bg-card);
-  border-right: 1px solid var(--border);
-  box-shadow: 40px 0 120px rgba(0, 0, 0, 0.35);
+  border-right: 1px solid rgba(91, 164, 230, 0.2);
+  box-shadow: 40px 0 120px rgba(27, 58, 75, 0.25);
   transform: translateX(-100%);
   transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
@@ -172,8 +172,8 @@ onBeforeUnmount(() => {
   left: auto;
   right: 0;
   border-right: none;
-  border-left: 1px solid var(--border);
-  box-shadow: -40px 0 120px rgba(0, 0, 0, 0.35);
+  border-left: 1px solid rgba(91, 164, 230, 0.2);
+  box-shadow: -40px 0 120px rgba(27, 58, 75, 0.25);
   transform: translateX(100%);
 }
 

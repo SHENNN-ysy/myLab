@@ -29,7 +29,7 @@ import RevealOnScroll from './ui/RevealOnScroll.vue'
 
 <style scoped>
 #contact {
-  background: var(--ink);
+  background: linear-gradient(180deg, #0D1B2A 0%, #1B4965 100%);
   padding: 100px 0;
   text-align: center;
 }
@@ -64,7 +64,7 @@ import RevealOnScroll from './ui/RevealOnScroll.vue'
 
 .section-title em {
   font-style: italic;
-  color: var(--accent);
+  color: #FF6B6B;
 }
 
 .section-desc {
@@ -90,13 +90,14 @@ import RevealOnScroll from './ui/RevealOnScroll.vue'
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 0.7rem 1.5rem;
-  border: 1px solid rgba(255,255,255,0.15);
-  color: var(--bg);
-  transition: border-color 0.2s, background 0.2s;
+  border: 1px solid rgba(91, 164, 230, 0.4);
+  color: rgba(255, 255, 255, 0.9);
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
 .contact-link:hover {
   border-color: var(--accent);
-  background: var(--accent);
+  background: rgba(91, 164, 230, 0.2);
+  box-shadow: 0 0 20px rgba(91, 164, 230, 0.3);
 }
 </style>

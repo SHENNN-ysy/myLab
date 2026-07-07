@@ -77,25 +77,24 @@ onMounted(() => {
   const G_FACTOR = 2000000
   const G_DECAY = 0.1
 
-  const LABELS = ['FPS牢玩家', '健身旅行者', '动物保护旅行者', '养老二次元', '游戏旅行者', '美食探索旅行者', '自然风光旅行者', '技术探索者', '摄影旅行者', 'city walk', '电动版骑行爱好者', '吃瓜旅行者', '代码强迫症', 'AI大人的爱徒']
+  const LABELS = ['FPS牢玩家','健身旅行者','动物保护旅行者' ,'养老二次元', '游戏旅行者','美食探索旅行者', '自然风光旅行者','技术探索者', '摄影旅行者','city walk', '电动版骑行爱好者', '吃瓜旅行者', '代码强迫症', 'AI大人的爱徒']
 
-  const BUBBLE_STYLES: Record<string, { bg: string; glow: string }> = {
-    'FPS牢玩家': { bg: '#b53a2a', glow: 'rgba(181,58,42,0.40)' },
-    '健身旅行者': { bg: '#2f8a63', glow: 'rgba(47,138,99,0.40)' },
-    '动物保护旅行者': { bg: '#8b6b3d', glow: 'rgba(139,107,61,0.40)' },
-    '养老二次元': { bg: '#a060b8', glow: 'rgba(160,96,184,0.40)' },
-    '游戏旅行者': { bg: '#4f5fb8', glow: 'rgba(79,95,184,0.40)' },
-    '美食探索旅行者': { bg: '#d97a3a', glow: 'rgba(217,122,58,0.40)' },
-    '自然风光旅行者': { bg: '#3f7a52', glow: 'rgba(63,122,82,0.40)' },
-    '技术探索者': { bg: '#235f73', glow: 'rgba(35,95,115,0.40)' },
-    '摄影旅行者': { bg: '#7b6f5d', glow: 'rgba(123,111,93,0.40)' },
-    'city walk': { bg: '#4a6f8a', glow: 'rgba(74,111,138,0.40)' },
-    '电动版骑行爱好者': { bg: '#2e6e8a', glow: 'rgba(46,110,138,0.40)' },
-    '吃瓜旅行者': { bg: '#c4a14a', glow: 'rgba(196,161,74,0.40)' },
-    '代码强迫症': { bg: '#1f5a5a', glow: 'rgba(31,90,90,0.40)' },
-    'AI大人的爱徒': { bg: '#6b4ea8', glow: 'rgba(107,78,168,0.40)' },
+  const BUBBLE_STYLES: Record<string, { bg: string; glow: string; textColor: string }> = {
+    'FPS牢玩家': { bg: 'rgba(255, 107, 107, 0.25)', glow: 'rgba(255, 107, 107, 0.4)', textColor: '#FF8A80' },
+    '健身旅行者': { bg: 'rgba(46, 196, 182, 0.25)', glow: 'rgba(46, 196, 182, 0.4)', textColor: '#64FFDA' },
+    '养老二次元': { bg: 'rgba(219, 112, 147, 0.25)', glow: 'rgba(219, 112, 147, 0.4)', textColor: '#F48FB1' },
+    '美食探索旅行者': { bg: 'rgba(255, 138, 101, 0.25)', glow: 'rgba(255, 138, 101, 0.4)', textColor: '#FFCCBC' },
+    '自然风光旅行者': { bg: 'rgba(76, 175, 80, 0.25)', glow: 'rgba(76, 175, 80, 0.4)', textColor: '#A5D6A7' },
+    'city walk': { bg: 'rgba(100, 181, 246, 0.25)', glow: 'rgba(100, 181, 246, 0.4)', textColor: '#90CAF9' },
+    '电动版骑行爱好者': { bg: 'rgba(102, 187, 106, 0.25)', glow: 'rgba(102, 187, 106, 0.4)', textColor: '#A5D6A7' },
+    '吃瓜旅行者': { bg: 'rgba(171, 71, 188, 0.25)', glow: 'rgba(171, 71, 188, 0.4)', textColor: '#CE93D8' },
+    '代码强迫症': { bg: 'rgba(38, 166, 154, 0.25)', glow: 'rgba(38, 166, 154, 0.4)', textColor: '#80CBC4' },
+    'AI大人的爱徒': { bg: 'rgba(0, 188, 212, 0.25)', glow: 'rgba(0, 188, 212, 0.4)', textColor: '#4DD0E1' },
+    '游戏旅行者': { bg: 'rgba(255, 138, 101, 0.25)', glow: 'rgba(255, 138, 101, 0.4)', textColor: '#FFAB91' },
+    '摄影旅行者': { bg: 'rgba(255, 179, 71, 0.25)', glow: 'rgba(255, 179, 71, 0.4)', textColor: '#FFE082' },
+    '动物保护旅行者': { bg: 'rgba(102, 187, 106, 0.25)', glow: 'rgba(102, 187, 106, 0.4)', textColor: '#81C784' },
+    '技术探索者': { bg: 'rgba(91, 164, 230, 0.25)', glow: 'rgba(91, 164, 230, 0.4)', textColor: '#81D4FA' },
   }
-  const bubbleStyleValues = Object.values(BUBBLE_STYLES)
 
   class GridLayout {
     gx: number
@@ -132,7 +131,7 @@ onMounted(() => {
   }
 
   const grid = new GridLayout(120, CARD_W, CARD_H)
-  const bubbles: Array<{ x: number; y: number; r: number; label: string; tier: string; color?: string }> = []
+  const bubbles: Array<{ x: number; y: number; r: number; label: string; tier: string }> = []
 
   // 大气泡
   for (let i = 0; i < 5; i++) {
@@ -169,9 +168,8 @@ onMounted(() => {
       const x = r + Math.random() * (CARD_W - r * 2)
       const y = r + Math.random() * (CARD_H - r * 2)
       if (!grid.collides({ x, y, r })) {
-        const randomStyle = i >= 16 ? bubbleStyleValues[Math.floor(Math.random() * bubbleStyleValues.length)] : undefined
         grid.add({ x, y, r, label: '', tier: 'small' })
-        bubbles.push({ x, y, r, label: '', tier: 'small', color: randomStyle?.bg })
+        bubbles.push({ x, y, r, label: '', tier: 'small' })
         break
       }
     }
@@ -212,19 +210,27 @@ onMounted(() => {
     const opacity = isBig ? 1 : isMid ? 0.9 : (0.5 + Math.random() * 0.15)
 
     const style = b.label && BUBBLE_STYLES[b.label]
-    const bg = b.color ?? (style ? style.bg : '#bf3a1e')
+    const bg = style ? style.bg : 'rgba(91, 164, 230, 0.25)'
+    const textColor = style ? style.textColor : '#5BA4E6'
 
+    const glassBorder = isBig || isMid
+      ? 'border: 1px solid rgba(255, 255, 255, 0.3);'
+      : 'border: 1px solid rgba(255, 255, 255, 0.15);'
+    const glowColor = style ? style.glow : 'rgba(91, 164, 230, 0.4)'
     const shadowStyle = (isBig || isMid)
-      ? `box-shadow:${isBig && style ? `0 12px 38px ${style.glow}, ` : ''}0 0 0 ${isBig ? 5 : 4}px rgba(250,248,244,0.55);`
+      ? `box-shadow: ${isBig ? `0 12px 38px ${glowColor},` : ''} inset 0 1px 2px rgba(255, 255, 255, 0.15);`
       : ''
 
     inner.style.cssText = [
       'background:' + bg + ';',
+      'backdrop-filter: blur(8px) saturate(180%);',
+      '-webkit-backdrop-filter: blur(8px) saturate(180%);',
       'opacity:' + opacity + ';',
       'border-radius:50%;',
       'width:100%;',
       'height:100%;',
       'will-change:transform;',
+      glassBorder,
       shadowStyle,
     ].filter(Boolean).join('')
 
@@ -235,26 +241,26 @@ onMounted(() => {
       const sizeBase = isBig ? 1.55 : 1.35
       const fs = Math.max(9, Math.min(isBig ? 13 : 11, (b.r * sizeBase) / Math.max(5, Math.sqrt(labelLength) * 2.2)))
       lbl.style.cssText = [
-        'font-size:' + fs + 'px',
-        'color:#faf8f4;',
-        'position:absolute;',
-        'inset:14%;',
-        'display:flex;',
-        'align-items:center;',
-        'justify-content:center;',
-        'text-align:center;',
-        'font-family:Inter, Microsoft YaHei, Arial, sans-serif;',
-        'font-weight:800;',
-        'letter-spacing:0.01em;',
-        'line-height:1.32;',
-        'white-space:normal;',
-        'word-break:break-word;',
-        'overflow-wrap:anywhere;',
-        'overflow:hidden;',
-        'text-shadow:0 1px 3px rgba(20,18,16,0.28);',
-        '-webkit-font-smoothing:antialiased;',
-        'backface-visibility:hidden;',
-        'transform:translateZ(0);',
+        `font-size:${fs}px`,
+        `color:${textColor}`,
+        'position:absolute',
+        'inset:14%',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'text-align:center',
+        'font-family:var(--font-body)',
+        'font-weight:700',
+        'letter-spacing:0.01em',
+        'line-height:1.32',
+        'white-space:normal',
+        'word-break:break-word',
+        'overflow-wrap:anywhere',
+        'overflow:hidden',
+        'text-shadow:0 1px 3px rgba(0,0,0,0.3)',
+        '-webkit-font-smoothing:antialiased',
+        'backface-visibility:hidden',
+        'transform:translateZ(0)',
       ].join(';')
       lbl.textContent = b.label
       inner.appendChild(lbl)
@@ -329,7 +335,7 @@ onMounted(() => {
 
 <style scoped>
 #influencer {
-  padding: 72px 0 100px;
+  padding: 100px 0;
 }
 
 .container {
@@ -366,7 +372,7 @@ onMounted(() => {
 
 .section-title em {
   font-style: italic;
-  color: var(--accent);
+  color: #FF6B6B;
 }
 
 .about-layout {
@@ -378,7 +384,7 @@ onMounted(() => {
 
 .about-card {
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(91, 164, 230, 0.15);
   display: grid;
   grid-template-columns: 200px 1fr;
   gap: 2.5rem;
@@ -398,7 +404,7 @@ onMounted(() => {
   object-fit: cover;
   display: block;
   border-radius: 4px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+  box-shadow: 0 12px 40px rgba(27, 58, 75, 0.1);
 }
 
 .about-tags {
@@ -503,7 +509,7 @@ onMounted(() => {
 
 .linked-card-title em {
   font-style: normal;
-  color: var(--accent);
+  color: #FF6B6B;
 }
 
 .linked-card-desc {
@@ -515,11 +521,17 @@ onMounted(() => {
 
 .linked-card {
   position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: linear-gradient(135deg, #1B4965 0%, #0D1B2A 100%);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(91, 164, 230, 0.15);
   overflow: hidden;
   height: 380px;
   width: 100%;
+  border-radius: 20px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .linked-card-track {
@@ -554,13 +566,13 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  color: #faf8f4;
+  color: #5BA4E6;
   font-family: var(--font-body);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.32;
   letter-spacing: 0.01em;
   text-align: center;
-  text-shadow: 0 1px 3px rgba(20, 18, 16, 0.28);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   white-space: normal;
   word-break: break-word;
   overflow-wrap: anywhere;

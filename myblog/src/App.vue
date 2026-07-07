@@ -88,7 +88,7 @@ main {
   overflow: hidden;
   padding-bottom: clamp(8rem, 19vh, 15rem);
   background:
-    linear-gradient(180deg, #2b2d31 0%, #34373d 54%, #3b3e45 82%, var(--bg) 100%);
+    linear-gradient(180deg, #1B4965 0%, #2D6A8F 54%, #5BA4E6 82%, var(--bg) 100%);
 }
 
 .hero-transition-shell::before {
@@ -97,9 +97,9 @@ main {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 82%, rgba(255, 255, 255, 0.12), transparent 34%),
-    radial-gradient(circle at 86% 18%, rgba(125, 132, 146, 0.28), transparent 38%),
-    linear-gradient(180deg, transparent 0%, rgba(16, 17, 20, 0.18) 100%);
+    radial-gradient(circle at 18% 82%, rgba(255, 255, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 86% 18%, rgba(91, 164, 230, 0.25), transparent 38%),
+    linear-gradient(180deg, transparent 0%, rgba(27, 58, 75, 0.15) 100%);
 }
 
 .hero-transition-shell > #hero-cinema {

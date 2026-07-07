@@ -257,7 +257,7 @@ const openHobbyModal = (id: string) => {
 
 <style scoped>
 #hobbies {
-  background: var(--bg-alt);
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
   padding: 100px 0;
   position: relative;
   z-index: 1;
@@ -297,7 +297,7 @@ const openHobbyModal = (id: string) => {
 
 .section-title em {
   font-style: italic;
-  color: var(--accent);
+  color: #FF6B6B;
 }
 
 .section-desc {
@@ -328,8 +328,8 @@ const openHobbyModal = (id: string) => {
   gap: 1rem;
   padding: 0.85rem 1rem;
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
+  border: 1px solid rgba(255, 107, 107, 0.15);
+  border-left: 3px solid #FF6B6B;
   margin-bottom: 1.6rem;
 }
 
@@ -348,7 +348,7 @@ const openHobbyModal = (id: string) => {
   content: '';
   width: 1.35rem;
   height: 1px;
-  background: var(--accent);
+  background: #FF6B6B;
   flex-shrink: 0;
 }
 
@@ -356,7 +356,7 @@ const openHobbyModal = (id: string) => {
   font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--accent);
+  color: #FF6B6B;
   letter-spacing: 0.05em;
 }
 
@@ -382,7 +382,7 @@ const openHobbyModal = (id: string) => {
   gap: 1rem;
   padding: 0.85rem 1rem;
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(91, 164, 230, 0.12);
   border-left: 3px solid transparent;
   cursor: pointer;
   transition: border-color 0.25s, transform 0.25s, background 0.25s;
@@ -392,14 +392,14 @@ const openHobbyModal = (id: string) => {
 }
 
 .hobby-item:hover {
-  border-left-color: var(--accent);
+  border-left-color: #FF6B6B;
   transform: translateX(4px);
 }
 
 .hobby-item.is-active {
-  border-left-color: var(--accent);
+  border-left-color: #FF6B6B;
   background: #fff;
-  box-shadow: 0 6px 20px rgba(20,18,16,0.05);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.06);
 }
 
 .hobby-item-left {
@@ -413,13 +413,13 @@ const openHobbyModal = (id: string) => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--accent);
+  background: #FF6B6B;
   flex-shrink: 0;
-  box-shadow: 0 0 0 4px var(--accent-light);
+  box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.2);
 }
 
 .hobby-item.is-active .hobby-bullet {
-  box-shadow: 0 0 0 6px var(--accent-light), 0 0 14px var(--accent);
+  box-shadow: 0 0 0 6px rgba(255, 107, 107, 0.2), 0 0 14px #FF6B6B;
 }
 
 .hobby-name {
@@ -435,20 +435,20 @@ const openHobbyModal = (id: string) => {
   font-size: 0.62rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: #FF6B6B;
   flex-shrink: 0;
 }
 
 /* Map Panel */
 .map-panel {
   position: relative;
-  background: #f0f0ee;
-  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(91, 164, 230, 0.08) 0%, rgba(232, 244, 253, 0.5) 100%);
+  border: 1px solid rgba(91, 164, 230, 0.2);
   border-radius: 16px;
   overflow: hidden;
   aspect-ratio: 1029 / 823;
   max-width: 100%;
-  box-shadow: 0 8px 32px rgba(20,18,16,0.06);
+  box-shadow: 0 8px 32px rgba(27, 58, 75, 0.08);
   isolation: isolate;
 }
 
@@ -457,7 +457,7 @@ const openHobbyModal = (id: string) => {
   inset: 0;
   width: 100%;
   height: 100%;
-  background-color: #f0f0ee;
+  background-color: #E8F4FD;
   background-image: url('/assets/china-map.jpeg');
   background-size: contain;
   background-position: center center;
@@ -501,9 +501,9 @@ const openHobbyModal = (id: string) => {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--accent);
+  background: #FF6B6B;
   border: 2.5px solid var(--bg-card);
-  box-shadow: 0 0 0 1.5px var(--accent), 0 3px 12px rgba(191,58,30,0.4);
+  box-shadow: 0 0 0 1.5px #FF6B6B, 0 3px 12px rgba(255, 107, 107, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -512,16 +512,16 @@ const openHobbyModal = (id: string) => {
 .map-marker.is-active .marker-dot {
   width: 18px;
   height: 18px;
-  background: var(--accent);
+  background: #FF6B6B;
   border-color: var(--bg-card);
-  box-shadow: 0 0 0 2px var(--accent), 0 0 0 7px var(--accent-light), 0 6px 18px rgba(191,58,30,0.6);
+  box-shadow: 0 0 0 2px #FF6B6B, 0 0 0 7px rgba(255, 107, 107, 0.2), 0 6px 18px rgba(255, 107, 107, 0.6);
 }
 
 .map-marker.is-self .marker-dot {
   background: transparent;
   width: 84px;
   height: 84px;
-  box-shadow: 0 0 0 3px var(--accent), 0 4px 16px rgba(191,58,30,0.4);
+  box-shadow: 0 0 0 3px #FF6B6B, 0 4px 16px rgba(255, 107, 107, 0.5);
   overflow: hidden;
 }
 
@@ -536,13 +536,13 @@ const openHobbyModal = (id: string) => {
 .map-marker.is-self.is-active .marker-dot {
   width: 104px;
   height: 104px;
-  box-shadow: 0 0 0 4px var(--accent), 0 0 0 12px var(--accent-light), 0 8px 24px rgba(191,58,30,0.55);
+  box-shadow: 0 0 0 4px #FF6B6B, 0 0 0 12px rgba(255, 107, 107, 0.2), 0 8px 24px rgba(255, 107, 107, 0.55);
 }
 
 .map-marker.is-self.is-active .marker-dot {
   width: 104px;
   height: 104px;
-  box-shadow: 0 0 0 4px var(--accent), 0 0 0 12px var(--accent-light), 0 8px 24px rgba(191,58,30,0.55);
+  box-shadow: 0 0 0 4px #FF6B6B, 0 0 0 12px rgba(255, 107, 107, 0.2), 0 8px 24px rgba(255, 107, 107, 0.55);
 }
 
 .marker-stem {
@@ -551,7 +551,7 @@ const openHobbyModal = (id: string) => {
   left: 50%;
   width: 1.5px;
   height: 6px;
-  background: var(--accent);
+  background: #FF6B6B;
   transform: translateX(-50%);
 }
 
@@ -562,7 +562,7 @@ const openHobbyModal = (id: string) => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(191,58,30,0.3);
+  background: rgba(255, 107, 107, 0.35);
   transform: translate(-50%, 0);
   animation: markerPulse 2.2s ease-out infinite;
   pointer-events: none;
@@ -573,7 +573,7 @@ const openHobbyModal = (id: string) => {
   height: 120px;
   bottom: -12px;
   background: transparent;
-  border: 3px solid rgba(191,58,30,0.45);
+  border: 3px solid rgba(255, 107, 107, 0.5);
   animation: markerPulseAvatar 2.4s ease-out infinite;
 }
 
@@ -660,7 +660,7 @@ const openHobbyModal = (id: string) => {
 }
 
 .marker-tip-row strong {
-  color: var(--accent);
+  color: #FF6B6B;
   font-weight: 500;
 }
 

@@ -279,9 +279,9 @@ onBeforeUnmount(() => {
   overflow: hidden;
   color: #faf8f4;
   background:
-    radial-gradient(ellipse at 20% 10%, rgba(255, 220, 200, 0.32), transparent 55%),
-    radial-gradient(ellipse at 80% 90%, rgba(191, 58, 30, 0.22), transparent 60%),
-    linear-gradient(180deg, #1a1612 0%, #2a201a 60%, #141210 100%);
+    radial-gradient(ellipse at 20% 10%, rgba(91, 164, 230, 0.35), transparent 55%),
+    radial-gradient(ellipse at 80% 90%, rgba(46, 196, 182, 0.2), transparent 60%),
+    linear-gradient(180deg, #1B4965 0%, #2D6A8F 60%, #1B4965 100%);
 }
 
 .hero-cinema__bg-stack {
@@ -318,8 +318,8 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(10, 14, 22, 0.26) 0%, transparent 34%),
-    linear-gradient(180deg, transparent 62%, rgba(10, 14, 22, 0.24) 100%);
+    linear-gradient(180deg, rgba(27, 58, 75, 0.2) 0%, transparent 34%),
+    linear-gradient(180deg, transparent 62%, rgba(27, 58, 75, 0.2) 100%);
   pointer-events: none;
 }
 
@@ -385,11 +385,11 @@ onBeforeUnmount(() => {
   font-family: var(--font-mono);
   font-size: 0.78rem;
   letter-spacing: 0.18em;
-  color: rgba(255, 250, 242, 0.96);
+  color: rgba(255, 255, 255, 0.96);
   text-transform: uppercase;
   cursor: pointer;
-  background: rgba(255, 220, 200, 0.12);
-  border: 1px solid rgba(255, 220, 200, 0.45);
+  background: rgba(91, 164, 230, 0.18);
+  border: 1px solid rgba(91, 164, 230, 0.5);
   border-radius: 999px;
   backdrop-filter: blur(8px);
   transition:
@@ -400,9 +400,9 @@ onBeforeUnmount(() => {
 }
 
 .hero-cinema__cta:hover {
-  background: rgba(255, 220, 200, 0.22);
-  border-color: rgba(255, 240, 220, 0.75);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  background: rgba(91, 164, 230, 0.32);
+  border-color: rgba(91, 164, 230, 0.8);
+  box-shadow: 0 12px 32px rgba(91, 164, 230, 0.35);
   transform: translateY(-1px);
 }
 
@@ -522,8 +522,8 @@ onBeforeUnmount(() => {
   height: 10px;
   padding: 0;
   cursor: pointer;
-  background: rgba(255, 240, 220, 0.32);
-  border: 1px solid rgba(255, 240, 220, 0.55);
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 999px;
   transition:
     width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
@@ -535,23 +535,23 @@ onBeforeUnmount(() => {
 
 .hero-cinema__picker-dot:hover,
 .hero-cinema__picker-dot:focus-visible {
-  background: rgba(255, 250, 242, 0.95);
-  border-color: rgba(255, 250, 242, 0.95);
-  box-shadow: 0 0 0 4px rgba(255, 240, 220, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 4px rgba(91, 164, 230, 0.2);
   outline: none;
 }
 
 .hero-cinema__picker-dot.is-current {
-  background: rgba(255, 250, 242, 0.92);
-  border-color: rgba(255, 250, 242, 0.95);
+  background: rgba(91, 164, 230, 0.95);
+  border-color: rgba(91, 164, 230, 0.95);
   width: 22px;
   /* pill 形态：当前正在展示的图 */
   border-radius: 999px;
 }
 
 .hero-cinema__picker-dot.is-hover:not(.is-current) {
-  background: rgba(255, 250, 242, 0.78);
-  border-color: rgba(255, 250, 242, 0.85);
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(255, 255, 255, 0.85);
 }
 
 @media (max-width: 767px) {

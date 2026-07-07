@@ -220,7 +220,7 @@ onBeforeUnmount(() => {
   font-family: var(--font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.22em;
-  color: var(--accent);
+  color: #FF6B6B;
   text-transform: uppercase;
 }
 
@@ -228,7 +228,7 @@ onBeforeUnmount(() => {
   content: '';
   width: 2.5rem;
   height: 1px;
-  background: var(--accent);
+  background: #FF6B6B;
 }
 
 .hero-name {
@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
 }
 
 .hero-name .accent {
-  color: var(--accent);
+  color: #FF6B6B;
   font-style: italic;
 }
 
@@ -282,9 +282,9 @@ onBeforeUnmount(() => {
   left: 50%;
   width: 16px;
   height: 16px;
-  background: var(--accent);
+  background: #FF6B6B;
   border-radius: 50%;
-  box-shadow: 0 0 16px rgba(191, 58, 30, 0.5);
+  box-shadow: 0 0 16px rgba(255, 107, 107, 0.5);
   transform: translateX(-50%);
 }
 
@@ -305,8 +305,9 @@ onBeforeUnmount(() => {
   bottom: -6px;
   width: 10px;
   height: 10px;
-  background: var(--ink);
+  background: #FF6B6B;
   border-radius: 50%;
+  box-shadow: 0 0 12px rgba(255, 107, 107, 0.5);
   transform: translateX(50%);
 }
 

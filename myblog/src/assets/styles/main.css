@@ -6,18 +6,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom CSS Variables */
+/* Custom CSS Variables - 蓝天白云大海主题 */
 :root {
-  --bg: #f4f0eb;
-  --bg-alt: #ede9e2;
-  --bg-card: #faf8f4;
-  --ink: #141210;
-  --ink-light: #4a4640;
-  --ink-muted: #8a847c;
-  --accent: #bf3a1e;
-  --accent-light: rgba(191, 58, 30, 0.08);
-  --accent-dark: #8c2a12;
-  --border: #d4cfc8;
+  --bg: #F5F9FC;
+  --bg-alt: #E8F4FD;
+  --bg-card: #FFFFFF;
+  --ink: #1B3A4B;
+  --ink-light: #4A7C96;
+  --ink-muted: #8BB8C8;
+  --accent: #5BA4E6;
+  --accent-light: rgba(91, 164, 230, 0.12);
+  --accent-dark: #3A8BD4;
+  --accent-secondary: #2EC4B6;
+  --accent-coral: #FF6B6B;
+  --border: #D0E8F5;
   --font-display: 'Playfair Display', Georgia, serif;
   --font-body: 'DM Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;
@@ -51,12 +53,12 @@ body {
   overflow-x: hidden;
 }
 
-/* Paper grain texture */
+/* Ocean wave grain texture */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 9999;
 }
@@ -75,12 +77,12 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: rgba(91, 164, 230, 0.4);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--ink-muted);
+  background: var(--accent);
 }
 
 /* Animation Keyframes */
@@ -132,17 +134,16 @@ a {
 }
 
 /* ════════════════════════════════════════
-   HERO CINEMA — SHENNN 书法 wordmark 主题色
-   与 taozhiyy heroWordmarkTheme 的 peach-gold (#1) 对齐
-   适配香港太平山夜景（冷蓝紫底 + 蜜金高光）
+   HERO CINEMA — 蓝天白云大海主题
+   适配海天一色的清新风格
 ════════════════════════════════════════ */
 :root {
   --hero-wordmark-stroke: rgba(255, 255, 255, 0.98);
-  --hero-wordmark-stroke-mid: rgba(226, 244, 255, 0.96);
+  --hero-wordmark-stroke-mid: rgba(220, 240, 255, 0.96);
   --hero-wordmark-stroke-end: rgba(255, 255, 255, 0.94);
-  --hero-wordmark-fill: rgba(244, 249, 255, 0.62);
-  --hero-wordmark-fill-mid: rgba(209, 225, 239, 0.5);
+  --hero-wordmark-fill: rgba(245, 249, 255, 0.62);
+  --hero-wordmark-fill-mid: rgba(200, 230, 255, 0.5);
   --hero-wordmark-fill-end: rgba(255, 255, 255, 0.46);
-  --hero-wordmark-glow: rgba(210, 229, 255, 0.86);
-  --hero-wordmark-veil: rgba(7, 16, 34, 0.2);
+  --hero-wordmark-glow: rgba(91, 164, 230, 0.86);
+  --hero-wordmark-veil: rgba(27, 73, 101, 0.2);
 }
