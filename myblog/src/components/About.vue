@@ -2,9 +2,12 @@
   <section
     id="hero-intro"
     class="hero-intro"
-    :class="{ 'is-title-visible': isTitleVisible }"
+    :class="{
+      'is-title-visible': isTitleVisible,
+      'is-title-hidden': isTitleHiding,
+    }"
   >
-    <div ref="introTitleRef" class="hero-intro-title" aria-label="Welcome to shennn">
+    <div class="hero-intro-title" aria-label="Welcome to shennn">
       <span
         v-for="(word, index) in introWords"
         :key="word"
@@ -137,7 +140,6 @@ import Card3D from './ui/Card3D.vue'
 gsap.registerPlugin(ScrollTrigger)
 
 const introWords = ['welcome', 'to', 'shennn']
-const introTitleRef = ref<HTMLElement | null>(null)
 const panelRevealRef = ref<HTMLElement | null>(null)
 const cardShellRef = ref<HTMLElement | null>(null)
 const travelerPanelRef = ref<HTMLElement | null>(null)
@@ -147,8 +149,51 @@ const profilePanelRef = ref<HTMLElement | null>(null)
 const ingredientsPanelRef = ref<HTMLElement | null>(null)
 const linkedCardEl = ref<HTMLElement | null>(null)
 const linkedTrackEl = ref<HTMLElement | null>(null)
-const isTitleVisible = ref(false)
-let introObserver: IntersectionObserver | null = null
+
+/* ============ welcome 标题双向动画 ============ */
+const DIRECTION_DEAD_ZONE = 4
+
+const isTitleVisible = ref(true)
+const isTitleHiding = ref(false)
+let lastScrollY = 0
+let ticking = false
+
+function onTitleScroll() {
+  if (ticking) return
+  ticking = true
+  window.requestAnimationFrame(updateTitleState)
+}
+
+function updateTitleState() {
+  const currentY = window.scrollY
+  const delta = currentY - lastScrollY
+
+  if (Math.abs(delta) < DIRECTION_DEAD_ZONE) {
+    ticking = false
+    return
+  }
+
+  // 向上滚动 → 退场动画（标题消失）
+  if (delta < 0 && isTitleVisible.value && !isTitleHiding.value) {
+    isTitleVisible.value = false
+    isTitleHiding.value = true
+    lastScrollY = currentY
+    ticking = false
+    return
+  }
+
+  // 向下滚动 → 进场动画（标题出现）
+  if (delta > 0 && isTitleHiding.value && !isTitleVisible.value) {
+    isTitleHiding.value = false
+    isTitleVisible.value = true
+    lastScrollY = currentY
+    ticking = false
+    return
+  }
+
+  lastScrollY = currentY
+  ticking = false
+}
 let panelRevealMedia: gsap.MatchMedia | null = null
 
 function setupIngredientBubbles() {
@@ -418,24 +463,8 @@ function setupIngredientBubbles() {
 }
 
 onMounted(() => {
-  const target = introTitleRef.value
-  if (!target || typeof IntersectionObserver === 'undefined') {
-    isTitleVisible.value = true
-  } else {
-    introObserver = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return
-        isTitleVisible.value = true
-        introObserver?.disconnect()
-        introObserver = null
-      },
-      {
-        rootMargin: '0px 0px -18% 0px',
-        threshold: 0.25,
-      },
-    )
-    introObserver.observe(target)
-  }
+  lastScrollY = window.scrollY
+  window.addEventListener('scroll', onTitleScroll, { passive: true })
 
   const panel = panelRevealRef.value
   const shell = cardShellRef.value
@@ -614,7 +643,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  introObserver?.disconnect()
+  window.removeEventListener('scroll', onTitleScroll)
   panelRevealMedia?.revert()
 })
 </script>
@@ -667,21 +696,49 @@ onBeforeUnmount(() => {
 .intro-word {
   display: inline-block;
   flex: 0 0 auto;
-  opacity: 0;
-  transform: translate3d(10px, 51px, -60px) rotateY(60deg) rotateX(-40deg);
-  transform-origin: 50% 50% -150px;
+  opacity: 1;
+  transform: none;
   will-change: opacity, transform;
 }
 
 .is-title-visible .intro-word {
-  animation: introWordReveal 0.88s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation: introWordReveal 0.72s cubic-bezier(0.22, 0.61, 0.36, 1) both;
   animation-delay: calc(var(--word-index) * 0.06s);
 }
 
+.is-title-hidden .intro-word {
+  animation: introWordHide 0.56s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: calc(var(--word-index) * 0.05s);
+}
+
 @keyframes introWordReveal {
-  to {
+  0% {
+    opacity: 0;
+    transform: translate3d(10px, 51px, -60px) rotateY(60deg) rotateX(-40deg);
+  }
+  100% {
     opacity: 1;
     transform: translate3d(0, 0, 0) rotateY(0deg) rotateX(0deg);
+  }
+}
+
+@keyframes introWordHide {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotateY(0deg) rotateX(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(10px, 51px, -60px) rotateY(60deg) rotateX(-40deg);
+    transform-origin: 50% 50% -150px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-word {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
   }
 }
 

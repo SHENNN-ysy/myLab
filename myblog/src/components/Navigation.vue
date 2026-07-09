@@ -260,7 +260,7 @@ watch(drawerVisible, (visible) => {
   color: rgba(255, 250, 242, 0.94);
 
   transition:
-    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
     background-color 0.4s ease,
     border-color 0.4s ease,
     box-shadow 0.4s ease,
@@ -308,6 +308,17 @@ watch(drawerVisible, (visible) => {
   transform: translateY(calc(-100% - 1.25rem));
   opacity: 0;
   pointer-events: none;
+  transition:
+    transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    box-shadow 0.4s ease,
+    backdrop-filter 0.4s ease,
+    -webkit-backdrop-filter 0.4s ease,
+    top 0.4s ease,
+    left 0.4s ease,
+    right 0.4s ease;
 }
 
 /* ============ Logo（圆形头像 + 文字标签） ============ */

@@ -2325,34 +2325,190 @@
        CONTACT
     ═══════════════════════ */
     #contact {
-      background: var(--ink);
+      position: relative;
+      overflow: hidden;
+      padding: clamp(5rem, 10vw, 8rem) 0;
       text-align: center;
+      background:
+        linear-gradient(155deg, rgba(13, 27, 42, 0.98) 0%, rgba(27, 73, 101, 0.96) 48%, rgba(58, 139, 212, 0.9) 100%);
     }
 
-    #contact .section-title { color: var(--bg); }
-    #contact .section-desc { color: rgba(244, 240, 235, 0.55); }
+    #contact::before {
+      content: '';
+      position: absolute;
+      inset: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      pointer-events: none;
+    }
 
-    .contact-links {
+    #contact::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: min(760px, 88vw);
+      height: 1px;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+    }
+
+    #contact .container {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+    }
+
+    #contact > .container > .section-header,
+    #contact > .container > .contact-links {
+      display: none;
+    }
+
+    .site-signature {
+      display: grid;
+      justify-items: center;
+      gap: 1.05rem;
+    }
+
+    .site-copyright {
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: clamp(1.65rem, 4vw, 3.25rem);
+      font-weight: 900;
+      line-height: 1.1;
+      text-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+    }
+
+    .cloud-note {
+      color: rgba(244, 249, 252, 0.72);
+      font-size: clamp(0.95rem, 2vw, 1.08rem);
+      letter-spacing: 0.02em;
+    }
+
+    .cloud-note strong {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .runtime {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.85rem;
+      margin-top: 0.25rem;
+      padding: 0.75rem 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 22px 60px rgba(2, 12, 24, 0.22);
+      backdrop-filter: blur(18px);
+    }
+
+    .runtime-label {
+      color: rgba(244, 249, 252, 0.62);
+      font-size: 0.74rem;
+      letter-spacing: 0.18em;
+    }
+
+    .runtime-value {
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: clamp(0.86rem, 2vw, 1rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .site-meta {
       display: flex;
+      align-items: center;
       justify-content: center;
       gap: 1rem;
       flex-wrap: wrap;
-      margin-top: 2.5rem;
+      margin-top: 2.2rem;
     }
 
-    .contact-link {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 0.7rem 1.5rem;
-      border: 1px solid rgba(255,255,255,0.15);
-      color: var(--bg);
-      transition: border-color 0.2s, background 0.2s;
+    .site-stats,
+    .social-links {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem;
+      flex-wrap: wrap;
     }
-    .contact-link:hover {
-      border-color: var(--accent);
-      background: var(--accent);
+
+    .stat-tag,
+    .icon-link {
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.09);
+      color: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 16px 42px rgba(3, 16, 30, 0.18);
+      backdrop-filter: blur(16px);
+      transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+
+    .stat-tag {
+      min-width: 5.4rem;
+      padding: 0.68rem 1rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+    }
+
+    .icon-link {
+      display: inline-grid;
+      place-items: center;
+      width: 2.85rem;
+      height: 2.85rem;
+    }
+
+    .icon-link svg {
+      width: 1.15rem;
+      height: 1.15rem;
+      color: currentColor;
+    }
+
+    .stat-tag:hover,
+    .icon-link:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.16);
+      box-shadow: 0 22px 54px rgba(3, 16, 30, 0.28);
+    }
+
+    @media (max-width: 640px) {
+      #contact::before {
+        inset: 0.75rem;
+      }
+
+      #contact .container {
+        padding: 0 1.25rem;
+      }
+
+      .runtime {
+        width: 100%;
+        max-width: 24rem;
+        justify-content: center;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .runtime-value {
+        white-space: normal;
+      }
+
+      .site-meta {
+        gap: 0.8rem;
+      }
+
+      .site-stats {
+        width: 100%;
+      }
+
+      .stat-tag {
+        flex: 1 1 5.4rem;
+      }
     }
 
     /* ═══════════════════════
@@ -3190,6 +3346,41 @@
   <!-- ═══════════════ CONTACT ═══════════════ -->
   <section id="contact">
     <div class="container">
+      <div class="site-signature reveal">
+        <p class="site-copyright">2026 &copy; shennn的个人空间 - 备案号XXXXXXX</p>
+        <p class="cloud-note">本站点由 <strong>阿里云</strong> 提供云服务</p>
+        <div class="runtime" aria-label="站点运行时间">
+          <span class="runtime-label">已运行</span>
+          <span class="runtime-value" data-runtime>835 天 00 时 29 分 36 秒</span>
+        </div>
+      </div>
+
+      <div class="site-meta reveal reveal-delay-1">
+        <div class="site-stats" aria-label="站点统计">
+          <span class="stat-tag">访问量</span>
+          <span class="stat-tag">用户数</span>
+          <span class="stat-tag">浏览量</span>
+        </div>
+        <div class="social-links" aria-label="联系方式">
+          <a href="#" class="icon-link" aria-label="GitHub">
+            <svg viewBox="0 0 19 19" aria-hidden="true">
+              <path
+                fill="currentColor"
+                fill-rule="evenodd"
+                d="M9.356 1.85C5.05 1.85 1.57 5.356 1.57 9.694a7.84 7.84 0 0 0 5.324 7.44c.387.079.528-.168.528-.376 0-.182-.013-.805-.013-1.454-2.165.467-2.616-.935-2.616-.935-.349-.91-.864-1.143-.864-1.143-.71-.48.051-.48.051-.48.787.051 1.2.805 1.2.805.695 1.194 1.817.857 2.268.649.064-.507.27-.857.49-1.052-1.728-.182-3.545-.857-3.545-3.87 0-.857.31-1.558.8-2.104-.078-.195-.349-1 .077-2.078 0 0 .657-.208 2.14.805a7.5 7.5 0 0 1 1.946-.26c.657 0 1.328.092 1.946.26 1.483-1.013 2.14-.805 2.14-.805.426 1.078.155 1.883.078 2.078.502.546.799 1.247.799 2.104 0 3.013-1.818 3.675-3.558 3.87.284.247.528.714.528 1.454 0 1.052-.012 1.896-.012 2.156 0 .208.142.455.528.377a7.84 7.84 0 0 0 5.324-7.441c.013-4.338-3.48-7.844-7.773-7.844"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </a>
+          <a href="mailto:" class="icon-link" aria-label="邮箱">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4.75 6.75h14.5v10.5H4.75z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+              <path d="m5.25 7.25 6.75 5.5 6.75-5.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+            </svg>
+          </a>
+        </div>
+      </div>
+
       <div class="section-header reveal" style="grid-template-columns: 1fr;">
         <div class="section-title-group" style="text-align: center;">
           <h2 class="section-title">合作与<em>联系</em></h2>
@@ -3216,6 +3407,27 @@
   </footer>
 
   <script>
+    (function () {
+      const runtimeEl = document.querySelector('[data-runtime]');
+      if (!runtimeEl) return;
+
+      let elapsedSeconds = ((835 * 24) * 60 * 60) + (29 * 60) + 36;
+      const pad = (value) => String(value).padStart(2, '0');
+      const renderRuntime = () => {
+        const days = Math.floor(elapsedSeconds / 86400);
+        const hours = Math.floor((elapsedSeconds % 86400) / 3600);
+        const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+        const seconds = elapsedSeconds % 60;
+        runtimeEl.textContent = `${days} 天 ${pad(hours)} 时 ${pad(minutes)} 分 ${pad(seconds)} 秒`;
+      };
+
+      renderRuntime();
+      window.setInterval(() => {
+        elapsedSeconds += 1;
+        renderRuntime();
+      }, 1000);
+    })();
+
     // ── 3D Card mouse tilt ──
     const cardScene = document.getElementById('cardScene');
     const card3d = document.getElementById('card3d');
