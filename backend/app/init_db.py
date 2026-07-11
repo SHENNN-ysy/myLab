@@ -37,6 +37,9 @@ def init_schema() -> None:
         conn.execute(text("ALTER TABLE IF EXISTS about_bubbles ALTER COLUMN text_color TYPE VARCHAR(64)"))
         conn.execute(text("ALTER TABLE IF EXISTS about_bubbles ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE"))
         conn.execute(text("ALTER TABLE IF EXISTS about_bubbles ADD COLUMN IF NOT EXISTS remark VARCHAR(256)"))
+        # users: optional profile fields surfaced by the admin UI.
+        conn.execute(text("ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS website VARCHAR(256)"))
+        conn.execute(text("ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS bio TEXT"))
     ensure_bucket()
     logger.info("Database schema and MinIO bucket ensured")
 

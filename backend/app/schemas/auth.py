@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
@@ -31,7 +31,11 @@ class PasswordChangeRequest(BaseModel):
 class CurrentUser(BaseModel):
     id: uuid.UUID
     username: str
-    email: EmailStr
+    # `email` is stored as-is from the DB; ``EmailStr`` re-validation here would
+    # reject RFC 6761/6762 reserved names (``.local``, ``.localhost``, ...) and
+    # crash the login response for legitimate seed/admin accounts. Email format
+    # is already enforced on the write path (registration / admin create).
+    email: str
     nickname: Optional[str] = None
     role: str
     avatar_url: Optional[str] = None

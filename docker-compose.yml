@@ -17,11 +17,14 @@ name: myblog
 #   docker compose down                # 停止并删除容器
 #   docker compose down -v             # 停止并删除数据卷（清库）
 #   docker compose ps                  # 查看运行状态
+#
+# 镜像默认从本机 Registry 读取；如仓库地址不同，可在 .env 中设置：
+#   LOCAL_REGISTRY=192.168.1.10:5000
 
 services:
   # ============== 基础服务 ==============
   db:
-    image: postgres:16-alpine
+    image: ${LOCAL_REGISTRY:-localhost:5000}/postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -36,24 +39,30 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - blog-net
     restart: "no"
 
   redis:
-    image: redis:7-alpine
+    image: ${LOCAL_REGISTRY:-localhost:5000}/redis:7-alpine
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-}"]
     volumes:
       - redis_data:/data
     ports:
       - "${REDIS_PORT:-6379}:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping; else redis-cli ping; fi"]
       interval: 10s
       timeout: 5s
       retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    networks:
+      - blog-net
     restart: "no"
 
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    image: ${LOCAL_REGISTRY:-localhost:5000}/rabbitmq:3.13-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
@@ -69,10 +78,12 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
+    networks:
+      - blog-net
     restart: "no"
 
   minio:
-    image: minio/minio:latest
+    image: ${LOCAL_REGISTRY:-localhost:5000}/minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -88,6 +99,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - blog-net
     restart: "no"
 
   # ============== 后端 API ==============
@@ -96,6 +109,7 @@ services:
       context: ./backend
       dockerfile: docker/api.Dockerfile
     image: myblog-api:latest
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       # ---- 应用 ----
       APP_ENV: ${APP_ENV:-production}
@@ -159,6 +173,11 @@ services:
       - blog-net
     depends_on:
       - api
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: "no"
 
   # ============== 管理后台 ==============
@@ -173,6 +192,11 @@ services:
       - blog-net
     depends_on:
       - api
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: "no"
 
 networks:

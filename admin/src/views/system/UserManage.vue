@@ -39,6 +39,19 @@
         </div>
       </template>
 
+      <el-alert
+        v-if="loadError"
+        :title="loadError"
+        type="error"
+        show-icon
+        :closable="false"
+        class="load-error"
+      >
+        <template #default>
+          <el-button type="danger" link @click="loadData">重新加载</el-button>
+        </template>
+      </el-alert>
+
       <el-table :data="filteredUsers" v-loading="loading" stripe>
         <el-table-column label="头像" width="80" align="center">
           <template #default="{ row }">
@@ -153,6 +166,7 @@ import { addLog } from '@/api/log'
 
 const users = ref<User[]>([])
 const loading = ref(false)
+const loadError = ref('')
 const searchKeyword = ref('')
 const filterRole = ref('')
 const filterStatus = ref('')
@@ -206,8 +220,14 @@ const filteredUsers = computed(() => {
 
 const loadData = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     users.value = await getUsersApi()
+  } catch (error: any) {
+    users.value = []
+    loadError.value = error?.response?.status === 401
+      ? '登录状态已失效，请重新登录后查看用户信息'
+      : '用户信息加载失败，请检查后端服务后重试'
   } finally {
     loading.value = false
   }

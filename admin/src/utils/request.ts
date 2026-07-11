@@ -38,6 +38,19 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = []
 }
 
+const clearSessionAndRedirect = () => {
+  storage.remove(STORAGE_KEYS.TOKEN)
+  storage.remove(STORAGE_KEYS.REFRESH_TOKEN)
+  storage.remove(STORAGE_KEYS.USER_INFO)
+
+  if (router.currentRoute.value.path !== '/login') {
+    router.push({
+      path: '/login',
+      query: { redirect: router.currentRoute.value.fullPath }
+    })
+  }
+}
+
 request.interceptors.response.use(
   (response) => {
     const res = response.data
@@ -63,6 +76,9 @@ request.interceptors.response.use(
       try {
         // 刷新 token
         const refreshToken = storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN)
+        if (!refreshToken) {
+          throw new Error('登录状态已失效')
+        }
         const res = await axios.post(`${request.defaults.baseURL}/auth/refresh`, {
           refresh_token: refreshToken
         })
@@ -74,9 +90,7 @@ request.interceptors.response.use(
         return request(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)
-        storage.remove(STORAGE_KEYS.TOKEN)
-        storage.remove(STORAGE_KEYS.REFRESH_TOKEN)
-        router.push('/login')
+        clearSessionAndRedirect()
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

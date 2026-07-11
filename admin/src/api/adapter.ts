@@ -185,7 +185,9 @@ export const userUpdatePayload = (user: Partial<User>) => ({
   nickname: user.nickname,
   role: roleToBackend(user.role),
   is_active: user.status ? user.status === 'active' : undefined,
-  avatar_url: user.avatar
+  avatar_url: user.avatar,
+  website: user.website,
+  bio: user.bio
 })
 
 export const mapVisitLog = (item: any): VisitLog => ({

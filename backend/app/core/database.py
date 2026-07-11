@@ -1,11 +1,19 @@
-"""SQLAlchemy engine, session factory, and Base."""
+"""SQLAlchemy engine, session factory, and Base.
+
+Note: ``Base`` is re-exported from ``app.models.base`` so that *all*
+declarative models share a single metadata registry. Keeping two
+``DeclarativeBase`` classes (one in core/, one in models/) causes
+``Base.metadata.create_all`` to silently do nothing because models
+register on the other Base.
+"""
 from contextlib import contextmanager
 from typing import Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
+from app.models.base import Base  # noqa: F401 - re-export
 
 
 engine = create_engine(
@@ -23,10 +31,6 @@ SessionLocal = sessionmaker(
     autocommit=False,
     expire_on_commit=False,
 )
-
-
-class Base(DeclarativeBase):
-    """Declarative base class for ORM models."""
 
 
 def get_db() -> Generator[Session, None, None]:

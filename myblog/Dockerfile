@@ -1,5 +1,5 @@
 # Stage 1: Build the Vue/TS app
-FROM node:20-alpine AS builder
+FROM localhost:5000/node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Serve via nginx
-FROM nginx:1.27-alpine AS runner
+FROM localhost:5000/nginx:1.27-alpine AS runner
 
 RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf

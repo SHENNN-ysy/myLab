@@ -16,6 +16,5 @@ dist-ssr
 README.md
 Dockerfile
 .dockerignore
-nginx.conf
 .vite
 *.log
