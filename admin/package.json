@@ -1,0 +1,29 @@
+{
+  "name": "myblog-admin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vueuse/core": "^14.3.0",
+    "axios": "^1.7.9",
+    "echarts": "^5.6.0",
+    "element-plus": "^2.9.8",
+    "remixicon": "^4.9.1",
+    "vue": "^3.5.38",
+    "vue-router": "^5.1.0",
+    "remixicon": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "sass": "^1.86.0",
+    "typescript": "~5.7.3",
+    "vite": "^8.1.0",
+    "vue-tsc": "^3.3.5"
+  }
+}

@@ -1,0 +1,93 @@
+// Element Plus 主题色
+$--color-primary: #409EFF !default;
+$--color-success: #67C23A !default;
+$--color-warning: #E6A23C !default;
+$--color-danger: #F56C6C !default;
+$--color-info: #909399 !default;
+
+@use "element-plus/theme-chalk/src/index.scss" as *;
+
+// 全局 CSS 变量
+:root {
+  --sidebar-bg: #304156;
+  --sidebar-text: #bfcbd9;
+  --sidebar-active-text: #409EFF;
+  --sidebar-hover-bg: #263445;
+  --header-bg: #ffffff;
+  --header-height: 60px;
+  --sidebar-width: 200px;
+  --sidebar-collapse-width: 64px;
+  --main-bg: #f0f2f5;
+  --card-bg: #ffffff;
+  --text-primary: #303133;
+  --text-regular: #606266;
+  --text-secondary: #909399;
+  --border-color: #e4e7ed;
+  --border-light: #f0f2f5;
+}
+
+// 全局重置
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text-primary);
+  background-color: var(--main-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+// 滚动条美化
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+// 工具类
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-16 { margin-bottom: 16px; }
+.mb-24 { margin-bottom: 24px; }

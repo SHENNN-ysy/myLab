@@ -188,7 +188,7 @@ onMounted(() => {
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--border);
-  box-shadow: 0 10px 34px rgba(20,18,16,0.16);
+  
   background: var(--bg-card);
   position: relative;
   display: flex;
