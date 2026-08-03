@@ -2,7 +2,7 @@
  * Axios 请求封装
  */
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { message } from 'ant-design-vue'
 import { storage, STORAGE_KEYS } from './storage'
 import router from '@/router'
 
@@ -55,7 +55,7 @@ request.interceptors.response.use(
   (response) => {
     const res = response.data
     if (res.code !== undefined && res.code !== 0) {
-      ElMessage.error(res.message || '请求失败')
+      message.error(res.message || '请求失败')
       return Promise.reject(new Error(res.message || '请求失败'))
     }
     return res
@@ -97,7 +97,7 @@ request.interceptors.response.use(
       }
     }
 
-    ElMessage.error(error.response?.data?.message || error.message || '网络错误')
+    message.error(error.response?.data?.message || error.message || '网络错误')
     return Promise.reject(error)
   }
 )

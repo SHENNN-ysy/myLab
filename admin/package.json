@@ -1,6 +1,6 @@
 {
   "name": "myblog-admin",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,14 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
     "@vueuse/core": "^14.3.0",
+    "ant-design-vue": "^4.2.6",
     "axios": "^1.7.9",
+    "dayjs": "^1.11.13",
     "echarts": "^5.6.0",
-    "element-plus": "^2.9.8",
     "remixicon": "^4.9.1",
     "vue": "^3.5.38",
-    "vue-router": "^5.1.0",
-    "remixicon": "^4.5.0"
+    "vue-router": "^5.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",

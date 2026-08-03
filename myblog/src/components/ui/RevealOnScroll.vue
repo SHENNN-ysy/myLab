@@ -43,8 +43,9 @@ const delayClass = computed(() => {
   transform: translateY(0);
 }
 
-.reveal-delay-1 { transition-delay: 0.1s; }
-.reveal-delay-2 { transition-delay: 0.2s; }
-.reveal-delay-3 { transition-delay: 0.3s; }
-.reveal-delay-4 { transition-delay: 0.4s; }
+/* 延迟只作用于入场；退出时立即播放，避免元素离场时卡顿 */
+.reveal.visible.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal.visible.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal.visible.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal.visible.reveal-delay-4 { transition-delay: 0.4s; }
 </style>

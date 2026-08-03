@@ -1,13 +1,15 @@
 <template>
   <div class="system-info">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false">
+      <template #title>
         <div class="card-header">
           <span>系统信息</span>
-          <el-button @click="refreshAll" :loading="loading">
-            <i class="ri-refresh-line" />
+          <a-button @click="refreshAll" :loading="loading">
+            <template #icon>
+              <ReloadOutlined />
+            </template>
             刷新
-          </el-button>
+          </a-button>
         </div>
       </template>
 
@@ -30,12 +32,12 @@
       </div>
 
       <!-- 信息网格 -->
-      <el-row :gutter="20" class="info-grid">
+      <a-row :gutter="20" class="info-grid">
         <!-- 服务器 -->
-        <el-col :xs="24" :sm="12">
+        <a-col :xs="24" :sm="12">
           <div class="info-section">
             <div class="section-header">
-              <i class="ri-computer-line icon-orange" />
+              <DesktopOutlined class="icon-orange" />
               <span>服务器</span>
             </div>
             <div class="section-body">
@@ -61,13 +63,13 @@
               </div>
             </div>
           </div>
-        </el-col>
+        </a-col>
 
         <!-- CPU -->
-        <el-col :xs="24" :sm="12">
+        <a-col :xs="24" :sm="12">
           <div class="info-section">
             <div class="section-header">
-              <i class="ri-cpu-line icon-blue" />
+              <CloudServerOutlined class="icon-blue" />
               <span>CPU</span>
             </div>
             <div class="section-body">
@@ -77,10 +79,10 @@
               </div>
               <div class="info-item">
                 <span class="label">使用率</span>
-                <el-progress
-                  :percentage="Math.round(dynamicInfo.cpuUsage || 0)"
+                <a-progress
+                  :percent="Math.round(dynamicInfo.cpuUsage || 0)"
                   :stroke-width="6"
-                  :color="getProgressColor(Math.round(dynamicInfo.cpuUsage || 0))"
+                  :stroke-color="getProgressColor(Math.round(dynamicInfo.cpuUsage || 0))"
                   style="width: 120px"
                 />
               </div>
@@ -102,13 +104,13 @@
               </div>
             </div>
           </div>
-        </el-col>
+        </a-col>
 
         <!-- 内存 -->
-        <el-col :xs="24" :sm="12">
+        <a-col :xs="24" :sm="12">
           <div class="info-section">
             <div class="section-header">
-              <i class="ri-money-cny-circle-line icon-green" />
+              <CreditCardOutlined class="icon-green" />
               <span>内存</span>
             </div>
             <div class="section-body">
@@ -121,10 +123,10 @@
               </div>
               <div class="info-item">
                 <span class="label">使用率</span>
-                <el-progress
-                  :percentage="calcPercent(dynamicInfo.memoryUsed, staticInfo.memoryTotal)"
+                <a-progress
+                  :percent="calcPercent(dynamicInfo.memoryUsed, staticInfo.memoryTotal)"
                   :stroke-width="6"
-                  :color="getProgressColor(calcPercent(dynamicInfo.memoryUsed, staticInfo.memoryTotal))"
+                  :stroke-color="getProgressColor(calcPercent(dynamicInfo.memoryUsed, staticInfo.memoryTotal))"
                   style="width: 120px"
                 />
               </div>
@@ -141,13 +143,13 @@
               </div>
             </div>
           </div>
-        </el-col>
+        </a-col>
 
         <!-- 磁盘 -->
-        <el-col :xs="24" :sm="12">
+        <a-col :xs="24" :sm="12">
           <div class="info-section">
             <div class="section-header">
-              <i class="ri-folder-open-line icon-red" />
+              <FolderOpenOutlined class="icon-red" />
               <span>磁盘</span>
             </div>
             <div class="section-body">
@@ -157,10 +159,10 @@
               </div>
               <div class="info-item">
                 <span class="label">使用率</span>
-                <el-progress
-                  :percentage="calcPercent(dynamicInfo.diskUsed, staticInfo.diskTotal)"
+                <a-progress
+                  :percent="calcPercent(dynamicInfo.diskUsed, staticInfo.diskTotal)"
                   :stroke-width="6"
-                  :color="getProgressColor(calcPercent(dynamicInfo.diskUsed, staticInfo.diskTotal))"
+                  :stroke-color="getProgressColor(calcPercent(dynamicInfo.diskUsed, staticInfo.diskTotal))"
                   style="width: 120px"
                 />
               </div>
@@ -174,13 +176,13 @@
               </div>
             </div>
           </div>
-        </el-col>
+        </a-col>
 
         <!-- 数据库 -->
-        <el-col :xs="24" :sm="12">
+        <a-col :xs="24" :sm="12">
           <div class="info-section">
             <div class="section-header">
-              <i class="ri-database-2-line icon-purple" />
+              <DatabaseOutlined class="icon-purple" />
               <span>数据库</span>
             </div>
             <div class="section-body">
@@ -190,12 +192,9 @@
               </div>
               <div class="info-item">
                 <span class="label">状态</span>
-                <el-tag
-                  :type="dynamicInfo.dbStatus === '正常' ? 'success' : 'danger'"
-                  size="small"
-                >
+                <a-tag :color="dynamicInfo.dbStatus === '正常' ? 'success' : 'error'">
                   {{ dynamicInfo.dbStatus }}
-                </el-tag>
+                </a-tag>
               </div>
               <div class="info-item">
                 <span class="label">大小</span>
@@ -211,35 +210,31 @@
               </div>
             </div>
           </div>
-        </el-col>
+        </a-col>
 
         <!-- 外部连通 -->
-        <el-col :xs="24" :sm="12">
+        <a-col :xs="24" :sm="12">
           <div class="info-section">
             <div class="section-header">
-              <i class="ri-wifi-line icon-cyan" />
+              <WifiOutlined class="icon-cyan" />
               <span>外部连通</span>
             </div>
             <div class="section-body">
               <div class="info-item">
                 <span class="label">文件存储</span>
-                <el-tag
-                  :type="staticInfo.storageStatus === '正常' ? 'success' : 'danger'"
-                  size="small"
-                >
+                <a-tag :color="staticInfo.storageStatus === '正常' ? 'success' : 'error'">
                   {{ staticInfo.storageStatus }}
-                </el-tag>
+                </a-tag>
               </div>
               <div class="info-item">
                 <span class="label">邮箱通知</span>
-                <el-tag
-                  :type="staticInfo.emailStatus === '正常'
+                <a-tag
+                  :color="staticInfo.emailStatus === '正常'
                     ? 'success'
-                    : staticInfo.emailStatus === '未配置' ? 'info' : 'danger'"
-                  size="small"
+                    : staticInfo.emailStatus === '未配置' ? 'default' : 'error'"
                 >
                   {{ staticInfo.emailStatus }}
-                </el-tag>
+                </a-tag>
               </div>
               <div class="info-item">
                 <span class="label">浏览器</span>
@@ -251,15 +246,24 @@
               </div>
             </div>
           </div>
-        </el-col>
-      </el-row>
-    </el-card>
+        </a-col>
+      </a-row>
+    </a-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { message } from 'ant-design-vue'
+import {
+  ReloadOutlined,
+  DesktopOutlined,
+  CloudServerOutlined,
+  CreditCardOutlined,
+  FolderOpenOutlined,
+  DatabaseOutlined,
+  WifiOutlined
+} from '@ant-design/icons-vue'
 import { getSystemStaticApi, getSystemDynamicApi } from '@/api/system'
 import type { SystemStatic, SystemDynamic } from '@/types'
 
@@ -308,7 +312,7 @@ const fetchStaticInfo = async () => {
     const data = await getSystemStaticApi()
     Object.assign(staticInfo, data)
   } catch {
-    ElMessage.error('获取系统静态信息失败')
+    message.error('获取系统静态信息失败')
   }
 }
 
@@ -350,9 +354,9 @@ const formatDays = (seconds: number): string => {
 }
 
 const getProgressColor = (percentage: number): string => {
-  if (percentage < 50) return '#67c23a'
-  if (percentage < 80) return '#e6a23c'
-  return '#f56c6c'
+  if (percentage < 50) return '#52c41a'
+  if (percentage < 80) return '#faad14'
+  return '#ff4d4f'
 }
 
 const detectBrowser = () => {
@@ -394,7 +398,7 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .system-info {
-  :deep(.el-card) {
+  :deep(.ant-card) {
     border: none;
     border-radius: 8px;
   }
@@ -404,6 +408,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 
   > span {
     font-size: 16px;
@@ -414,7 +419,7 @@ onUnmounted(() => {
 .version-block {
   margin-bottom: 20px;
   padding: 16px 20px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid #f0f0f0;
   border-radius: 8px;
   background: #fafafa;
 }
@@ -433,13 +438,13 @@ onUnmounted(() => {
   min-width: 0;
 
   .label {
-    color: #909399;
+    color: #8c8c8c;
     font-size: 13px;
     line-height: 1.4;
   }
 
   .value {
-    color: #303133;
+    color: #1f1f1f;
     font-size: 14px;
     line-height: 1.6;
     word-break: break-all;
@@ -451,7 +456,7 @@ onUnmounted(() => {
 }
 
 .info-section {
-  border: 1px solid #e4e7ed;
+  border: 1px solid #f0f0f0;
   border-radius: 8px;
   overflow: hidden;
   height: 100%;
@@ -462,21 +467,22 @@ onUnmounted(() => {
     align-items: center;
     gap: 8px;
     padding: 12px 16px;
-    background: #f5f7fa;
-    border-bottom: 1px solid #e4e7ed;
+    background: #fafafa;
+    border-bottom: 1px solid #f0f0f0;
     font-weight: 500;
     font-size: 14px;
 
-    i {
+    i,
+    :deep(.anticon) {
       font-size: 18px;
     }
 
-    .icon-blue { color: #409eff; }
-    .icon-green { color: #67c23a; }
-    .icon-orange { color: #e6a23c; }
-    .icon-purple { color: #a855f7; }
-    .icon-cyan { color: #06b6d4; }
-    .icon-red { color: #f56c6c; }
+    .icon-blue { color: #1677ff; }
+    .icon-green { color: #52c41a; }
+    .icon-orange { color: #fa8c16; }
+    .icon-purple { color: #722ed1; }
+    .icon-cyan { color: #13c2c2; }
+    .icon-red { color: #ff4d4f; }
   }
 
   .section-body {
@@ -490,27 +496,23 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px dashed #ebeef5;
+  border-bottom: 1px dashed #f0f0f0;
 
   &:last-child {
     border-bottom: none;
   }
 
   .label {
-    color: #909399;
+    color: #8c8c8c;
     font-size: 13px;
     flex-shrink: 0;
   }
 
   .value {
-    color: #303133;
+    color: #1f1f1f;
     font-size: 13px;
     text-align: right;
     word-break: break-all;
-  }
-
-  :deep(.el-progress__text) {
-    min-width: auto;
   }
 }
 

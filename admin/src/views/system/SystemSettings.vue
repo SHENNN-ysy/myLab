@@ -1,87 +1,79 @@
 <template>
   <div class="system-settings">
-    <el-card shadow="never">
-      <el-tabs v-model="activeTab">
+    <a-card :bordered="false">
+      <a-tabs v-model:active-key="activeTab">
         <!-- 基本信息 -->
-        <el-tab-pane label="基本信息" name="basic">
-          <el-form :model="basicForm" label-width="120px" class="settings-form">
-            <el-form-item label="站点名称">
-              <el-input v-model="basicForm.siteName" placeholder="如：MyBlog" />
-            </el-form-item>
-            <el-form-item label="站点描述">
-              <el-input
-                v-model="basicForm.siteDescription"
-                type="textarea"
-                :rows="3"
-                placeholder="站点简介"
-              />
-            </el-form-item>
-            <el-form-item label="个人签名">
-              <el-input
-                v-model="basicForm.siteSlogan"
-                placeholder="如：旅行者的数字花园"
-              />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveBasic">保存设置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+        <a-tab-pane key="basic" tab="基本信息">
+          <a-form :model="basicForm" :label-col="{ span: 3 }" :wrapper-col="{ span: 18 }" class="settings-form">
+            <a-form-item label="站点名称">
+              <a-input v-model:value="basicForm.siteName" placeholder="如：MyBlog" />
+            </a-form-item>
+            <a-form-item label="站点描述">
+              <a-textarea v-model:value="basicForm.siteDescription" :rows="3" placeholder="站点简介" />
+            </a-form-item>
+            <a-form-item label="个人签名">
+              <a-input v-model:value="basicForm.siteSlogan" placeholder="如：旅行者的数字花园" />
+            </a-form-item>
+            <a-form-item>
+              <a-button type="primary" @click="saveBasic">保存设置</a-button>
+            </a-form-item>
+          </a-form>
+        </a-tab-pane>
 
         <!-- 联系方式 -->
-        <el-tab-pane label="联系方式" name="contact">
-          <el-form :model="contactForm" label-width="120px" class="settings-form">
-            <el-form-item label="邮箱">
-              <el-input v-model="contactForm.email" placeholder="your@email.com">
+        <a-tab-pane key="contact" tab="联系方式">
+          <a-form :model="contactForm" :label-col="{ span: 3 }" :wrapper-col="{ span: 18 }" class="settings-form">
+            <a-form-item label="邮箱">
+              <a-input v-model:value="contactForm.email" placeholder="your@email.com">
                 <template #prefix>
-                  <i class="ri-mail-line" />
+                  <MailOutlined />
                 </template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="GitHub">
-              <el-input v-model="contactForm.github" placeholder="https://github.com/username">
+              </a-input>
+            </a-form-item>
+            <a-form-item label="GitHub">
+              <a-input v-model:value="contactForm.github" placeholder="https://github.com/username">
                 <template #prefix>
-                  <i class="ri-github-line" />
+                  <GithubOutlined />
                 </template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="微博">
-              <el-input v-model="contactForm.weibo" placeholder="@username">
+              </a-input>
+            </a-form-item>
+            <a-form-item label="微博">
+              <a-input v-model:value="contactForm.weibo" placeholder="@username">
                 <template #prefix>
-                  <i class="ri-weibo-line" />
+                  <WeiboOutlined />
                 </template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="微信">
-              <el-input v-model="contactForm.wechat" placeholder="微信号">
+              </a-input>
+            </a-form-item>
+            <a-form-item label="微信">
+              <a-input v-model:value="contactForm.wechat" placeholder="微信号">
                 <template #prefix>
-                  <i class="ri-wechat-line" />
+                  <WechatOutlined />
                 </template>
-              </el-input>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveContact">保存设置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+              </a-input>
+            </a-form-item>
+            <a-form-item>
+              <a-button type="primary" @click="saveContact">保存设置</a-button>
+            </a-form-item>
+          </a-form>
+        </a-tab-pane>
 
         <!-- 主题配置 -->
-        <el-tab-pane label="主题配置" name="theme">
-          <el-form label-width="120px" class="settings-form">
-            <el-form-item label="主题风格">
-              <el-radio-group v-model="themeForm.mode">
-                <el-radio value="light">浅色</el-radio>
-                <el-radio value="dark">深色</el-radio>
-                <el-radio value="auto">跟随系统</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="主题色">
+        <a-tab-pane key="theme" tab="主题配置">
+          <a-form :label-col="{ span: 3 }" :wrapper-col="{ span: 18 }" class="settings-form">
+            <a-form-item label="主题风格">
+              <a-radio-group v-model:value="themeForm.mode">
+                <a-radio value="light">浅色</a-radio>
+                <a-radio value="dark">深色</a-radio>
+                <a-radio value="auto">跟随系统</a-radio>
+              </a-radio-group>
+            </a-form-item>
+            <a-form-item label="主题色">
               <div class="color-picker">
-                <el-color-picker v-model="themeForm.primaryColor" />
+                <input type="color" v-model="themeForm.primaryColor" class="color-input" />
                 <span class="color-value">{{ themeForm.primaryColor }}</span>
               </div>
-            </el-form-item>
-            <el-form-item label="预设主题色">
+            </a-form-item>
+            <a-form-item label="预设主题色">
               <div class="color-presets">
                 <div
                   v-for="color in presetColors"
@@ -91,66 +83,70 @@
                   @click="themeForm.primaryColor = color"
                 />
               </div>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveTheme">保存设置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+            </a-form-item>
+            <a-form-item>
+              <a-button type="primary" @click="saveTheme">保存设置</a-button>
+            </a-form-item>
+          </a-form>
+        </a-tab-pane>
 
         <!-- 通知配置 -->
-        <el-tab-pane label="通知配置" name="notification">
-          <el-form :model="notificationForm" label-width="120px" class="settings-form">
-            <el-form-item label="邮箱通知">
-              <el-switch v-model="notificationForm.emailEnabled" />
+        <a-tab-pane key="notification" tab="通知配置">
+          <a-form :model="notificationForm" :label-col="{ span: 3 }" :wrapper-col="{ span: 18 }" class="settings-form">
+            <a-form-item label="邮箱通知">
+              <a-switch v-model:checked="notificationForm.emailEnabled" />
               <span class="form-tip">启用后重要操作将通过邮件通知</span>
-            </el-form-item>
-            <el-form-item label="SMTP 主机" v-if="notificationForm.emailEnabled">
-              <el-input v-model="notificationForm.smtpHost" placeholder="smtp.example.com" />
-            </el-form-item>
-            <el-form-item label="SMTP 端口" v-if="notificationForm.emailEnabled">
-              <el-input-number v-model="notificationForm.smtpPort" :min="1" :max="65535" />
-            </el-form-item>
-            <el-form-item label="发送邮箱" v-if="notificationForm.emailEnabled">
-              <el-input v-model="notificationForm.smtpUser" placeholder="your@email.com" />
-            </el-form-item>
-            <el-form-item label="授权密码" v-if="notificationForm.emailEnabled">
-              <el-input v-model="notificationForm.smtpPassword" type="password" show-password />
-            </el-form-item>
-            <el-form-item label="接收邮箱" v-if="notificationForm.emailEnabled">
-              <el-input v-model="notificationForm.receiverEmail" placeholder="接收通知的邮箱" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveNotification">保存设置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+            </a-form-item>
+            <a-form-item label="SMTP 主机" v-if="notificationForm.emailEnabled">
+              <a-input v-model:value="notificationForm.smtpHost" placeholder="smtp.example.com" />
+            </a-form-item>
+            <a-form-item label="SMTP 端口" v-if="notificationForm.emailEnabled">
+              <a-input-number v-model:value="notificationForm.smtpPort" :min="1" :max="65535" />
+            </a-form-item>
+            <a-form-item label="发送邮箱" v-if="notificationForm.emailEnabled">
+              <a-input v-model:value="notificationForm.smtpUser" placeholder="your@email.com" />
+            </a-form-item>
+            <a-form-item label="授权密码" v-if="notificationForm.emailEnabled">
+              <a-input-password v-model:value="notificationForm.smtpPassword" placeholder="授权密码" />
+            </a-form-item>
+            <a-form-item label="接收邮箱" v-if="notificationForm.emailEnabled">
+              <a-input v-model:value="notificationForm.receiverEmail" placeholder="接收通知的邮箱" />
+            </a-form-item>
+            <a-form-item>
+              <a-button type="primary" @click="saveNotification">保存设置</a-button>
+            </a-form-item>
+          </a-form>
+        </a-tab-pane>
 
         <!-- 数据管理 -->
-        <el-tab-pane label="数据管理" name="data">
+        <a-tab-pane key="data" tab="数据管理">
           <div class="data-section">
             <div class="data-card">
               <div class="data-info">
                 <h4>导出数据</h4>
                 <p>将所有数据导出为 JSON 文件，方便备份或迁移</p>
               </div>
-              <el-button type="primary" @click="exportData">
-                <i class="ri-download-line" />
+              <a-button type="primary" @click="exportData">
+                <template #icon>
+                  <DownloadOutlined />
+                </template>
                 导出 JSON
-              </el-button>
+              </a-button>
             </div>
 
-            <el-divider />
+            <a-divider />
 
             <div class="data-card">
               <div class="data-info">
                 <h4>导入数据</h4>
                 <p>从 JSON 文件恢复数据，会覆盖现有数据</p>
               </div>
-              <el-button @click="triggerImport">
-                <i class="ri-upload-line" />
+              <a-button @click="triggerImport">
+                <template #icon>
+                  <UploadOutlined />
+                </template>
                 选择文件
-              </el-button>
+              </a-button>
               <input
                 ref="fileInputRef"
                 type="file"
@@ -160,53 +156,64 @@
               />
             </div>
 
-            <el-divider />
+            <a-divider />
 
             <div class="data-card danger">
               <div class="data-info">
                 <h4>重置数据</h4>
                 <p>将所有数据重置为默认值，包括技术栈、项目、足迹等</p>
               </div>
-              <el-button type="danger" @click="resetData">
-                <i class="ri-restart-line" />
+              <a-button danger @click="resetData">
+                <template #icon>
+                  <ReloadOutlined />
+                </template>
                 一键重置
-              </el-button>
+              </a-button>
             </div>
           </div>
-        </el-tab-pane>
+        </a-tab-pane>
 
         <!-- 关于系统 -->
-        <el-tab-pane label="关于系统" name="about">
+        <a-tab-pane key="about" tab="关于系统">
           <div class="about-section">
             <div class="about-header">
               <img src="/favicon.svg" alt="logo" class="about-logo" />
               <div>
                 <h2>MyBlog 管理后台</h2>
-                <p>版本 1.0.0</p>
+                <p>版本 2.0.0</p>
               </div>
             </div>
-            <el-descriptions :column="2" border class="about-desc">
-              <el-descriptions-item label="技术栈">Vue 3 + Vite + TypeScript + Element Plus</el-descriptions-item>
-              <el-descriptions-item label="数据存储">localStorage</el-descriptions-item>
-              <el-descriptions-item label="图表库">ECharts 5</el-descriptions-item>
-              <el-descriptions-item label="图标库">RemixIcon</el-descriptions-item>
-            </el-descriptions>
+            <a-descriptions :column="2" bordered class="about-desc">
+              <a-descriptions-item label="技术栈">Vue 3 + Vite + TypeScript + Ant Design Vue</a-descriptions-item>
+              <a-descriptions-item label="数据存储">localStorage</a-descriptions-item>
+              <a-descriptions-item label="图表库">ECharts 5</a-descriptions-item>
+              <a-descriptions-item label="图标库">RemixIcon + Ant Design Icons</a-descriptions-item>
+            </a-descriptions>
             <div class="about-tips">
-              <el-alert type="info" :closable="false">
+              <a-alert type="info" :closable="false">
                 本系统为前端演示项目，数据存储在浏览器本地。
                 后续可接入真实后端 API 实现数据持久化。
-              </el-alert>
+              </a-alert>
             </div>
           </div>
-        </el-tab-pane>
-      </el-tabs>
-    </el-card>
+        </a-tab-pane>
+      </a-tabs>
+    </a-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
+import {
+  MailOutlined,
+  GithubOutlined,
+  WeiboOutlined,
+  WechatOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+  ReloadOutlined
+} from '@ant-design/icons-vue'
 import { storage } from '@/utils/storage'
 import { STORAGE_KEYS } from '@/utils/storage'
 import { resetSkillsApi } from '@/api/skill'
@@ -232,7 +239,7 @@ const contactForm = reactive({
 
 const themeForm = reactive({
   mode: 'auto',
-  primaryColor: '#409EFF'
+  primaryColor: '#1677ff'
 })
 
 const notificationForm = reactive({
@@ -245,14 +252,14 @@ const notificationForm = reactive({
 })
 
 const presetColors = [
-  '#409EFF',
-  '#67C23A',
-  '#E6A23C',
-  '#F56C6C',
-  '#909399',
-  '#9B59B6',
-  '#1ABC9C',
-  '#E91E63'
+  '#1677ff',
+  '#52c41a',
+  '#faad14',
+  '#ff4d4f',
+  '#13c2c2',
+  '#722ed1',
+  '#eb2f96',
+  '#fa8c16'
 ]
 
 onMounted(() => {
@@ -271,7 +278,7 @@ const saveBasic = () => {
   settings.basic = { ...basicForm }
   storage.set(STORAGE_KEYS.SETTINGS, settings)
   addLog('修改', '基本设置', 'success')
-  ElMessage.success('保存成功')
+  message.success('保存成功')
 }
 
 const saveContact = () => {
@@ -279,7 +286,7 @@ const saveContact = () => {
   settings.contact = { ...contactForm }
   storage.set(STORAGE_KEYS.SETTINGS, settings)
   addLog('修改', '联系方式', 'success')
-  ElMessage.success('保存成功')
+  message.success('保存成功')
 }
 
 const saveTheme = () => {
@@ -287,7 +294,7 @@ const saveTheme = () => {
   settings.theme = { ...themeForm }
   storage.set(STORAGE_KEYS.SETTINGS, settings)
   addLog('修改', '主题配置', 'success')
-  ElMessage.success('保存成功')
+  message.success('保存成功')
 }
 
 const saveNotification = () => {
@@ -295,7 +302,7 @@ const saveNotification = () => {
   settings.notification = { ...notificationForm }
   storage.set(STORAGE_KEYS.SETTINGS, settings)
   addLog('修改', '通知配置', 'success')
-  ElMessage.success('保存成功')
+  message.success('保存成功')
 }
 
 const exportData = () => {
@@ -316,7 +323,7 @@ const exportData = () => {
   URL.revokeObjectURL(url)
 
   addLog('导出', '全部数据', 'success')
-  ElMessage.success('导出成功')
+  message.success('导出成功')
 }
 
 const triggerImport = () => {
@@ -337,57 +344,52 @@ const handleImport = async (e: Event) => {
     if (data.settings) storage.set(STORAGE_KEYS.SETTINGS, data.settings)
 
     addLog('导入', '数据文件', 'success')
-    ElMessage.success('导入成功，页面将刷新')
+    message.success('导入成功，页面将刷新')
     setTimeout(() => location.reload(), 1500)
   } catch {
-    ElMessage.error('文件格式错误')
+    message.error('文件格式错误')
   }
 }
 
-const resetData = async () => {
-  try {
-    await ElMessageBox.confirm(
-      '确定要重置所有数据吗？此操作不可恢复！',
-      '警告',
-      {
-        confirmButtonText: '确定重置',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+const resetData = () => {
+  Modal.confirm({
+    title: '警告',
+    content: '确定要重置所有数据吗？此操作不可恢复！',
+    okText: '确定重置',
+    cancelText: '取消',
+    okButtonProps: { danger: true },
+    onOk: async () => {
+      await Promise.all([
+        resetSkillsApi(),
+        resetProjectsApi(),
+        resetFootprintsApi()
+      ])
 
-    await Promise.all([
-      resetSkillsApi(),
-      resetProjectsApi(),
-      resetFootprintsApi()
-    ])
+      storage.remove(STORAGE_KEYS.SETTINGS)
+      storage.remove(STORAGE_KEYS.OPERATION_LOGS)
 
-    storage.remove(STORAGE_KEYS.SETTINGS)
-    storage.remove(STORAGE_KEYS.OPERATION_LOGS)
-
-    addLog('重置', '全部数据', 'success')
-    ElMessage.success('数据已重置，页面将刷新')
-    setTimeout(() => location.reload(), 1500)
-  } catch {
-    // 取消
-  }
+      addLog('重置', '全部数据', 'success')
+      message.success('数据已重置，页面将刷新')
+      setTimeout(() => location.reload(), 1500)
+    }
+  })
 }
 </script>
 
 <style scoped lang="scss">
 .system-settings {
-  :deep(.el-card) {
+  :deep(.ant-card) {
     border: none;
     border-radius: 8px;
   }
 
-  :deep(.el-tabs__item) {
+  :deep(.ant-tabs-tab) {
     font-size: 15px;
   }
 }
 
 .settings-form {
-  max-width: 600px;
+  max-width: 700px;
   padding-top: 16px;
 }
 
@@ -395,12 +397,22 @@ const resetData = async () => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
 
-  .color-value {
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    color: #606266;
-  }
+.color-input {
+  width: 40px;
+  height: 32px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 2px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.color-value {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #595959;
 }
 
 .color-presets {
@@ -415,19 +427,19 @@ const resetData = async () => {
   border-radius: 6px;
   cursor: pointer;
   border: 2px solid #fff;
-  box-shadow: 0 0 0 1px #dcdfe6;
+  box-shadow: 0 0 0 1px #d9d9d9;
   transition: all 0.2s;
 
   &:hover {
     transform: scale(1.1);
-    box-shadow: 0 0 0 2px #409eff;
+    box-shadow: 0 0 0 2px #1677ff;
   }
 }
 
 .form-tip {
   margin-left: 12px;
   font-size: 12px;
-  color: #909399;
+  color: #8c8c8c;
 }
 
 .data-section {
@@ -441,7 +453,7 @@ const resetData = async () => {
   padding: 16px 0;
 
   &.danger .data-info h4 {
-    color: #F56C6C;
+    color: #ff4d4f;
   }
 }
 
@@ -449,13 +461,13 @@ const resetData = async () => {
   h4 {
     font-size: 15px;
     font-weight: 500;
-    color: #303133;
+    color: #1f1f1f;
     margin: 0 0 4px;
   }
 
   p {
     font-size: 13px;
-    color: #909399;
+    color: #8c8c8c;
     margin: 0;
   }
 }
@@ -478,13 +490,13 @@ const resetData = async () => {
   h2 {
     font-size: 20px;
     font-weight: 600;
-    color: #303133;
+    color: #1f1f1f;
     margin: 0 0 4px;
   }
 
   p {
     font-size: 13px;
-    color: #909399;
+    color: #8c8c8c;
     margin: 0;
   }
 }

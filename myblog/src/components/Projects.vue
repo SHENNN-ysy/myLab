@@ -6,54 +6,14 @@
           <span class="section-num">03</span>
           <div class="section-title-group">
             <h2 class="section-title">我做过的<em>项目</em></h2>
-            <p class="section-desc">这里收录了个人开源项目、独立工具等其他我负责的项目。点击任意卡片查看完整介绍。</p>
+            <p class="section-desc">开源项目、个人玩具与实验室折腾记录。</p>
           </div>
         </div>
       </RevealOnScroll>
 
-      <RevealOnScroll :delay="1">
-        <h3 class="project-group-title">个人开源项目</h3>
-      </RevealOnScroll>
-
       <div class="projects-grid">
         <RevealOnScroll
-          v-for="(project, index) in personalProjects"
-          :key="project.id"
-          :delay="(index % 3) + 1"
-        >
-          <button
-            class="project-card"
-            type="button"
-            :data-link-project="project.id"
-            @mouseenter="showProjectLinks(project.id)"
-            @mouseleave="clearLinks"
-            @focus="showProjectLinks(project.id)"
-            @blur="clearLinks"
-            @click="openModal(project)"
-          >
-            <div class="project-thumb">
-              <img :src="project.image" :alt="project.title" loading="lazy" />
-              <span class="project-view">查看详情 →</span>
-            </div>
-            <div class="project-body">
-              <div class="project-meta">
-                <span class="project-tag" :class="{ accent: project.tagType === 'accent' }">{{ project.tag }}</span>
-                <span class="project-year">{{ project.year }}</span>
-              </div>
-              <h3 class="project-title">{{ project.title }}</h3>
-              <p class="project-desc">{{ project.description }}</p>
-            </div>
-          </button>
-        </RevealOnScroll>
-      </div>
-
-      <RevealOnScroll :delay="1">
-        <h3 class="project-group-title project-group-title--second">实验室项目</h3>
-      </RevealOnScroll>
-
-      <div class="projects-grid">
-        <RevealOnScroll
-          v-for="(project, index) in labProjects"
+          v-for="(project, index) in projects"
           :key="project.id"
           :delay="(index % 3) + 1"
         >
@@ -122,8 +82,6 @@ import ProjectModal from './ui/ProjectModal.vue'
 
 const isModalOpen = ref(false)
 const selectedProject = ref<Project | null>(null)
-const personalProjects = computed(() => projects.slice(0, 3))
-const labProjects = computed(() => projects.slice(3, 6))
 
 const staggerDelay = (index: number) => `${0.08 + index * 0.07}s`
 
@@ -224,7 +182,7 @@ const clearLinks = () => {
 
 <style scoped>
 #work {
-  padding: 100px 0;
+  padding: 50px 0 100px;
 }
 
 .container {
@@ -238,7 +196,7 @@ const clearLinks = () => {
   grid-template-columns: auto 1fr;
   gap: 2rem;
   align-items: start;
-  margin-bottom: 4rem;
+  margin-bottom: 2rem;
 }
 
 .section-num {
@@ -271,30 +229,6 @@ const clearLinks = () => {
   font-weight: 300;
   line-height: 1.8;
   white-space: nowrap;
-}
-
-.project-group-title {
-  font-family: var(--font-display);
-  font-size: clamp(1.45rem, 2.4vw, 2rem);
-  font-weight: 900;
-  line-height: 1.1;
-  color: var(--ink);
-  margin: -1rem 0 1.4rem;
-  letter-spacing: -0.01em;
-}
-
-.project-group-title::before {
-  content: '';
-  display: inline-block;
-  width: 1.8rem;
-  height: 1px;
-  margin-right: 0.8rem;
-  vertical-align: middle;
-  background: var(--accent);
-}
-
-.project-group-title--second {
-  margin-top: 3.2rem;
 }
 
 .projects-grid {

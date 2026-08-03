@@ -6,80 +6,91 @@
       <i v-else class="ri-admin-line logo-icon" />
     </div>
 
-    <el-menu
-      :default-active="activeMenu"
-      :collapse="isCollapse"
-      :background-color="vars.sidebarBg"
-      :text-color="vars.sidebarText"
-      :active-text-color="vars.sidebarActiveText"
-      :unique-opened="true"
-      :collapse-transition="false"
+    <a-menu
+      :selected-keys="[activeMenu]"
+      :open-keys="openKeys"
+      mode="inline"
+      theme="dark"
+      :inline-collapsed="isCollapse"
       class="sidebar-menu"
-      @select="handleSelect"
+      @click="handleSelect"
+      @openChange="handleOpenChange"
     >
-      <el-menu-item index="/dashboard">
-        <i class="ri-dashboard-line" />
-        <template #title>
-          <span>仪表盘</span>
-        </template>
-      </el-menu-item>
+      <a-menu-item key="/dashboard">
+        <DashboardOutlined />
+        <span>仪表盘</span>
+      </a-menu-item>
 
-      <el-sub-menu index="/content">
+      <a-sub-menu key="/content">
         <template #title>
-          <i class="ri-article-line" />
+          <FileTextOutlined />
           <span>内容管理</span>
         </template>
-        <el-menu-item index="/content/skills">
-          <i class="ri-code-line" />
+        <a-menu-item key="/content/skills">
+          <CodeOutlined />
           <span>技术栈</span>
-        </el-menu-item>
-        <el-menu-item index="/content/about-bubbles">
-          <i class="ri-bubble-chart-line" />
+        </a-menu-item>
+        <a-menu-item key="/content/about-bubbles">
+          <BulbOutlined />
           <span>关于气泡</span>
-        </el-menu-item>
-        <el-menu-item index="/content/projects">
-          <i class="ri-folder-music-line" />
+        </a-menu-item>
+        <a-menu-item key="/content/projects">
+          <FolderOpenOutlined />
           <span>项目管理</span>
-        </el-menu-item>
-        <el-menu-item index="/content/footprints">
-          <i class="ri-footprint-line" />
+        </a-menu-item>
+        <a-menu-item key="/content/footprints">
+          <EnvironmentOutlined />
           <span>足迹管理</span>
-        </el-menu-item>
-      </el-sub-menu>
+        </a-menu-item>
+      </a-sub-menu>
 
-      <el-sub-menu index="/system">
+      <a-sub-menu key="/system">
         <template #title>
-          <i class="ri-settings-3-line" />
+          <SettingOutlined />
           <span>系统管理</span>
         </template>
-        <el-menu-item index="/system/users">
-          <i class="ri-team-line" />
+        <a-menu-item key="/system/users">
+          <TeamOutlined />
           <span>用户管理</span>
-        </el-menu-item>
-        <el-menu-item index="/system/files">
-          <i class="ri-folder-image-line" />
+        </a-menu-item>
+        <a-menu-item key="/system/files">
+          <PictureOutlined />
           <span>文件管理</span>
-        </el-menu-item>
-        <el-menu-item index="/system/visits">
-          <i class="ri-file-list-3-line" />
+        </a-menu-item>
+        <a-menu-item key="/system/visits">
+          <FileListOutlined />
           <span>访问日志</span>
-        </el-menu-item>
-        <el-menu-item index="/system/info">
-          <i class="ri-information-line" />
+        </a-menu-item>
+        <a-menu-item key="/system/info">
+          <InfoCircleOutlined />
           <span>系统信息</span>
-        </el-menu-item>
-        <el-menu-item index="/system/settings">
-          <i class="ri-tools-line" />
+        </a-menu-item>
+        <a-menu-item key="/system/settings">
+          <ToolOutlined />
           <span>系统设置</span>
-        </el-menu-item>
-      </el-sub-menu>
-    </el-menu>
+        </a-menu-item>
+      </a-sub-menu>
+    </a-menu>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  DashboardOutlined,
+  FileTextOutlined,
+  CodeOutlined,
+  BulbOutlined,
+  FolderOpenOutlined,
+  EnvironmentOutlined,
+  SettingOutlined,
+  TeamOutlined,
+  PictureOutlined,
+  UnorderedListOutlined,
+  InfoCircleOutlined,
+  ToolOutlined
+} from '@ant-design/icons-vue'
 
 defineProps<{
   isCollapse: boolean
@@ -88,16 +99,23 @@ defineProps<{
 const route = useRoute()
 const router = useRouter()
 
-const vars = {
-  sidebarBg: '#304156',
-  sidebarText: '#bfcbd9',
-  sidebarActiveText: '#409EFF'
-}
-
 const activeMenu = computed(() => route.path)
 
-const handleSelect = (index: string) => {
-  router.push(index)
+// 默认根据当前路径展开父菜单
+const openKeys = ref<string[]>(
+  route.path.startsWith('/content')
+    ? ['/content']
+    : route.path.startsWith('/system')
+    ? ['/system']
+    : []
+)
+
+const handleSelect = ({ key }: { key: string }) => {
+  router.push(key)
+}
+
+const handleOpenChange = (keys: string[]) => {
+  openKeys.value = keys
 }
 </script>
 
@@ -108,6 +126,9 @@ const handleSelect = (index: string) => {
   background-color: var(--sidebar-bg);
   display: flex;
   flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
   transition: width 0.3s;
   overflow: hidden;
 
@@ -118,16 +139,6 @@ const handleSelect = (index: string) => {
       justify-content: center;
       padding: 0;
     }
-
-    .sidebar-menu :deep(.el-menu-item),
-    .sidebar-menu :deep(.el-sub-menu__title) {
-      justify-content: center;
-      padding: 0 !important;
-
-      span {
-        display: none;
-      }
-    }
   }
 }
 
@@ -137,7 +148,7 @@ const handleSelect = (index: string) => {
   align-items: center;
   padding: 0 20px;
   gap: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
 
   .logo-img {
@@ -164,32 +175,14 @@ const handleSelect = (index: string) => {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  width: 100%;
+}
 
-  :deep(.el-menu-item),
-  :deep(.el-sub-menu__title) {
-    height: 50px;
-    line-height: 50px;
-    display: flex;
-    align-items: center;
+:deep(.ant-menu-dark) {
+  background: transparent;
+}
 
-    i {
-      font-size: 18px;
-      margin-right: 10px;
-      flex-shrink: 0;
-    }
-
-    &:hover {
-      background-color: #263445 !important;
-    }
-  }
-
-  :deep(.el-menu-item.is-active) {
-    background-color: #263445 !important;
-  }
-
-  :deep(.el-sub-menu .el-menu-item) {
-    min-width: 0;
-    padding-left: 50px !important;
-  }
+:deep(.ant-menu-dark .ant-menu-inline) {
+  background: transparent;
 }
 </style>

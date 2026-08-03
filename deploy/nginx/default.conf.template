@@ -1,0 +1,65 @@
+server {
+    listen 80;
+    server_name ${BLOG_DOMAIN};
+    root /usr/share/nginx/blog;
+    index index.html;
+    client_max_body_size 12m;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+
+    location /api/ {
+        proxy_pass http://api:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+
+    location /assets/ {
+        return 302 ${STATIC_CDN_BASE}$request_uri;
+    }
+
+    location /game_posters/ {
+        return 302 ${STATIC_CDN_BASE}$request_uri;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${ADMIN_DOMAIN};
+    root /usr/share/nginx/admin;
+    index index.html;
+    client_max_body_size 12m;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+
+    location /api/ {
+        proxy_pass http://api:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+
+    location /assets/ {
+        return 302 ${STATIC_CDN_BASE}$request_uri;
+    }
+
+    location /game_posters/ {
+        return 302 ${STATIC_CDN_BASE}$request_uri;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

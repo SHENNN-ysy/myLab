@@ -16,7 +16,7 @@
       href="#hero-cinema"
       class="nav-logo"
       aria-label="返回首页"
-      @click="closeMobile"
+      @click="onNavClick({ label: '首页', hash: '#hero-cinema' }, $event)"
     >
       <img
         class="nav-logo-img"
@@ -30,7 +30,12 @@
 
     <ul class="nav-links">
       <li v-for="item in navLinks" :key="item.label">
-        <a :href="item.href" class="nav-hover-btn" @click="closeMobile">
+        <a
+          :href="item.path ?? item.hash"
+          class="nav-hover-btn"
+          :class="{ 'is-active': item.path !== undefined && item.path === route.path }"
+          @click="onNavClick(item, $event)"
+        >
           {{ item.label }}
         </a>
       </li>
@@ -89,9 +94,9 @@
           <a
             v-for="item in navLinks"
             :key="item.label"
-            :href="item.href"
+            :href="item.path ?? item.hash"
             class="nav-mobile-link"
-            @click="closeMobile"
+            @click="onNavClick(item, $event)"
           >
             {{ item.label }}
           </a>
@@ -103,18 +108,47 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-/* ============ 导航链接配置 ============ */
-const navLinks = [
-  { label: '首页', href: '#hero-cinema' },
-  { label: '关于', href: '#influencer' },
-  { label: '技能', href: '#skills' },
-  { label: '项目', href: '#work' },
-  { label: '爱好', href: '#hobbies' },
-  { label: '游戏', href: '#game' },
-  { label: 'Vibe Coding', href: '#aicoding' },
-  { label: '联系', href: '#contact' },
+/* ============ 导航链接配置 ============
+ * hash：首页区块锚点；path：独立路由页面。
+ */
+interface NavItem {
+  label: string
+  hash?: string
+  path?: string
+}
+
+const navLinks: NavItem[] = [
+  { label: '首页', hash: '#hero-cinema' },
+  { label: '关于', hash: '#influencer' },
+  { label: '技能', hash: '#skills' },
+  { label: '项目', hash: '#work' },
+  { label: '足迹', hash: '#hobbies' },
+  { label: '爱好', hash: '#game' },
+  { label: 'Vibe Coding', hash: '#aicoding' },
+  { label: 'myLab', path: '/mylab' },
 ]
+
+/* ============ 导航点击：同页平滑滚动 / 跨页路由跳转 ============ */
+const route = useRoute()
+const router = useRouter()
+
+function onNavClick(item: NavItem, event: MouseEvent) {
+  closeMobile()
+  event.preventDefault()
+  if (item.path) {
+    router.push(item.path)
+    return
+  }
+  if (!item.hash) return
+  if (route.path === '/') {
+    // 已在首页：原生平滑滚动到目标区块
+    document.querySelector(item.hash)?.scrollIntoView({ behavior: 'smooth' })
+  } else {
+    router.push({ path: '/', hash: item.hash })
+  }
+}
 
 /* ============ 滚动方向检测：下滑收起 / 上滑显示 ============
  * 对齐 taozhiyy Navbar.jsx 第 178-191 行的核心逻辑：
@@ -429,6 +463,15 @@ watch(drawerVisible, (visible) => {
   color: rgba(255, 255, 255, 1);
 }
 
+/* 当前所在路由页面（如 myLab）高亮 */
+.nav-hover-btn.is-active {
+  color: rgba(255, 255, 255, 1);
+}
+.nav-hover-btn.is-active::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}
+
 .nav-hover-btn:hover::after {
   transform: scaleX(1);
   transform-origin: bottom left;
@@ -438,7 +481,8 @@ watch(drawerVisible, (visible) => {
 .navigation.is-raised .nav-hover-btn {
   color: rgba(27, 58, 75, 0.82);
 }
-.navigation.is-raised .nav-hover-btn:hover {
+.navigation.is-raised .nav-hover-btn:hover,
+.navigation.is-raised .nav-hover-btn.is-active {
   color: rgba(27, 58, 75, 0.98);
 }
 .navigation.is-raised .nav-hover-btn::after {

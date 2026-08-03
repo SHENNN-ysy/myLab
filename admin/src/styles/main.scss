@@ -1,29 +1,26 @@
-// Element Plus 主题色
-$--color-primary: #409EFF !default;
-$--color-success: #67C23A !default;
-$--color-warning: #E6A23C !default;
-$--color-danger: #F56C6C !default;
-$--color-info: #909399 !default;
-
-@use "element-plus/theme-chalk/src/index.scss" as *;
-
-// 全局 CSS 变量
+// Ant Design Vue 主题色
 :root {
-  --sidebar-bg: #304156;
-  --sidebar-text: #bfcbd9;
-  --sidebar-active-text: #409EFF;
-  --sidebar-hover-bg: #263445;
+  --ant-primary-color: #1677ff;
+  --ant-success-color: #52c41a;
+  --ant-warning-color: #faad14;
+  --ant-danger-color: #ff4d4f;
+  --ant-info-color: #13c2c2;
+
+  --sidebar-bg: #001529;
+  --sidebar-text: #c9d1d9;
+  --sidebar-active-text: #1677ff;
+  --sidebar-hover-bg: #1f2d3d;
   --header-bg: #ffffff;
   --header-height: 60px;
-  --sidebar-width: 200px;
+  --sidebar-width: 220px;
   --sidebar-collapse-width: 64px;
   --main-bg: #f0f2f5;
   --card-bg: #ffffff;
-  --text-primary: #303133;
-  --text-regular: #606266;
-  --text-secondary: #909399;
-  --border-color: #e4e7ed;
-  --border-light: #f0f2f5;
+  --text-primary: #1f1f1f;
+  --text-regular: #595959;
+  --text-secondary: #8c8c8c;
+  --border-color: #f0f0f0;
+  --border-light: #fafafa;
 }
 
 // 全局重置
@@ -91,3 +88,24 @@ body {
 .mt-24 { margin-top: 24px; }
 .mb-16 { margin-bottom: 16px; }
 .mb-24 { margin-bottom: 24px; }
+
+// Ant Design Vue 局部样式覆盖
+.ant-card {
+  border-radius: 8px;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ant-table {
+  font-size: 14px;
+}
+
+.ant-btn + .ant-btn {
+  margin-left: 8px;
+}
+
+.ant-tag {
+  border-radius: 4px;
+}

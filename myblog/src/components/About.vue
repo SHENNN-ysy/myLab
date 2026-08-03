@@ -24,7 +24,7 @@
         <div class="hero-grid">
           <div ref="travelerPanelRef" class="hero-motion-panel hero-traveler-panel">
             <div class="hero-left">
-              <div class="hero-eyebrow">数字叙事者 · 技术探索者</div>
+              <div class="hero-eyebrow">数字旅行者 · 技术探索者</div>
               <h1 class="hero-name">
                 <span>旅</span>
                 <span>行</span>
@@ -92,22 +92,23 @@
             <div class="about-reveal-heading">
               <span class="about-reveal-kicker">Profile</span>
               <h2>关于我</h2>
-              <div class="about-avatar">
-                <img src="/assets/avatar.png" alt="DNSamuel" />
-              </div>
+            </div>
+            <div class="about-avatar">
+              <img src="/assets/avatar.png" alt="DNSamuel" />
             </div>
             <div class="about-card">
               <div class="about-card-right">
+                <h3 class="about-card-title">个人简介</h3>
                 <p class="about-bio">
-                  男，1年C#/.NET上位机开发经验，半年java/Spring Boot后端开发经验，目前全栈开发、agent开发实践中...
+                  你好，我是<span class="about-bio-strong">SHENNN</span>，目前专注于全栈开发、AI agent学习实践中...
                 </p>
                 <ul class="about-bio about-bio-list">
-                  <li>目前研究生在读，负责为实验室内若干项目进行软件开发</li>
+                  <li>上位机开发：<span class="about-bio-strong">C#/.NET</span>，负责为实验室内若干智能装备进行上位机软件开发与维护</li>
+                  <li>web开发：<span class="about-bio-strong">Java/SpringBoot</span>服务端，<span class="about-bio-strong">TypeScript/React</span>前端，做些个人兴趣项目</li>
                   <li>爱好自然观光、city walk，喜欢探索这个世界的美</li>
-                  <li>同时也是一名游戏爱好者，FPS、MOBA、单机杂食系玩家，在游戏探索中有时也能获得心灵上的宁静</li>
                 </ul>
                 <p class="about-bio">
-                  努力成为一名技术探索者，故事叙事者。
+                  努力成长，希望成为一名AI超级个人，通过AI让生活变得更美好。
                 </p>
               </div>
             </div>
@@ -1176,17 +1177,22 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: minmax(180px, 0.34fr) 1fr;
   column-gap: clamp(1.25rem, 2.6vw, 1.85rem);
+  row-gap: 1.45rem;
   align-items: start;
   padding: 1.25rem 1.6rem 1.45rem;
 }
 
 .about-reveal-grid .about-reveal-heading {
+  grid-column: 1;
   padding: 0;
 }
 
 .about-reveal-grid .about-avatar {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: end;
   width: 160px;
-  margin: 0.5rem 0 0;
+  margin: 0;
 }
 
 .about-reveal-grid .about-avatar img {
@@ -1197,6 +1203,9 @@ onBeforeUnmount(() => {
 
 .about-reveal-grid .about-card {
   display: block;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: end;
   min-height: 0;
   padding: 0;
 }
@@ -1244,6 +1253,15 @@ onBeforeUnmount(() => {
   padding-top: 0;
 }
 
+.about-card-title {
+  margin: 0 0 0.72rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 1.45vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
 .about-avatar img {
   display: block;
   width: 160px;
@@ -1258,6 +1276,12 @@ onBeforeUnmount(() => {
   font-size: clamp(0.86rem, 1vw, 1.02rem);
   line-height: 1.78;
   color: var(--ink-light);
+  text-align: left;
+}
+
+.about-bio-strong {
+  font-weight: 700;
+  color: var(--accent-dark);
 }
 
 .about-bio-list {
@@ -1576,18 +1600,24 @@ onBeforeUnmount(() => {
     padding: 0.75rem 0.85rem 0.85rem;
   }
 
-  .about-reveal-grid .about-card-right {
-    padding-top: 0;
+  .about-reveal-grid .about-card {
+    grid-column: 1;
+    grid-row: 3;
   }
 
   .about-reveal-grid .about-avatar {
     width: 68px;
-    margin: 0.4rem 0 0;
+    margin: 0;
   }
 
   .about-reveal-grid .about-avatar img {
     width: 68px;
     height: 68px;
+  }
+
+  .about-card-title {
+    margin-bottom: 0.45rem;
+    font-size: 0.9rem;
   }
 
   .about-bio {

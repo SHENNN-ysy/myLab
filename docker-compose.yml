@@ -1,203 +1,112 @@
 name: myblog
 
-# 一键启动整个博客系统：
-#   docker compose up -d --build
-# 访问地址：
-#   - 博客前台: http://localhost:5173
-#   - 管理后台: http://localhost:5174
-#   - 后端 API: http://localhost:8000
-#   - API 文档: http://localhost:8000/api/docs
-#   - RabbitMQ 管理: http://localhost:15672
-#   - MinIO 控制台: http://localhost:9001
-#
-# 常用命令：
-#   docker compose up -d --build      # 构建并后台启动
-#   docker compose logs -f api         # 查看后端日志
-#   docker compose restart api        # 重启后端
-#   docker compose down                # 停止并删除容器
-#   docker compose down -v             # 停止并删除数据卷（清库）
-#   docker compose ps                  # 查看运行状态
-#
-# 镜像默认从本机 Registry 读取；如仓库地址不同，可在 .env 中设置：
-#   LOCAL_REGISTRY=192.168.1.10:5000
-
+# 2核4G生产部署：Nginx + Java + PostgreSQL + Redis。
+# 图片由Java通过OSS内网上传，并通过CDN域名访问。
 services:
-  # ============== 基础服务 ==============
   db:
-    image: ${LOCAL_REGISTRY:-localhost:5000}/postgres:16-alpine
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       TZ: ${TZ:-Asia/Shanghai}
+    command:
+      - postgres
+      - -c
+      - max_connections=30
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=512MB
+      - -c
+      - work_mem=4MB
     volumes:
       - pg_data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - blog-net
-    restart: "no"
+    mem_limit: 768m
+    networks: [blog-net]
+    restart: unless-stopped
 
   redis:
-    image: ${LOCAL_REGISTRY:-localhost:5000}/redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-}"]
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
     volumes:
       - redis_data:/data
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
-      test: ["CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping; else redis-cli ping; fi"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-    networks:
-      - blog-net
-    restart: "no"
+    mem_limit: 160m
+    networks: [blog-net]
+    restart: unless-stopped
 
-  rabbitmq:
-    image: ${LOCAL_REGISTRY:-localhost:5000}/rabbitmq:3.13-management-alpine
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
-      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
-      TZ: ${TZ:-Asia/Shanghai}
-    volumes:
-      - rmq_data:/var/lib/rabbitmq
-    ports:
-      - "${RABBITMQ_PORT:-5672}:5672"
-      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-    networks:
-      - blog-net
-    restart: "no"
-
-  minio:
-    image: ${LOCAL_REGISTRY:-localhost:5000}/minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      TZ: ${TZ:-Asia/Shanghai}
-    volumes:
-      - minio_data:/data
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - blog-net
-    restart: "no"
-
-  # ============== 后端 API ==============
   api:
     build:
-      context: ./backend
-      dockerfile: docker/api.Dockerfile
-    image: myblog-api:latest
-    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+      context: ./backend-java
+      dockerfile: Dockerfile
+    image: ${API_IMAGE:-myblog-api:latest}
     environment:
-      # ---- 应用 ----
-      APP_ENV: ${APP_ENV:-production}
-      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_PORT: "8000"
       TZ: ${TZ:-Asia/Shanghai}
-
-      # ---- 数据库 ----
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
-
-      # ---- Redis ----
+      DB_POOL_SIZE: "5"
+      DB_MIN_IDLE: "1"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-
-      # ---- RabbitMQ ----
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: "5672"
-      RABBITMQ_USER: ${RABBITMQ_USER}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
-
-      # ---- MinIO ----
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET: ${MINIO_BUCKET}
-
-      # ---- 安全 / 跨域 ----
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS}
-
-      # ---- 消息队列（MQ_INPROCESS_CONSUMER=false 时由外部 worker 消费）----
-      MQ_INPROCESS_CONSUMER: ${MQ_INPROCESS_CONSUMER:-true}
-
-      # ---- 通知（管理员收件箱，逗号分隔；留空禁用安全邮件）----
-      ADMIN_NOTIFY_EMAILS: ${ADMIN_NOTIFY_EMAILS:-}
+      OSS_ENDPOINT: ${OSS_ENDPOINT}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET}
+      OSS_BUCKET: ${OSS_BUCKET}
+      OSS_CDN_DOMAIN: ${OSS_CDN_DOMAIN}
+      OSS_OBJECT_PREFIX: ${OSS_OBJECT_PREFIX:-images}
+      OSS_MAX_FILE_SIZE_MB: ${OSS_MAX_FILE_SIZE_MB:-10}
+      INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
+      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD}
+      INIT_ADMIN_EMAIL: ${INIT_ADMIN_EMAIL}
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
-      rabbitmq: { condition: service_healthy }
-      minio: { condition: service_healthy }
-    ports:
-      - "${API_PORT:-8000}:8000"
-    networks:
-      - blog-net
-    restart: "no"
+    mem_limit: 1g
+    networks: [blog-net]
+    restart: unless-stopped
 
-  # ============== 博客前台 ==============
-  myblog-web:
+  web:
     build:
-      context: ./myblog
-      dockerfile: Dockerfile
-    image: myblog-web:latest
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    image: ${WEB_IMAGE:-myblog-web:latest}
+    environment:
+      BLOG_DOMAIN: ${BLOG_DOMAIN}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      STATIC_CDN_BASE: ${STATIC_CDN_BASE}
     ports:
-      - "5173:80"
-    networks:
-      - blog-net
+      - "80:80"
     depends_on:
       - api
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    restart: "no"
-
-  # ============== 管理后台 ==============
-  admin-web:
-    build:
-      context: ./admin
-      dockerfile: Dockerfile
-    image: myblog-admin:latest
-    ports:
-      - "5174:80"
-    networks:
-      - blog-net
-    depends_on:
-      - api
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    restart: "no"
+    mem_limit: 128m
+    networks: [blog-net]
+    restart: unless-stopped
 
 networks:
   blog-net:
@@ -206,5 +115,3 @@ networks:
 volumes:
   pg_data:
   redis_data:
-  rmq_data:
-  minio_data:

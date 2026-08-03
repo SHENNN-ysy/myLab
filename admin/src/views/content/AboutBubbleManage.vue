@@ -1,160 +1,171 @@
 <template>
   <div class="about-bubble-manage">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false">
+      <template #title>
         <div class="card-header">
           <div>
             <span>关于我的悬浮气泡</span>
             <p>管理前台“我的成分”区域里的气泡文字、层级与视觉样式</p>
           </div>
           <div class="header-actions">
-            <el-button @click="handleReset">
-              <i class="ri-refresh-line" />
+            <a-button @click="handleReset">
+              <template #icon>
+                <ReloadOutlined />
+              </template>
               恢复默认
-            </el-button>
-            <el-button type="primary" @click="openDrawer()">
-              <i class="ri-add-line" />
+            </a-button>
+            <a-button type="primary" @click="openDrawer()">
+              <template #icon>
+                <PlusOutlined />
+              </template>
               新建气泡
-            </el-button>
+            </a-button>
           </div>
         </div>
       </template>
 
-      <el-table :data="bubbles" v-loading="loading" stripe>
-        <el-table-column label="预览" width="110" align="center">
-          <template #default="{ row }">
-            <div class="table-bubble" :class="`is-${row.tier}`" :style="bubbleStyle(row)">
-              <span>{{ row.label || '小气泡' }}</span>
+      <a-table
+        :data-source="bubbles"
+        :columns="columns"
+        :loading="loading"
+        row-key="id"
+        :pagination="false"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'preview'">
+            <div class="table-bubble" :class="`is-${record.tier}`" :style="bubbleStyle(record)">
+              <span>{{ record.label || '小气泡' }}</span>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="label" label="气泡文字" min-width="180" />
-        <el-table-column label="层级" width="110" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getTierType(row.tier)" size="small">{{ getTierText(row.tier) }}</el-tag>
+          <template v-else-if="column.key === 'tier'">
+            <a-tag :color="getTierColor(record.tier)">{{ getTierText(record.tier) }}</a-tag>
           </template>
-        </el-table-column>
-        <el-table-column label="颜色" min-width="220">
-          <template #default="{ row }">
+          <template v-else-if="column.key === 'colors'">
             <div class="color-list">
-              <span class="color-chip" :style="{ background: row.bg }" />
-              <span class="color-chip" :style="{ background: row.glow }" />
-              <span class="color-chip" :style="{ background: row.textColor }" />
-              <span class="color-text">{{ row.textColor }}</span>
+              <span class="color-chip" :style="{ background: record.bg }" />
+              <span class="color-chip" :style="{ background: record.glow }" />
+              <span class="color-chip" :style="{ background: record.textColor }" />
+              <span class="color-text">{{ record.textColor }}</span>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="sort" label="排序" width="90" align="center" />
-        <el-table-column label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-switch
-              v-model="row.enabled"
-              inline-prompt
-              active-text="启用"
-              inactive-text="停用"
-              @change="handleToggle(row)"
+          <template v-else-if="column.key === 'enabled'">
+            <a-switch
+              :checked="record.enabled"
+              checked-children="启用"
+              un-checked-children="停用"
+              @change="(val: boolean) => handleToggle(record, val)"
             />
           </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" text size="small" @click="openDrawer(row)">编辑</el-button>
-            <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
+          <template v-else-if="column.key === 'actions'">
+            <a-space>
+              <a-button type="link" size="small" @click="openDrawer(record)">编辑</a-button>
+              <a-button type="link" danger size="small" @click="handleDelete(record)">删除</a-button>
+            </a-space>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+        </template>
+      </a-table>
+    </a-card>
 
-    <el-drawer
-      v-model="drawerVisible"
+    <a-drawer
+      v-model:open="drawerVisible"
       :title="isEdit ? '编辑悬浮气泡' : '新建悬浮气泡'"
-      size="540px"
-      @closed="resetForm"
+      :width="540"
+      @close="resetForm"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
-        <el-form-item label="气泡文字" prop="label">
-          <el-input v-model="form.label" maxlength="18" show-word-limit placeholder="例如：技术探索者" />
-        </el-form-item>
+      <a-form ref="formRef" :model="form" :rules="rules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="气泡文字" name="label">
+          <a-input v-model:value="form.label" :maxlength="18" placeholder="例如：技术探索者" show-count />
+        </a-form-item>
 
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="层级" prop="tier">
-              <el-select v-model="form.tier" style="width: 100%">
-                <el-option label="大气泡" value="big" />
-                <el-option label="中气泡" value="mid" />
-                <el-option label="小气泡" value="small" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="排序" prop="sort">
-              <el-input-number v-model="form.sort" :min="1" :max="999" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="层级" name="tier">
+              <a-select v-model:value="form.tier" style="width: 100%">
+                <a-select-option value="big">大气泡</a-select-option>
+                <a-select-option value="mid">中气泡</a-select-option>
+                <a-select-option value="small">小气泡</a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="排序" name="sort">
+              <a-input-number v-model:value="form.sort" :min="1" :max="999" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-        <el-form-item label="是否启用">
-          <el-switch v-model="form.enabled" active-text="启用" inactive-text="停用" />
-        </el-form-item>
+        <a-form-item label="是否启用">
+          <a-switch v-model:checked="form.enabled" checked-children="启用" un-checked-children="停用" />
+        </a-form-item>
 
-        <el-divider content-position="left">视觉样式</el-divider>
+        <a-divider orientation="left">视觉样式</a-divider>
 
-        <el-form-item label="背景色" prop="bg">
+        <a-form-item label="背景色" name="bg">
           <div class="color-field">
-            <el-color-picker v-model="form.bg" show-alpha color-format="rgb" />
-            <el-input v-model="form.bg" placeholder="rgba(91, 164, 230, 0.25)" />
+            <a-input v-model:value="form.bg" placeholder="rgba(91, 164, 230, 0.25)">
+              <template #prefix>
+                <div class="color-preview" :style="{ background: form.bg }" />
+              </template>
+            </a-input>
           </div>
-        </el-form-item>
+        </a-form-item>
 
-        <el-form-item label="发光色" prop="glow">
+        <a-form-item label="发光色" name="glow">
           <div class="color-field">
-            <el-color-picker v-model="form.glow" show-alpha color-format="rgb" />
-            <el-input v-model="form.glow" placeholder="rgba(91, 164, 230, 0.4)" />
+            <a-input v-model:value="form.glow" placeholder="rgba(91, 164, 230, 0.4)">
+              <template #prefix>
+                <div class="color-preview" :style="{ background: form.glow }" />
+              </template>
+            </a-input>
           </div>
-        </el-form-item>
+        </a-form-item>
 
-        <el-form-item label="文字色" prop="textColor">
+        <a-form-item label="文字色" name="textColor">
           <div class="color-field">
-            <el-color-picker v-model="form.textColor" />
-            <el-input v-model="form.textColor" placeholder="#81D4FA" />
+            <a-input v-model:value="form.textColor" placeholder="#81D4FA">
+              <template #prefix>
+                <div class="color-preview" :style="{ background: form.textColor }" />
+              </template>
+            </a-input>
           </div>
-        </el-form-item>
+        </a-form-item>
 
-        <el-form-item label="备注">
-          <el-input
-            v-model="form.remark"
-            type="textarea"
+        <a-form-item label="备注">
+          <a-textarea
+            v-model:value="form.remark"
             :rows="2"
-            maxlength="80"
-            show-word-limit
+            :maxlength="80"
+            show-count
             placeholder="后台备注，不影响前台展示"
           />
-        </el-form-item>
+        </a-form-item>
 
-        <el-form-item label="实时预览">
+        <a-form-item label="实时预览">
           <div class="preview-panel">
             <div class="preview-bubble" :class="`is-${form.tier}`" :style="bubbleStyle(form)">
               <span>{{ form.label || '气泡文字' }}</span>
             </div>
           </div>
-        </el-form-item>
-      </el-form>
+        </a-form-item>
+      </a-form>
 
       <template #footer>
         <div class="drawer-footer">
-          <el-button @click="drawerVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
+          <a-button @click="drawerVisible = false">取消</a-button>
+          <a-button type="primary" :loading="submitLoading" @click="handleSubmit">
             {{ isEdit ? '保存' : '创建' }}
-          </el-button>
+          </a-button>
         </div>
       </template>
-    </el-drawer>
+    </a-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
+import { ReloadOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import type { Rule } from 'ant-design-vue/es/form'
 import type { AboutBubble } from '@/types'
 import {
   createAboutBubbleApi,
@@ -173,7 +184,7 @@ const drawerVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
 const currentId = ref('')
-const formRef = ref<FormInstance>()
+const formRef = ref()
 
 const defaultForm: BubbleForm = {
   label: '',
@@ -188,7 +199,7 @@ const defaultForm: BubbleForm = {
 
 const form = reactive<BubbleForm>({ ...defaultForm })
 
-const rules: FormRules = {
+const rules: Record<string, Rule[]> = {
   label: [{ required: true, message: '请输入气泡文字', trigger: 'blur' }],
   tier: [{ required: true, message: '请选择气泡层级', trigger: 'change' }],
   sort: [{ required: true, message: '请输入排序值', trigger: 'change' }],
@@ -197,8 +208,49 @@ const rules: FormRules = {
   textColor: [{ required: true, message: '请输入文字色', trigger: 'blur' }]
 }
 
+const columns = [
+  {
+    title: '预览',
+    key: 'preview',
+    width: 110,
+    align: 'center' as const
+  },
+  { title: '气泡文字', dataIndex: 'label', key: 'label', minWidth: 180 },
+  {
+    title: '层级',
+    key: 'tier',
+    width: 110,
+    align: 'center' as const
+  },
+  {
+    title: '颜色',
+    key: 'colors',
+    minWidth: 220
+  },
+  {
+    title: '排序',
+    dataIndex: 'sort',
+    key: 'sort',
+    width: 90,
+    align: 'center' as const
+  },
+  {
+    title: '状态',
+    key: 'enabled',
+    width: 100,
+    align: 'center' as const
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 150,
+    align: 'center' as const,
+    fixed: 'right' as const
+  }
+]
+
 const getTierText = (tier: AboutBubble['tier']) => {
-  const map = {
+  const map: Record<AboutBubble['tier'], string> = {
     big: '大气泡',
     mid: '中气泡',
     small: '小气泡'
@@ -206,12 +258,12 @@ const getTierText = (tier: AboutBubble['tier']) => {
   return map[tier]
 }
 
-const getTierType = (tier: AboutBubble['tier']) => {
-  const map = {
-    big: 'danger',
-    mid: 'success',
-    small: 'info'
-  } as const
+const getTierColor = (tier: AboutBubble['tier']) => {
+  const map: Record<AboutBubble['tier'], string> = {
+    big: 'red',
+    mid: 'green',
+    small: 'default'
+  }
   return map[tier]
 }
 
@@ -273,11 +325,11 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       await updateAboutBubbleApi(currentId.value, data)
       addLog('更新', `关于气泡：${form.label}`, 'success')
-      ElMessage.success('保存成功')
+      message.success('保存成功')
     } else {
       await createAboutBubbleApi(data)
       addLog('新建', `关于气泡：${form.label}`, 'success')
-      ElMessage.success('创建成功')
+      message.success('创建成功')
     }
 
     drawerVisible.value = false
@@ -289,41 +341,40 @@ const handleSubmit = async () => {
   }
 }
 
-const handleToggle = async (row: AboutBubble) => {
-  await updateAboutBubbleApi(row.id, { enabled: row.enabled })
-  addLog(row.enabled ? '启用' : '停用', `关于气泡：${row.label}`, 'success')
-  ElMessage.success(row.enabled ? '已启用' : '已停用')
+const handleToggle = async (row: AboutBubble, val: boolean) => {
+  row.enabled = val
+  await updateAboutBubbleApi(row.id, { enabled: val })
+  addLog(val ? '启用' : '停用', `关于气泡：${row.label}`, 'success')
+  message.success(val ? '已启用' : '已停用')
 }
 
-const handleDelete = async (row: AboutBubble) => {
-  try {
-    await ElMessageBox.confirm(`确定要删除气泡“${row.label}”吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await deleteAboutBubbleApi(row.id)
-    addLog('删除', `关于气泡：${row.label}`, 'success')
-    ElMessage.success('删除成功')
-    await loadData()
-  } catch {
-    // 用户取消
-  }
+const handleDelete = (row: AboutBubble) => {
+  Modal.confirm({
+    title: '提示',
+    content: `确定要删除气泡“${row.label}”吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      await deleteAboutBubbleApi(row.id)
+      addLog('删除', `关于气泡：${row.label}`, 'success')
+      message.success('删除成功')
+      await loadData()
+    }
+  })
 }
 
-const handleReset = async () => {
-  try {
-    await ElMessageBox.confirm('确定要恢复默认气泡数据吗？当前本地修改会被覆盖。', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    bubbles.value = await resetAboutBubblesApi()
-    addLog('重置', '关于我的悬浮气泡', 'success')
-    ElMessage.success('已恢复默认数据')
-  } catch {
-    // 用户取消
-  }
+const handleReset = () => {
+  Modal.confirm({
+    title: '提示',
+    content: '确定要恢复默认气泡数据吗？当前本地修改会被覆盖。',
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      bubbles.value = await resetAboutBubblesApi()
+      addLog('重置', '关于我的悬浮气泡', 'success')
+      message.success('已恢复默认数据')
+    }
+  })
 }
 
 onMounted(() => {
@@ -333,7 +384,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .about-bubble-manage {
-  :deep(.el-card) {
+  :deep(.ant-card) {
     border: none;
     border-radius: 8px;
   }
@@ -344,6 +395,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  width: 100%;
 
   span {
     font-size: 16px;
@@ -352,7 +404,7 @@ onMounted(() => {
 
   p {
     margin-top: 4px;
-    color: #909399;
+    color: #8c8c8c;
     font-size: 13px;
   }
 }
@@ -372,14 +424,28 @@ onMounted(() => {
 .color-chip {
   width: 18px;
   height: 18px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #d9d9d9;
   border-radius: 50%;
 }
 
 .color-text {
-  color: #606266;
-  font-family: var(--el-font-family);
+  color: #595959;
+  font-family: 'Courier New', monospace;
   font-size: 12px;
+}
+
+.color-preview {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid #d9d9d9;
+}
+
+.color-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
 }
 
 .table-bubble,
@@ -414,13 +480,6 @@ onMounted(() => {
     height: 28px;
     font-size: 0;
   }
-}
-
-.color-field {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
 }
 
 .preview-panel {
@@ -459,12 +518,6 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid #f0f2f5;
-}
-
-:deep(.el-divider) {
-  margin: 16px 0 24px;
 }
 
 @media (max-width: 768px) {

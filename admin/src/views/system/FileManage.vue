@@ -1,143 +1,170 @@
 <template>
   <div class="file-manage">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false">
+      <template #title>
         <div class="card-header">
           <span>文件管理</span>
           <div class="header-actions">
-            <el-input
-              v-model="searchKeyword"
+            <a-input
+              v-model:value="searchKeyword"
               placeholder="搜索文件名"
-              clearable
+              allow-clear
               style="width: 200px"
               @clear="loadData"
-              @keyup.enter="loadData"
+              @press-enter="loadData"
             >
               <template #prefix>
-                <i class="ri-search-line" />
+                <SearchOutlined />
               </template>
-            </el-input>
-            <el-select v-model="filterType" placeholder="文件类型" clearable style="width: 130px" @change="loadData">
-              <el-option label="图片" value="image" />
-              <el-option label="文档" value="application" />
-              <el-option label="视频" value="video" />
-              <el-option label="音频" value="audio" />
-            </el-select>
-            <el-select v-model="filterStatus" placeholder="状态" clearable style="width: 110px" @change="loadData">
-              <el-option label="使用中" :value="1" />
-              <el-option label="未使用" :value="0" />
-            </el-select>
-            <el-button type="primary" @click="triggerUpload">
-              <i class="ri-upload-line" />
+            </a-input>
+            <a-select
+              v-model:value="filterType"
+              placeholder="文件类型"
+              allow-clear
+              style="width: 130px"
+              @change="loadData"
+            >
+              <a-select-option value="image">图片</a-select-option>
+              <a-select-option value="application">文档</a-select-option>
+              <a-select-option value="video">视频</a-select-option>
+              <a-select-option value="audio">音频</a-select-option>
+            </a-select>
+            <a-select
+              v-model:value="filterStatus"
+              placeholder="状态"
+              allow-clear
+              style="width: 110px"
+              @change="loadData"
+            >
+              <a-select-option :value="1">使用中</a-select-option>
+              <a-select-option :value="0">未使用</a-select-option>
+            </a-select>
+            <a-button type="primary" @click="triggerUpload">
+              <template #icon>
+                <UploadOutlined />
+              </template>
               上传文件
-            </el-button>
+            </a-button>
             <input ref="fileInputRef" type="file" multiple style="display: none" @change="handleUpload" />
-            <el-button @click="loadData">
-              <i class="ri-refresh-line" />
+            <a-button @click="loadData">
+              <template #icon>
+                <ReloadOutlined />
+              </template>
               刷新
-            </el-button>
+            </a-button>
           </div>
         </div>
       </template>
 
       <!-- 统计概览 -->
-      <el-row :gutter="16" class="stat-row">
-        <el-col :span="6">
+      <a-row :gutter="16" class="stat-row">
+        <a-col :span="6">
           <div class="stat-item">
-            <i class="ri-file-line stat-icon" style="color: #409eff" />
+            <FileOutlined class="stat-icon" style="color: #1677ff" />
             <div>
               <div class="stat-value">{{ files.length }}</div>
               <div class="stat-label">总文件数</div>
             </div>
           </div>
-        </el-col>
-        <el-col :span="6">
+        </a-col>
+        <a-col :span="6">
           <div class="stat-item">
-            <i class="ri-checkbox-circle-line stat-icon" style="color: #67c23a" />
+            <CheckCircleOutlined class="stat-icon" style="color: #52c41a" />
             <div>
               <div class="stat-value">{{ usedCount }}</div>
               <div class="stat-label">使用中</div>
             </div>
           </div>
-        </el-col>
-        <el-col :span="6">
+        </a-col>
+        <a-col :span="6">
           <div class="stat-item">
-            <i class="ri-close-circle-line stat-icon" style="color: #909399" />
+            <CloseCircleOutlined class="stat-icon" style="color: #8c8c8c" />
             <div>
               <div class="stat-value">{{ unusedCount }}</div>
               <div class="stat-label">未使用</div>
             </div>
           </div>
-        </el-col>
-        <el-col :span="6">
+        </a-col>
+        <a-col :span="6">
           <div class="stat-item">
-            <i class="ri-database-2-line stat-icon" style="color: #e6a23c" />
+            <DatabaseOutlined class="stat-icon" style="color: #faad14" />
             <div>
               <div class="stat-value">{{ totalSizeText }}</div>
               <div class="stat-label">总占用</div>
             </div>
           </div>
-        </el-col>
-      </el-row>
+        </a-col>
+      </a-row>
 
-      <el-table :data="filteredFiles" v-loading="loading" stripe>
-        <el-table-column label="预览" width="80" align="center">
-          <template #default="{ row }">
-            <el-image
-              v-if="isImage(row)"
-              :src="row.fileUrl"
-              :preview-src-list="[row.fileUrl]"
-              fit="cover"
-              style="width: 50px; height: 50px; border-radius: 4px; cursor: pointer"
-              hide-on-click-modal
+      <a-table
+        :data-source="filteredFiles"
+        :columns="columns"
+        :loading="loading"
+        row-key="id"
+        :pagination="false"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'preview'">
+            <a-image
+              v-if="isImage(record)"
+              :src="record.fileUrl"
+              :width="50"
+              :height="50"
+              :preview="true"
+              class="file-thumb"
             />
             <div v-else class="file-icon">
-              <i :class="getFileIcon(row.fileType)" />
+              <component :is="getFileIcon(record.fileType)" />
             </div>
           </template>
-        </el-table-column>
-        <el-table-column label="文件名" min-width="200">
-          <template #default="{ row }">
+          <template v-else-if="column.key === 'fileName'">
             <div style="display: flex; flex-direction: column; gap: 2px">
-              <span style="font-weight: 500">{{ row.fileName }}</span>
-              <span style="font-size: 12px; color: #909399">{{ formatFileSize(row.fileSize) }}</span>
+              <span style="font-weight: 500">{{ record.fileName }}</span>
+              <span style="font-size: 12px; color: #8c8c8c">{{ formatFileSize(record.fileSize) }}</span>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="originalName" label="原始文件名" min-width="180" show-overflow-tooltip />
-        <el-table-column label="类型" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag size="small" :type="getTypeTagType(row.fileType)">
-              {{ getFileTypeLabel(row.fileType) }}
-            </el-tag>
+          <template v-else-if="column.key === 'fileType'">
+            <a-tag :color="getTypeTagColor(record.fileType)">
+              {{ getFileTypeLabel(record.fileType) }}
+            </a-tag>
           </template>
-        </el-table-column>
-        <el-table-column label="用途" prop="uploadType" width="100" align="center" />
-        <el-table-column label="上传者" prop="uploader" width="100" align="center" />
-        <el-table-column label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
-              {{ row.status === 1 ? '使用中' : '未使用' }}
-            </el-tag>
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="record.status === 1 ? 'success' : 'default'">
+              {{ record.status === 1 ? '使用中' : '未使用' }}
+            </a-tag>
           </template>
-        </el-table-column>
-        <el-table-column prop="uploadTime" label="上传时间" width="170" align="center" />
-        <el-table-column label="操作" width="170" align="center">
-          <template #default="{ row }">
-            <div class="row-actions">
-              <el-button type="primary" text size="small" @click="copyUrl(row)">复制链接</el-button>
-              <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
-            </div>
+          <template v-else-if="column.key === 'actions'">
+            <a-space>
+              <a-button type="link" size="small" @click="copyUrl(record)">复制链接</a-button>
+              <a-button type="link" danger size="small" @click="handleDelete(record)">删除</a-button>
+            </a-space>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+        </template>
+      </a-table>
+    </a-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
+import {
+  SearchOutlined,
+  ReloadOutlined,
+  UploadOutlined,
+  FileOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  DatabaseOutlined,
+  FileImageOutlined,
+  VideoCameraOutlined,
+  SoundOutlined,
+  FilePdfOutlined,
+  FileWordOutlined,
+  FileExcelOutlined,
+  FileZipOutlined,
+  FileTextOutlined
+} from '@ant-design/icons-vue'
 import type { FileItem } from '@/types'
 import { getFileListApi, deleteFileApi, uploadFileApi } from '@/api/file'
 import { addLog } from '@/api/log'
@@ -174,6 +201,66 @@ const filteredFiles = computed(() => {
   return result
 })
 
+const columns = [
+  {
+    title: '预览',
+    key: 'preview',
+    width: 80,
+    align: 'center' as const
+  },
+  {
+    title: '文件名',
+    key: 'fileName',
+    minWidth: 200
+  },
+  {
+    title: '原始文件名',
+    dataIndex: 'originalName',
+    key: 'originalName',
+    minWidth: 180,
+    ellipsis: true
+  },
+  {
+    title: '类型',
+    key: 'fileType',
+    width: 120,
+    align: 'center' as const
+  },
+  {
+    title: '用途',
+    dataIndex: 'uploadType',
+    key: 'uploadType',
+    width: 100,
+    align: 'center' as const
+  },
+  {
+    title: '上传者',
+    dataIndex: 'uploader',
+    key: 'uploader',
+    width: 100,
+    align: 'center' as const
+  },
+  {
+    title: '状态',
+    key: 'status',
+    width: 100,
+    align: 'center' as const
+  },
+  {
+    title: '上传时间',
+    dataIndex: 'uploadTime',
+    key: 'uploadTime',
+    width: 170,
+    align: 'center' as const
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 170,
+    align: 'center' as const
+  }
+]
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -186,14 +273,14 @@ const loadData = async () => {
 const isImage = (file: FileItem) => file.fileType.startsWith('image/')
 
 const getFileIcon = (type: string) => {
-  if (type.startsWith('image/')) return 'ri-image-line'
-  if (type.startsWith('video/')) return 'ri-video-line'
-  if (type.startsWith('audio/')) return 'ri-music-line'
-  if (type.includes('pdf')) return 'ri-file-pdf-line'
-  if (type.includes('word') || type.includes('document')) return 'ri-file-word-line'
-  if (type.includes('excel') || type.includes('sheet')) return 'ri-file-excel-line'
-  if (type.includes('zip') || type.includes('rar')) return 'ri-file-zip-line'
-  return 'ri-file-line'
+  if (type.startsWith('image/')) return FileImageOutlined
+  if (type.startsWith('video/')) return VideoCameraOutlined
+  if (type.startsWith('audio/')) return SoundOutlined
+  if (type.includes('pdf')) return FilePdfOutlined
+  if (type.includes('word') || type.includes('document')) return FileWordOutlined
+  if (type.includes('excel') || type.includes('sheet')) return FileExcelOutlined
+  if (type.includes('zip') || type.includes('rar')) return FileZipOutlined
+  return FileTextOutlined
 }
 
 const getFileTypeLabel = (type: string) => {
@@ -206,11 +293,11 @@ const getFileTypeLabel = (type: string) => {
   return type.split('/')[1]?.toUpperCase() || type
 }
 
-const getTypeTagType = (type: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
+const getTypeTagColor = (type: string): string => {
   if (type.startsWith('image/')) return 'success'
   if (type.startsWith('video/')) return 'warning'
-  if (type.startsWith('audio/')) return 'primary'
-  return 'info'
+  if (type.startsWith('audio/')) return 'processing'
+  return 'default'
 }
 
 const formatFileSize = (size: number) => {
@@ -231,7 +318,7 @@ const handleUpload = async (e: Event) => {
   try {
     await Promise.all(Array.from(fileList).map(file => uploadFileApi(file)))
     addLog('上传', `${fileList.length} 个文件`, 'success')
-    ElMessage.success('上传成功')
+    message.success('上传成功')
     await loadData()
   } finally {
     loading.value = false
@@ -242,33 +329,31 @@ const handleUpload = async (e: Event) => {
 const copyUrl = async (file: FileItem) => {
   try {
     await navigator.clipboard.writeText(file.fileUrl)
-    ElMessage.success('已复制到剪贴板')
+    message.success('已复制到剪贴板')
   } catch {
-    // 兼容旧浏览器
     const input = document.createElement('input')
     input.value = file.fileUrl
     document.body.appendChild(input)
     input.select()
     document.execCommand('copy')
     document.body.removeChild(input)
-    ElMessage.success('已复制到剪贴板')
+    message.success('已复制到剪贴板')
   }
 }
 
-const handleDelete = async (row: FileItem) => {
-  try {
-    await ElMessageBox.confirm(`确定要删除文件「${row.fileName}」吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await deleteFileApi(row.id)
-    addLog('删除', `文件：${row.fileName}`, 'success')
-    ElMessage.success('删除成功')
-    await loadData()
-  } catch {
-    // 取消
-  }
+const handleDelete = (row: FileItem) => {
+  Modal.confirm({
+    title: '提示',
+    content: `确定要删除文件「${row.fileName}」吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      await deleteFileApi(row.id)
+      addLog('删除', `文件：${row.fileName}`, 'success')
+      message.success('删除成功')
+      await loadData()
+    }
+  })
 }
 
 onMounted(() => {
@@ -278,7 +363,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .file-manage {
-  :deep(.el-card) {
+  :deep(.ant-card) {
     border: none;
     border-radius: 8px;
   }
@@ -290,6 +375,7 @@ onMounted(() => {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+  width: 100%;
 
   > span {
     font-size: 16px;
@@ -313,7 +399,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: #f5f7fa;
+  background: #fafafa;
   border-radius: 8px;
 }
 
@@ -324,34 +410,29 @@ onMounted(() => {
 .stat-value {
   font-size: 22px;
   font-weight: 600;
-  color: #303133;
+  color: #1f1f1f;
   line-height: 1.2;
 }
 
 .stat-label {
   font-size: 13px;
-  color: #909399;
+  color: #8c8c8c;
   margin-top: 2px;
+}
+
+.file-thumb {
+  border-radius: 4px;
 }
 
 .file-icon {
   width: 50px;
   height: 50px;
   border-radius: 4px;
-  background: #f5f7fa;
+  background: #fafafa;
   display: flex;
   align-items: center;
   justify-content: center;
-
-  i {
-    font-size: 24px;
-    color: #909399;
-  }
-}
-
-.row-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
+  font-size: 24px;
+  color: #8c8c8c;
 }
 </style>

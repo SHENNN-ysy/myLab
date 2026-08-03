@@ -1,123 +1,133 @@
 <template>
   <div class="visit-log">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false">
+      <template #title>
         <div class="card-header">
           <span>访问日志</span>
           <div class="header-actions">
-            <el-input
-              v-model="searchIp"
+            <a-input
+              v-model:value="searchIp"
               placeholder="筛选 IP"
-              clearable
+              allow-clear
               style="width: 160px"
               @clear="loadData"
-              @keyup.enter="loadData"
+              @press-enter="loadData"
             >
               <template #prefix>
-                <i class="ri-search-line" />
+                <SearchOutlined />
               </template>
-            </el-input>
-            <el-input
-              v-model="searchPage"
+            </a-input>
+            <a-input
+              v-model:value="searchPage"
               placeholder="筛选页面 URL"
-              clearable
+              allow-clear
               style="width: 200px"
               @clear="loadData"
-              @keyup.enter="loadData"
+              @press-enter="loadData"
             />
-            <el-button type="danger" @click="handleClear">
-              <i class="ri-delete-bin-line" />
+            <a-button danger @click="handleClear">
+              <template #icon>
+                <DeleteOutlined />
+              </template>
               清空日志
-            </el-button>
-            <el-button @click="loadData">
-              <i class="ri-refresh-line" />
+            </a-button>
+            <a-button @click="loadData">
+              <template #icon>
+                <ReloadOutlined />
+              </template>
               刷新
-            </el-button>
+            </a-button>
           </div>
         </div>
       </template>
 
       <!-- 统计概览 -->
-      <el-row :gutter="16" class="stat-row">
-        <el-col :span="6">
+      <a-row :gutter="16" class="stat-row">
+        <a-col :span="6">
           <div class="stat-item">
-            <i class="ri-eye-line stat-icon" style="color: #409eff" />
+            <EyeOutlined class="stat-icon" style="color: #1677ff" />
             <div>
               <div class="stat-value">{{ filteredVisits.length }}</div>
               <div class="stat-label">总访问数</div>
             </div>
           </div>
-        </el-col>
-        <el-col :span="6">
+        </a-col>
+        <a-col :span="6">
           <div class="stat-item">
-            <i class="ri-user-line stat-icon" style="color: #f5576c" />
+            <UserOutlined class="stat-icon" style="color: #f5576c" />
             <div>
               <div class="stat-value">{{ uniqueVisitors }}</div>
               <div class="stat-label">独立访客</div>
             </div>
           </div>
-        </el-col>
-        <el-col :span="6">
+        </a-col>
+        <a-col :span="6">
           <div class="stat-item">
-            <i class="ri-global-line stat-icon" style="color: #00f2fe" />
+            <GlobalOutlined class="stat-icon" style="color: #13c2c2" />
             <div>
               <div class="stat-value">{{ uniqueLocations }}</div>
               <div class="stat-label">地区数</div>
             </div>
           </div>
-        </el-col>
-        <el-col :span="6">
+        </a-col>
+        <a-col :span="6">
           <div class="stat-item">
-            <i class="ri-pages-line stat-icon" style="color: #43e97b" />
+            <FileTextOutlined class="stat-icon" style="color: #52c41a" />
             <div>
               <div class="stat-value">{{ uniquePages }}</div>
               <div class="stat-label">访问页面</div>
             </div>
           </div>
-        </el-col>
-      </el-row>
+        </a-col>
+      </a-row>
 
-      <el-table :data="filteredVisits" v-loading="loading" stripe>
-        <el-table-column label="访客 ID" width="160" align="center">
-          <template #default="{ row }">
-            <el-tooltip :content="row.visitorId" placement="top">
+      <a-table
+        :data-source="filteredVisits"
+        :columns="columns"
+        :loading="loading"
+        row-key="id"
+        :pagination="false"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'visitorId'">
+            <a-tooltip :title="record.visitorId" placement="top">
               <span style="font-family: 'Courier New', monospace; font-size: 12px">
-                {{ row.visitorId.substring(0, 16) }}...
+                {{ record.visitorId.substring(0, 16) }}...
               </span>
-            </el-tooltip>
+            </a-tooltip>
           </template>
-        </el-table-column>
-        <el-table-column label="IP 地址" prop="ip" width="140" align="center" />
-        <el-table-column label="访问页面" min-width="220">
-          <template #default="{ row }">
-            <el-tooltip :content="row.pageUrl" placement="top">
-              <span class="page-url">{{ row.pageUrl }}</span>
-            </el-tooltip>
+          <template v-else-if="column.key === 'pageUrl'">
+            <a-tooltip :title="record.pageUrl" placement="top">
+              <span class="page-url">{{ record.pageUrl }}</span>
+            </a-tooltip>
           </template>
-        </el-table-column>
-        <el-table-column label="地理位置" prop="location" width="140" align="center" />
-        <el-table-column label="浏览器" prop="browser" width="140" align="center" />
-        <el-table-column label="操作系统" prop="os" width="120" align="center" />
-        <el-table-column label="来源" min-width="200">
-          <template #default="{ row }">
-            <span v-if="row.referer" class="referer-url">{{ row.referer }}</span>
-            <span v-else style="color: #c0c4cc">-</span>
+          <template v-else-if="column.key === 'referer'">
+            <span v-if="record.referer" class="referer-url">{{ record.referer }}</span>
+            <span v-else style="color: #bfbfbf">-</span>
           </template>
-        </el-table-column>
-        <el-table-column label="访问时间" prop="visitTime" width="170" align="center" />
-        <el-table-column label="操作" width="100" align="center">
-          <template #default="{ row }">
-            <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
+          <template v-else-if="column.key === 'actions'">
+            <a-button type="link" danger size="small" @click="handleDelete(record)">
+              删除
+            </a-button>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+        </template>
+      </a-table>
+    </a-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
+import {
+  SearchOutlined,
+  ReloadOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  UserOutlined,
+  GlobalOutlined,
+  FileTextOutlined
+} from '@ant-design/icons-vue'
 import type { VisitLog } from '@/types'
 import { getVisitLogsApi, clearVisitLogsApi, deleteVisitLogApi } from '@/api/visit'
 import { addLog } from '@/api/log'
@@ -155,6 +165,66 @@ const filteredVisits = computed(() => {
   return result
 })
 
+const columns = [
+  {
+    title: '访客 ID',
+    key: 'visitorId',
+    width: 160,
+    align: 'center' as const
+  },
+  {
+    title: 'IP 地址',
+    dataIndex: 'ip',
+    key: 'ip',
+    width: 140,
+    align: 'center' as const
+  },
+  {
+    title: '访问页面',
+    key: 'pageUrl',
+    minWidth: 220
+  },
+  {
+    title: '地理位置',
+    dataIndex: 'location',
+    key: 'location',
+    width: 140,
+    align: 'center' as const
+  },
+  {
+    title: '浏览器',
+    dataIndex: 'browser',
+    key: 'browser',
+    width: 140,
+    align: 'center' as const
+  },
+  {
+    title: '操作系统',
+    dataIndex: 'os',
+    key: 'os',
+    width: 120,
+    align: 'center' as const
+  },
+  {
+    title: '来源',
+    key: 'referer',
+    minWidth: 200
+  },
+  {
+    title: '访问时间',
+    dataIndex: 'visitTime',
+    key: 'visitTime',
+    width: 170,
+    align: 'center' as const
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 100,
+    align: 'center' as const
+  }
+]
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -164,36 +234,35 @@ const loadData = async () => {
   }
 }
 
-const handleClear = async () => {
-  try {
-    await ElMessageBox.confirm('确定要清空所有访问日志吗？此操作不可恢复！', '警告', {
-      confirmButtonText: '确定清空',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await clearVisitLogsApi()
-    addLog('清空', '访问日志', 'success')
-    ElMessage.success('已清空访问日志')
-    await loadData()
-  } catch {
-    // 取消
-  }
+const handleClear = () => {
+  Modal.confirm({
+    title: '警告',
+    content: '确定要清空所有访问日志吗？此操作不可恢复！',
+    okText: '确定清空',
+    cancelText: '取消',
+    okButtonProps: { danger: true },
+    onOk: async () => {
+      await clearVisitLogsApi()
+      addLog('清空', '访问日志', 'success')
+      message.success('已清空访问日志')
+      await loadData()
+    }
+  })
 }
 
-const handleDelete = async (row: VisitLog) => {
-  try {
-    await ElMessageBox.confirm('确定要删除这条访问记录吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await deleteVisitLogApi(row.id)
-    addLog('删除', `访问记录：${row.ip}`, 'success')
-    ElMessage.success('删除成功')
-    await loadData()
-  } catch {
-    // 取消
-  }
+const handleDelete = (row: VisitLog) => {
+  Modal.confirm({
+    title: '提示',
+    content: '确定要删除这条访问记录吗？',
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      await deleteVisitLogApi(row.id)
+      addLog('删除', `访问记录：${row.ip}`, 'success')
+      message.success('删除成功')
+      await loadData()
+    }
+  })
 }
 
 onMounted(() => {
@@ -203,7 +272,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .visit-log {
-  :deep(.el-card) {
+  :deep(.ant-card) {
     border: none;
     border-radius: 8px;
   }
@@ -215,6 +284,7 @@ onMounted(() => {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+  width: 100%;
 
   > span {
     font-size: 16px;
@@ -238,7 +308,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: #f5f7fa;
+  background: #fafafa;
   border-radius: 8px;
 }
 
@@ -249,13 +319,13 @@ onMounted(() => {
 .stat-value {
   font-size: 22px;
   font-weight: 600;
-  color: #303133;
+  color: #1f1f1f;
   line-height: 1.2;
 }
 
 .stat-label {
   font-size: 13px;
-  color: #909399;
+  color: #8c8c8c;
   margin-top: 2px;
 }
 
@@ -266,7 +336,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: middle;
-  color: #409eff;
+  color: #1677ff;
 }
 
 .referer-url {
@@ -276,6 +346,6 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: middle;
-  color: #606266;
+  color: #595959;
 }
 </style>

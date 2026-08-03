@@ -23,6 +23,7 @@ htmlcov/
 .nox/
 dist/
 build/
+target/
 *.egg
 *.log
 
@@ -52,5 +53,6 @@ Thumbs.db
 *.bak
 *.swp
 .cache/
+.m2/
 tmp/
 temp/

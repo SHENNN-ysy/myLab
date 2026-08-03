@@ -124,7 +124,8 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 0;
+  /* 压到背景球（z-index: -1）之下：球体浮在深色背景上、技能卡片下 */
+  z-index: -2;
   background: linear-gradient(180deg, #1B4965 0%, #0D1B2A 100%);
   pointer-events: none;
 }

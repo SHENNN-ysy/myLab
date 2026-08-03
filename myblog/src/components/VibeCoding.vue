@@ -1,5 +1,6 @@
 <template>
   <section id="aicoding">
+    <SeagullSea />
     <div class="container">
       <RevealOnScroll>
         <div class="section-header">
@@ -91,6 +92,7 @@ import { reactive, onMounted } from 'vue'
 import { aiTools } from '@/data/projects'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 import PathEasedLogo from './ui/PathEasedLogo.vue'
+import SeagullSea from './ui/SeagullSea.vue'
 
 const animatedWidths = reactive<Record<string, string>>({})
 
@@ -120,12 +122,26 @@ onMounted(() => {
 <style scoped>
 #aicoding {
   padding: 100px 0;
+  position: relative;
+}
+
+/* 背景与我的足迹（#hobbies）下边缘同色（--bg-alt），交界处无缝，并压到背景球（z-index: -1）之下 */
+#aicoding::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--bg-alt);
+  pointer-events: none;
 }
 
 .container {
   max-width: var(--max-w);
   margin: 0 auto;
   padding: 0 3rem;
+  /* 内容层叠在 SeagullSea 背景动画之上 */
+  position: relative;
+  z-index: 1;
 }
 
 .section-header {

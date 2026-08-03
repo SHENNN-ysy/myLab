@@ -1,0 +1,55 @@
+server:
+  port: ${APP_PORT:8000}
+spring:
+  application.name: myblog-api
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:myblog}
+    username: ${DB_USER:myblog}
+    password: ${DB_PASSWORD:myblog_secret}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      minimum-idle: ${DB_MIN_IDLE:1}
+      connection-timeout: 10000
+      validation-timeout: 3000
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+  data.redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: ${REDIS_DB:0}
+  servlet.multipart:
+    max-file-size: ${OSS_MAX_FILE_SIZE_MB:10}MB
+    max-request-size: ${OSS_MAX_REQUEST_SIZE_MB:12}MB
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+management.endpoints.web.exposure.include: health,info
+management.endpoint.health.probes.enabled: true
+mybatis-plus:
+  type-handlers-package: com.myblog.infrastructure.persistence.handler
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config.banner: false
+app:
+  jwt-secret: ${JWT_SECRET:change-this-in-production-please}
+  access-expire-minutes: ${JWT_ACCESS_EXPIRE_MINUTES:30}
+  refresh-expire-days: ${JWT_REFRESH_EXPIRE_DAYS:14}
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:5174}
+  rate-limit-per-minute: ${RATE_LIMIT_PER_MINUTE:60}
+  login-rate-limit-per-minute: ${LOGIN_RATE_LIMIT_PER_MINUTE:5}
+  oss-endpoint: ${OSS_ENDPOINT:}
+  oss-access-key-id: ${OSS_ACCESS_KEY_ID:}
+  oss-access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+  oss-bucket: ${OSS_BUCKET:}
+  oss-cdn-domain: ${OSS_CDN_DOMAIN:}
+  oss-object-prefix: ${OSS_OBJECT_PREFIX:images}
+  oss-max-file-size-mb: ${OSS_MAX_FILE_SIZE_MB:10}
+  initial-admin-username: ${INIT_ADMIN_USERNAME:admin}
+  initial-admin-password: ${INIT_ADMIN_PASSWORD:Admin@123456}
+  initial-admin-email: ${INIT_ADMIN_EMAIL:admin@myblog.local}
+server.tomcat.threads:
+  max: ${TOMCAT_MAX_THREADS:50}
+  min-spare: ${TOMCAT_MIN_SPARE_THREADS:5}

@@ -1,165 +1,183 @@
 <template>
   <div class="user-manage">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false">
+      <template #title>
         <div class="card-header">
           <span>用户管理</span>
           <div class="header-actions">
-            <el-input
-              v-model="searchKeyword"
+            <a-input
+              v-model:value="searchKeyword"
               placeholder="搜索用户名/邮箱"
-              clearable
+              allow-clear
               style="width: 200px"
               @clear="loadData"
-              @keyup.enter="loadData"
+              @press-enter="loadData"
             >
               <template #prefix>
-                <i class="ri-search-line" />
+                <SearchOutlined />
               </template>
-            </el-input>
-            <el-select v-model="filterRole" placeholder="全部角色" clearable style="width: 140px" @change="loadData">
-              <el-option label="超级管理员" value="super_admin" />
-              <el-option label="管理员" value="admin" />
-              <el-option label="普通用户" value="user" />
-              <el-option label="访客" value="guest" />
-            </el-select>
-            <el-select v-model="filterStatus" placeholder="状态" clearable style="width: 100px" @change="loadData">
-              <el-option label="启用" value="active" />
-              <el-option label="禁用" value="disabled" />
-            </el-select>
-            <el-button type="primary" @click="openDrawer()">
-              <i class="ri-add-line" />
+            </a-input>
+            <a-select
+              v-model:value="filterRole"
+              placeholder="全部角色"
+              allow-clear
+              style="width: 140px"
+              @change="loadData"
+            >
+              <a-select-option value="super_admin">超级管理员</a-select-option>
+              <a-select-option value="admin">管理员</a-select-option>
+              <a-select-option value="user">普通用户</a-select-option>
+              <a-select-option value="guest">访客</a-select-option>
+            </a-select>
+            <a-select
+              v-model:value="filterStatus"
+              placeholder="状态"
+              allow-clear
+              style="width: 100px"
+              @change="loadData"
+            >
+              <a-select-option value="active">启用</a-select-option>
+              <a-select-option value="disabled">禁用</a-select-option>
+            </a-select>
+            <a-button type="primary" @click="openDrawer()">
+              <template #icon>
+                <PlusOutlined />
+              </template>
               新建用户
-            </el-button>
-            <el-button @click="loadData">
-              <i class="ri-refresh-line" />
+            </a-button>
+            <a-button @click="loadData">
+              <template #icon>
+                <ReloadOutlined />
+              </template>
               刷新
-            </el-button>
+            </a-button>
           </div>
         </div>
       </template>
 
-      <el-alert
+      <a-alert
         v-if="loadError"
-        :title="loadError"
+        :message="loadError"
         type="error"
         show-icon
-        :closable="false"
         class="load-error"
       >
-        <template #default>
-          <el-button type="danger" link @click="loadData">重新加载</el-button>
+        <template #action>
+          <a-button type="link" danger @click="loadData">重新加载</a-button>
         </template>
-      </el-alert>
+      </a-alert>
 
-      <el-table :data="filteredUsers" v-loading="loading" stripe>
-        <el-table-column label="头像" width="80" align="center">
-          <template #default="{ row }">
-            <el-avatar :src="row.avatar" :size="40" />
+      <a-table
+        :data-source="filteredUsers"
+        :columns="columns"
+        :loading="loading"
+        row-key="id"
+        :pagination="false"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'avatar'">
+            <a-avatar :src="record.avatar" :size="40">
+              {{ record.username?.charAt(0).toUpperCase() }}
+            </a-avatar>
           </template>
-        </el-table-column>
-        <el-table-column prop="username" label="用户名" width="140" />
-        <el-table-column prop="nickname" label="昵称" width="140" />
-        <el-table-column prop="email" label="邮箱" min-width="180" />
-        <el-table-column label="角色" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.role === 'super_admin'" type="danger" size="small">超级管理员</el-tag>
-            <el-tag v-else-if="row.role === 'admin'" type="warning" size="small">管理员</el-tag>
-            <el-tag v-else-if="row.role === 'user'" type="success" size="small">普通用户</el-tag>
-            <el-tag v-else type="info" size="small">访客</el-tag>
+          <template v-else-if="column.key === 'role'">
+            <a-tag v-if="record.role === 'super_admin'" color="red">超级管理员</a-tag>
+            <a-tag v-else-if="record.role === 'admin'" color="orange">管理员</a-tag>
+            <a-tag v-else-if="record.role === 'user'" color="green">普通用户</a-tag>
+            <a-tag v-else>访客</a-tag>
           </template>
-        </el-table-column>
-        <el-table-column label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'danger'" size="small">
-              {{ row.status === 'active' ? '启用' : '禁用' }}
-            </el-tag>
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="record.status === 'active' ? 'success' : 'error'">
+              {{ record.status === 'active' ? '启用' : '禁用' }}
+            </a-tag>
           </template>
-        </el-table-column>
-        <el-table-column prop="lastLogin" label="最后登录" width="170" />
-        <el-table-column label="操作" width="170" align="center">
-          <template #default="{ row }">
-            <div class="row-actions">
-              <el-button type="primary" text size="small" @click="openDrawer(row)">编辑</el-button>
-              <el-button
-                :type="row.status === 'active' ? 'warning' : 'success'"
-                text
+          <template v-else-if="column.key === 'actions'">
+            <a-space>
+              <a-button type="link" size="small" @click="openDrawer(record)">编辑</a-button>
+              <a-button
+                :type="record.status === 'active' ? 'warning' : 'primary'"
                 size="small"
-                @click="toggleStatus(row)"
+                @click="toggleStatus(record)"
               >
-                {{ row.status === 'active' ? '禁用' : '启用' }}
-              </el-button>
-              <el-button
-                type="danger"
-                text
+                {{ record.status === 'active' ? '禁用' : '启用' }}
+              </a-button>
+              <a-button
+                type="link"
+                danger
                 size="small"
-                :disabled="row.role === 'super_admin'"
-                @click="handleDelete(row)"
+                :disabled="record.role === 'super_admin'"
+                @click="handleDelete(record)"
               >
                 删除
-              </el-button>
-            </div>
+              </a-button>
+            </a-space>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+        </template>
+      </a-table>
+    </a-card>
 
     <!-- 用户编辑抽屉 -->
-    <el-drawer
-      v-model="drawerVisible"
+    <a-drawer
+      v-model:open="drawerVisible"
       :title="isEdit ? '编辑用户' : '新建用户'"
-      size="500px"
-      @closed="resetForm"
+      :width="500"
+      @close="resetForm"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="登录用户名" :disabled="isEdit" />
-        </el-form-item>
-        <el-form-item label="昵称" prop="nickname">
-          <el-input v-model="form.nickname" placeholder="显示昵称" />
-        </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email" placeholder="user@example.com" />
-        </el-form-item>
-        <el-form-item label="头像 URL" prop="avatar">
-          <el-input v-model="form.avatar" placeholder="头像图片地址" />
-        </el-form-item>
-        <el-form-item label="角色" prop="role">
-          <el-select v-model="form.role" placeholder="选择角色" style="width: 100%">
-            <el-option label="超级管理员" value="super_admin" />
-            <el-option label="管理员" value="admin" />
-            <el-option label="普通用户" value="user" />
-            <el-option label="访客" value="guest" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio value="active">启用</el-radio>
-            <el-radio value="disabled">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="个人网站" prop="website">
-          <el-input v-model="form.website" placeholder="https://example.com" />
-        </el-form-item>
-        <el-form-item label="个人简介" prop="bio">
-          <el-input v-model="form.bio" type="textarea" :rows="3" placeholder="一句话介绍" />
-        </el-form-item>
-      </el-form>
+      <a-form ref="formRef" :model="form" :rules="rules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="用户名" name="username">
+          <a-input v-model:value="form.username" placeholder="登录用户名" :disabled="isEdit" />
+        </a-form-item>
+        <a-form-item label="昵称" name="nickname">
+          <a-input v-model:value="form.nickname" placeholder="显示昵称" />
+        </a-form-item>
+        <a-form-item label="邮箱" name="email">
+          <a-input v-model:value="form.email" placeholder="user@example.com" />
+        </a-form-item>
+        <a-form-item label="头像 URL" name="avatar">
+          <a-input v-model:value="form.avatar" placeholder="头像图片地址" />
+        </a-form-item>
+        <a-form-item label="角色" name="role">
+          <a-select v-model:value="form.role" placeholder="选择角色" style="width: 100%">
+            <a-select-option value="super_admin">超级管理员</a-select-option>
+            <a-select-option value="admin">管理员</a-select-option>
+            <a-select-option value="user">普通用户</a-select-option>
+            <a-select-option value="guest">访客</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="状态" name="status">
+          <a-radio-group v-model:value="form.status">
+            <a-radio value="active">启用</a-radio>
+            <a-radio value="disabled">禁用</a-radio>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item label="个人网站" name="website">
+          <a-input v-model:value="form.website" placeholder="https://example.com" />
+        </a-form-item>
+        <a-form-item label="个人简介" name="bio">
+          <a-textarea v-model:value="form.bio" :rows="3" placeholder="一句话介绍" />
+        </a-form-item>
+      </a-form>
       <template #footer>
         <div class="drawer-footer">
-          <el-button @click="drawerVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
+          <a-button @click="drawerVisible = false">取消</a-button>
+          <a-button type="primary" :loading="submitLoading" @click="handleSubmit">
             {{ isEdit ? '保存' : '创建' }}
-          </el-button>
+          </a-button>
         </div>
       </template>
-    </el-drawer>
+    </a-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
+import {
+  SearchOutlined,
+  ReloadOutlined,
+  PlusOutlined
+} from '@ant-design/icons-vue'
+import type { Rule } from 'ant-design-vue/es/form'
 import type { User } from '@/types'
 import { getUsersApi, createUserApi, updateUserApi, deleteUserApi } from '@/api/user'
 import { addLog } from '@/api/log'
@@ -174,7 +192,7 @@ const drawerVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
 const currentId = ref('')
-const formRef = ref<FormInstance>()
+const formRef = ref()
 
 const form = reactive({
   username: '',
@@ -187,7 +205,7 @@ const form = reactive({
   bio: ''
 })
 
-const rules: FormRules = {
+const rules: Record<string, Rule[]> = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
   email: [
@@ -198,7 +216,57 @@ const rules: FormRules = {
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
-// 过滤后的用户列表
+const columns = [
+  {
+    title: '头像',
+    key: 'avatar',
+    width: 80,
+    align: 'center' as const
+  },
+  {
+    title: '用户名',
+    dataIndex: 'username',
+    key: 'username',
+    width: 140
+  },
+  {
+    title: '昵称',
+    dataIndex: 'nickname',
+    key: 'nickname',
+    width: 140
+  },
+  {
+    title: '邮箱',
+    dataIndex: 'email',
+    key: 'email',
+    minWidth: 180
+  },
+  {
+    title: '角色',
+    key: 'role',
+    width: 120,
+    align: 'center' as const
+  },
+  {
+    title: '状态',
+    key: 'status',
+    width: 100,
+    align: 'center' as const
+  },
+  {
+    title: '最后登录',
+    dataIndex: 'lastLogin',
+    key: 'lastLogin',
+    width: 170
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 240,
+    align: 'center' as const
+  }
+]
+
 const filteredUsers = computed(() => {
   let result = users.value
   if (searchKeyword.value) {
@@ -288,17 +356,17 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       await updateUserApi(currentId.value, data)
       addLog('更新', `用户：${form.username}`, 'success')
-      ElMessage.success('更新成功')
+      message.success('更新成功')
     } else {
       await createUserApi({ ...data, createdAt: new Date().toLocaleString('zh-CN') })
       addLog('新建', `用户：${form.username}`, 'success')
-      ElMessage.success('创建成功')
+      message.success('创建成功')
     }
 
     drawerVisible.value = false
     await loadData()
-  } catch (e) {
-    // 验证失败
+  } catch {
+    // 校验失败
   } finally {
     submitLoading.value = false
   }
@@ -309,27 +377,26 @@ const toggleStatus = async (row: User) => {
     const newStatus = row.status === 'active' ? 'disabled' : 'active'
     await updateUserApi(row.id, { status: newStatus })
     addLog('修改', `用户 ${row.username} 状态为 ${newStatus === 'active' ? '启用' : '禁用'}`, 'success')
-    ElMessage.success(newStatus === 'active' ? '已启用' : '已禁用')
+    message.success(newStatus === 'active' ? '已启用' : '已禁用')
     await loadData()
-  } catch (e) {
-    ElMessage.error('操作失败')
+  } catch {
+    message.error('操作失败')
   }
 }
 
-const handleDelete = async (row: User) => {
-  try {
-    await ElMessageBox.confirm(`确定要删除用户「${row.username}」吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await deleteUserApi(row.id)
-    addLog('删除', `用户：${row.username}`, 'success')
-    ElMessage.success('删除成功')
-    await loadData()
-  } catch (e) {
-    // 取消或错误
-  }
+const handleDelete = (row: User) => {
+  Modal.confirm({
+    title: '提示',
+    content: `确定要删除用户「${row.username}」吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      await deleteUserApi(row.id)
+      addLog('删除', `用户：${row.username}`, 'success')
+      message.success('删除成功')
+      await loadData()
+    }
+  })
 }
 
 onMounted(() => {
@@ -339,7 +406,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .user-manage {
-  :deep(.el-card) {
+  :deep(.ant-card) {
     border: none;
     border-radius: 8px;
   }
@@ -351,6 +418,7 @@ onMounted(() => {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+  width: 100%;
 
   > span {
     font-size: 16px;
@@ -365,17 +433,13 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.row-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
+.load-error {
+  margin-bottom: 16px;
 }
 
 .drawer-footer {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid #f0f2f5;
 }
 </style>

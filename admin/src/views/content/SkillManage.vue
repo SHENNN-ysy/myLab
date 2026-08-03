@@ -1,111 +1,115 @@
 <template>
   <div class="skill-manage">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false">
+      <template #title>
         <div class="card-header">
           <span>技术栈管理</span>
-          <el-button type="primary" @click="openDrawer()">
-            <i class="ri-add-line" />
+          <a-button type="primary" @click="openDrawer()">
+            <template #icon>
+              <PlusOutlined />
+            </template>
             新建技术栈
-          </el-button>
+          </a-button>
         </div>
       </template>
 
       <!-- 列表 -->
-      <el-table :data="skills" v-loading="loading" stripe>
-        <el-table-column label="图标" width="80" align="center">
-          <template #default="{ row }">
-            <div class="skill-icon" v-html="getIcon(row.icon)" />
+      <a-table
+        :data-source="skills"
+        :columns="columns"
+        :loading="loading"
+        row-key="id"
+        :pagination="false"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'icon'">
+            <div class="skill-icon" v-html="getIcon(record.icon)" />
           </template>
-        </el-table-column>
-        <el-table-column prop="name" label="技术名称" min-width="160" />
-        <el-table-column label="熟练度" width="200">
-          <template #default="{ row }">
+          <template v-else-if="column.key === 'percentage'">
             <div class="skill-progress">
-              <el-progress
-                :percentage="row.percentage"
+              <a-progress
+                :percent="record.percentage"
                 :stroke-width="8"
-                :color="getProgressColor(row.level)"
-                :show-text="false"
+                :stroke-color="getProgressColor(record.level)"
+                :show-info="false"
               />
-              <span class="progress-text">{{ row.percentage }}%</span>
+              <span class="progress-text">{{ record.percentage }}%</span>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column label="等级" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getLevelType(row.level)" size="small">
-              {{ row.levelText }}
-            </el-tag>
+          <template v-else-if="column.key === 'level'">
+            <a-tag :color="getLevelColor(record.level)">
+              {{ record.levelText }}
+            </a-tag>
           </template>
-        </el-table-column>
-        <el-table-column label="进度条风格" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.barStyle" :type="row.barStyle === 'coral' ? 'danger' : 'success'" size="small">
-              {{ row.barStyle === 'coral' ? '珊瑚色' : '青色' }}
-            </el-tag>
+          <template v-else-if="column.key === 'barStyle'">
+            <a-tag v-if="record.barStyle" :color="record.barStyle === 'coral' ? 'error' : 'success'">
+              {{ record.barStyle === 'coral' ? '珊瑚色' : '青色' }}
+            </a-tag>
             <span v-else class="text-muted">默认</span>
           </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" text size="small" @click="openDrawer(row)">
-              编辑
-            </el-button>
-            <el-button type="danger" text size="small" @click="handleDelete(row)">
-              删除
-            </el-button>
+          <template v-else-if="column.key === 'actions'">
+            <a-space>
+              <a-button type="link" size="small" @click="openDrawer(record)">
+                编辑
+              </a-button>
+              <a-button type="link" danger size="small" @click="handleDelete(record)">
+                删除
+              </a-button>
+            </a-space>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+        </template>
+      </a-table>
+    </a-card>
 
     <!-- 抽屉表单 -->
-    <el-drawer
-      v-model="drawerVisible"
+    <a-drawer
+      v-model:open="drawerVisible"
       :title="isEdit ? '编辑技术栈' : '新建技术栈'"
-      size="500px"
-      @closed="resetForm"
+      :width="500"
+      @close="resetForm"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="技术名称" prop="name">
-          <el-input v-model="form.name" placeholder="如：C# / .NET" />
-        </el-form-item>
+      <a-form ref="formRef" :model="form" :rules="rules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="技术名称" name="name">
+          <a-input v-model:value="form.name" placeholder="如：C# / .NET" />
+        </a-form-item>
 
-        <el-form-item label="熟练度" prop="percentage">
-          <el-slider v-model="form.percentage" :min="0" :max="100" show-input />
-        </el-form-item>
+        <a-form-item label="熟练度" name="percentage">
+          <a-slider v-model:value="form.percentage" :min="0" :max="100" />
+        </a-form-item>
 
-        <el-form-item label="等级" prop="level">
-          <el-select v-model="form.level" placeholder="选择等级">
-            <el-option label="熟练" value="proficient" />
-            <el-option label="熟练" value="competent" />
-            <el-option label="入门" value="novice" />
-          </el-select>
-        </el-form-item>
+        <a-form-item label="等级" name="level">
+          <a-select v-model:value="form.level" placeholder="选择等级">
+            <a-select-option value="proficient">熟练</a-select-option>
+            <a-select-option value="competent">熟练</a-select-option>
+            <a-select-option value="novice">入门</a-select-option>
+          </a-select>
+        </a-form-item>
 
-        <el-form-item label="等级文字" prop="levelText">
-          <el-input v-model="form.levelText" placeholder="如：熟练、入门" />
-        </el-form-item>
+        <a-form-item label="等级文字" name="levelText">
+          <a-input v-model:value="form.levelText" placeholder="如：熟练、入门" />
+        </a-form-item>
 
-        <el-form-item label="图标" prop="icon">
-          <el-select v-model="form.icon" placeholder="选择图标">
-            <el-option v-for="icon in iconOptions" :key="icon.value" :label="icon.label" :value="icon.value">
-              <span>{{ icon.label }}</span>
-            </el-option>
-          </el-select>
-        </el-form-item>
+        <a-form-item label="图标" name="icon">
+          <a-select v-model:value="form.icon" placeholder="选择图标">
+            <a-select-option
+              v-for="icon in iconOptions"
+              :key="icon.value"
+              :value="icon.value"
+            >
+              {{ icon.label }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
 
-        <el-form-item label="进度条风格" prop="barStyle">
-          <el-radio-group v-model="form.barStyle">
-            <el-radio value="coral">珊瑚色</el-radio>
-            <el-radio value="teal">青色</el-radio>
-            <el-radio :value="undefined">默认</el-radio>
-          </el-radio-group>
-        </el-form-item>
+        <a-form-item label="进度条风格" name="barStyle">
+          <a-radio-group v-model:value="form.barStyle">
+            <a-radio value="coral">珊瑚色</a-radio>
+            <a-radio value="teal">青色</a-radio>
+            <a-radio :value="undefined">默认</a-radio>
+          </a-radio-group>
+        </a-form-item>
 
-        <!-- 实时预览 -->
-        <el-form-item label="实时预览">
+        <a-form-item label="实时预览">
           <div class="skill-preview">
             <div
               class="skill-preview-item"
@@ -126,24 +130,26 @@
               </div>
             </div>
           </div>
-        </el-form-item>
-      </el-form>
+        </a-form-item>
+      </a-form>
 
       <template #footer>
         <div class="drawer-footer">
-          <el-button @click="drawerVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
+          <a-button @click="drawerVisible = false">取消</a-button>
+          <a-button type="primary" :loading="submitLoading" @click="handleSubmit">
             {{ isEdit ? '保存' : '创建' }}
-          </el-button>
+          </a-button>
         </div>
       </template>
-    </el-drawer>
+    </a-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
+import type { Rule } from 'ant-design-vue/es/form'
 import type { Skill } from '@/types'
 import { getSkillsApi, createSkillApi, updateSkillApi, deleteSkillApi } from '@/api/skill'
 import { addLog } from '@/api/log'
@@ -154,7 +160,7 @@ const drawerVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
 const currentId = ref('')
-const formRef = ref<FormInstance>()
+const formRef = ref()
 
 const form = reactive({
   name: '',
@@ -165,7 +171,7 @@ const form = reactive({
   barStyle: 'coral' as Skill['barStyle'] | undefined
 })
 
-const rules: FormRules = {
+const rules: Record<string, Rule[]> = {
   name: [{ required: true, message: '请输入技术名称', trigger: 'blur' }],
   percentage: [{ required: true, message: '请设置熟练度', trigger: 'change' }],
   level: [{ required: true, message: '请选择等级', trigger: 'change' }],
@@ -186,6 +192,40 @@ const iconOptions = [
   { label: '图层', value: 'layers' }
 ]
 
+const columns = [
+  {
+    title: '图标',
+    key: 'icon',
+    width: 80,
+    align: 'center' as const
+  },
+  { title: '技术名称', dataIndex: 'name', key: 'name', minWidth: 160 },
+  {
+    title: '熟练度',
+    key: 'percentage',
+    width: 200
+  },
+  {
+    title: '等级',
+    key: 'level',
+    width: 100,
+    align: 'center' as const
+  },
+  {
+    title: '进度条风格',
+    key: 'barStyle',
+    width: 120,
+    align: 'center' as const
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 160,
+    align: 'center' as const,
+    fixed: 'right' as const
+  }
+]
+
 const getIcon = (type: string) => {
   const icons: Record<string, string> = {
     code: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 9l-3 3 3 3M16 9l3 3-3 3M13.5 7.5l-3 9"/><path d="M7 19h10"/></svg>',
@@ -204,23 +244,22 @@ const getIcon = (type: string) => {
 
 const getProgressColor = (level: string) => {
   const colors: Record<string, string> = {
-    proficient: '#409EFF',
-    competent: '#67C23A',
-    novice: '#909399'
+    proficient: '#1677ff',
+    competent: '#52c41a',
+    novice: '#8c8c8c'
   }
-  return colors[level] || '#409EFF'
+  return colors[level] || '#1677ff'
 }
 
-const getLevelType = (level: string) => {
-  const types: Record<string, any> = {
-    proficient: 'success',
-    competent: 'warning',
-    novice: 'info'
+const getLevelColor = (level: string) => {
+  const colors: Record<string, string> = {
+    proficient: 'blue',
+    competent: 'orange',
+    novice: 'default'
   }
-  return types[level] || 'info'
+  return colors[level] || 'default'
 }
 
-// 加载数据
 const loadData = async () => {
   loading.value = true
   try {
@@ -230,7 +269,6 @@ const loadData = async () => {
   }
 }
 
-// 打开抽屉
 const openDrawer = (row?: Skill) => {
   if (row) {
     isEdit.value = true
@@ -250,7 +288,6 @@ const openDrawer = (row?: Skill) => {
   drawerVisible.value = true
 }
 
-// 重置表单
 const resetForm = () => {
   formRef.value?.resetFields()
   Object.assign(form, {
@@ -263,7 +300,6 @@ const resetForm = () => {
   })
 }
 
-// 提交
 const handleSubmit = async () => {
   if (!formRef.value) return
   try {
@@ -273,37 +309,35 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       await updateSkillApi(currentId.value, form)
       addLog('更新', `技术栈：${form.name}`, 'success')
-      ElMessage.success('更新成功')
+      message.success('更新成功')
     } else {
       await createSkillApi(form)
       addLog('新建', `技术栈：${form.name}`, 'success')
-      ElMessage.success('创建成功')
+      message.success('创建成功')
     }
 
     drawerVisible.value = false
     await loadData()
-  } catch (e) {
-    // 验证失败
+  } catch {
+    // 校验失败
   } finally {
     submitLoading.value = false
   }
 }
 
-// 删除
-const handleDelete = async (row: Skill) => {
-  try {
-    await ElMessageBox.confirm(`确定要删除技术栈「${row.name}」吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await deleteSkillApi(row.id)
-    addLog('删除', `技术栈：${row.name}`, 'success')
-    ElMessage.success('删除成功')
-    await loadData()
-  } catch {
-    // 取消
-  }
+const handleDelete = (row: Skill) => {
+  Modal.confirm({
+    title: '提示',
+    content: `确定要删除技术栈「${row.name}」吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      await deleteSkillApi(row.id)
+      addLog('删除', `技术栈：${row.name}`, 'success')
+      message.success('删除成功')
+      await loadData()
+    }
+  })
 }
 
 onMounted(() => {
@@ -313,7 +347,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .skill-manage {
-  :deep(.el-card) {
+  :deep(.ant-card) {
     border: none;
     border-radius: 8px;
   }
@@ -323,6 +357,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 
   span {
     font-size: 16px;
@@ -333,7 +368,7 @@ onMounted(() => {
 .skill-icon {
   width: 24px;
   height: 24px;
-  color: #409EFF;
+  color: #1677ff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -352,19 +387,19 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
 
-  :deep(.el-progress) {
+  :deep(.ant-progress) {
     flex: 1;
   }
 
   .progress-text {
     font-size: 13px;
-    color: #606266;
+    color: #595959;
     min-width: 36px;
   }
 }
 
 .text-muted {
-  color: #909399;
+  color: #8c8c8c;
   font-size: 13px;
 }
 
@@ -372,13 +407,11 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid #f0f2f5;
 }
 
 .skill-preview {
   padding: 16px;
-  background: #f5f7fa;
+  background: #fafafa;
   border-radius: 8px;
 }
 

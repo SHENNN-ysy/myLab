@@ -1,6 +1,6 @@
 <template>
   <footer>
-    <span class="copy">&copy; 2026 游牧人 · 数字叙事者</span>
+    <span class="copy">&copy; 2026 旅行者 · shennn</span>
     <span class="back-top" @click="scrollToTop">↑ 回到顶部</span>
   </footer>
 </template>

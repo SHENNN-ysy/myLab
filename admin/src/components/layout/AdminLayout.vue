@@ -8,48 +8,52 @@
       <!-- 顶栏 -->
       <div class="header">
         <div class="header-left">
-          <el-button
-            text
+          <a-button
+            type="text"
             class="collapse-btn"
             @click="toggleSidebar"
           >
-            <i :class="isSidebarCollapse ? 'ri-menu-unfold-line' : 'ri-menu-fold-line'" />
-          </el-button>
+            <MenuFoldOutlined v-if="!isSidebarCollapse" />
+            <MenuUnfoldOutlined v-else />
+          </a-button>
 
-          <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-            <el-breadcrumb-item v-for="item in breadcrumbs" :key="item.path">
+          <a-breadcrumb separator="/">
+            <a-breadcrumb-item>
+              <router-link to="/">首页</router-link>
+            </a-breadcrumb-item>
+            <a-breadcrumb-item v-for="item in breadcrumbs" :key="item.path">
               {{ item.title }}
-            </el-breadcrumb-item>
-          </el-breadcrumb>
+            </a-breadcrumb-item>
+          </a-breadcrumb>
         </div>
 
         <div class="header-right">
-          <el-dropdown @command="handleCommand">
+          <a-dropdown>
             <span class="user-info">
-              <el-avatar :size="32" class="user-avatar">
+              <a-avatar class="user-avatar">
                 {{ userInitials }}
-              </el-avatar>
+              </a-avatar>
               <span class="user-name">{{ currentUser?.username || 'Admin' }}</span>
-              <i class="ri-arrow-down-s-line" />
+              <DownOutlined />
             </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="profile">
-                  <i class="ri-user-line" />
+            <template #overlay>
+              <a-menu @click="handleCommand">
+                <a-menu-item key="profile">
+                  <UserOutlined />
                   个人中心
-                </el-dropdown-item>
-                <el-dropdown-item command="settings">
-                  <i class="ri-settings-3-line" />
+                </a-menu-item>
+                <a-menu-item key="settings">
+                  <SettingOutlined />
                   设置
-                </el-dropdown-item>
-                <el-dropdown-item divided command="logout">
-                  <i class="ri-logout-box-line" />
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="logout">
+                  <LogoutOutlined />
                   退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
+                </a-menu-item>
+              </a-menu>
             </template>
-          </el-dropdown>
+          </a-dropdown>
         </div>
       </div>
 
@@ -68,7 +72,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { Modal } from 'ant-design-vue'
+import {
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  UserOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  DownOutlined
+} from '@ant-design/icons-vue'
 import { useAuth } from '@/composables/useAuth'
 import Sidebar from './Sidebar.vue'
 
@@ -78,13 +90,11 @@ const { currentUser, logout } = useAuth()
 
 const isSidebarCollapse = ref(false)
 
-// 用户名首字母
 const userInitials = computed(() => {
   const name = currentUser.value?.username || 'A'
   return name.charAt(0).toUpperCase()
 })
 
-// 面包屑
 const breadcrumbs = computed(() => {
   const matched = route.matched.filter(item => item.meta?.title)
   return matched.map(item => ({
@@ -93,14 +103,12 @@ const breadcrumbs = computed(() => {
   }))
 })
 
-// 切换侧边栏
 const toggleSidebar = () => {
   isSidebarCollapse.value = !isSidebarCollapse.value
 }
 
-// 下拉菜单命令
-const handleCommand = async (command: string) => {
-  switch (command) {
+const handleCommand = async ({ key }: { key: string }) => {
+  switch (key) {
     case 'profile':
       router.push('/profile')
       break
@@ -108,17 +116,16 @@ const handleCommand = async (command: string) => {
       router.push('/system/settings')
       break
     case 'logout':
-      try {
-        await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        })
-        logout()
-        router.push('/login')
-      } catch {
-        // 取消
-      }
+      Modal.confirm({
+        title: '提示',
+        content: '确定要退出登录吗？',
+        okText: '确定',
+        cancelText: '取消',
+        onOk: () => {
+          logout()
+          router.push('/login')
+        }
+      })
       break
   }
 }
@@ -153,7 +160,7 @@ const handleCommand = async (command: string) => {
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .header-left {
@@ -164,11 +171,11 @@ const handleCommand = async (command: string) => {
 
 .collapse-btn {
   font-size: 18px;
-  color: #606266;
-  padding: 4px;
+  color: #595959;
+  padding: 4px 8px;
 
   &:hover {
-    color: var(--el-color-primary);
+    color: var(--ant-primary-color);
   }
 }
 
@@ -188,14 +195,15 @@ const handleCommand = async (command: string) => {
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: #f5f7fa;
+    background-color: #f5f5f5;
   }
 }
 
 .user-avatar {
-  background-color: var(--el-color-primary);
+  background-color: var(--ant-primary-color);
   color: #fff;
   font-size: 14px;
+  vertical-align: middle;
 }
 
 .user-name {

@@ -14,7 +14,9 @@ $images = @(
     "minio/minio:latest",
     "node:20-alpine",
     "nginx:1.27-alpine",
-    "python:3.12-slim"
+    "python:3.12-slim",
+    "maven:3.9-eclipse-temurin-21",
+    "eclipse-temurin:21-jre"
 )
 
 function Invoke-Docker {

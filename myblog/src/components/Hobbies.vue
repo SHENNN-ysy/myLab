@@ -1,266 +1,255 @@
 <template>
-  <section id="hobbies">
+  <section id="game">
     <div class="container">
       <RevealOnScroll>
         <div class="section-header">
-          <span class="section-num">04</span>
+          <span class="section-num">05</span>
           <div class="section-title-group">
-            <h2 class="section-title">我的<em>足迹</em></h2>
-            <p class="section-desc">用脚步和镜头,在地图上留下这些城市的名字。每个地点背后,都有一次认真的抵达。</p>
+            <h2 class="section-title">我的<em>爱好</em></h2>
+            <p class="section-desc">游戏、音乐与那些让我忘记时间的事。</p>
           </div>
         </div>
       </RevealOnScroll>
 
-      <div class="hobbies-layout">
-        <RevealOnScroll :delay="1">
-          <div class="hobbies-left">
-            <div class="my-location-bar">
-              <span class="my-location-label">我的位置</span>
-              <span class="my-location-value">广州</span>
-            </div>
+      <div class="game-panels">
+        <RevealOnScroll class="time-panel-slot">
+          <div class="time-panel">
+            <h3 class="panel-title">Time</h3>
 
-            <div class="hobbies-intro">
-              <p>点击列表中的任意一项,或在地图上点亮一个标记,可以查看我在那里的足迹。</p>
-            </div>
-
-            <div class="hobby-list">
-              <button
-                v-for="hobby in hobbies"
-                :key="hobby.id"
-                class="hobby-item"
-                :class="{ 'is-active': activeHobby === hobby.id }"
-                @mouseenter="setActiveHobby(hobby.id)"
-                @focus="setActiveHobby(hobby.id)"
-                @click="openHobbyModal(hobby.id)"
-              >
-                <div class="hobby-item-left">
-                  <span class="hobby-bullet" />
-                  <span class="hobby-name">{{ hobby.name }}</span>
-                </div>
-                <span class="hobby-tag">{{ hobby.tag }}</span>
-              </button>
-            </div>
+            <svg class="time-chart-svg" viewBox="0 0 500 300" preserveAspectRatio="none" role="img" aria-label="时间分配堆叠面积图">
+              <g>
+                <path
+                  v-for="series in timeSeries"
+                  :key="series.key"
+                  class="time-area"
+                  :class="{ 'is-active': activeTimeKey === series.key }"
+                  :d="series.path"
+                  :fill="series.color"
+                  @mouseenter="activeTimeKey = series.key"
+                  @mouseleave="activeTimeKey = null"
+                />
+                <text
+                  v-for="series in timeSeries"
+                  :key="`${series.key}-label`"
+                  class="time-area-label"
+                  :transform="series.labelTransform"
+                >{{ series.label }}</text>
+              </g>
+              <g class="time-axis">
+                <g v-for="tick in yTicks" :key="tick" :transform="`translate(-1,${scaleY(tick)})`">
+                  <line x1="0" x2="7" />
+                  <text class="time-axis-y-label" x="10" dy="0.32em">{{ tick * 10 }}%</text>
+                </g>
+              </g>
+              <g class="time-axis">
+                <g v-for="tick in xTicks" :key="tick" :transform="`translate(${scaleX(tick)},301)`">
+                  <line y1="0" y2="-7" />
+                  <text y="-10">{{ tick }}</text>
+                </g>
+              </g>
+              <text class="time-axis-title" x="260" y="290" text-anchor="middle">Age</text>
+            </svg>
           </div>
         </RevealOnScroll>
 
-        <RevealOnScroll :delay="2">
-          <div class="map-panel">
-            <div class="map-stage" />
-
-            <div class="map-markers">
-              <div
-                v-for="hobby in hobbies"
-                :key="hobby.id"
-                class="map-marker"
-                :class="{ 'is-active': activeHobby === hobby.id, 'is-self': hobby.isSelf }"
-                :style="{ left: hobby.position.x + '%', top: hobby.position.y + '%' }"
-                @click="openHobbyModal(hobby.id)"
-              >
-                <div class="marker-tip" :class="{ 'is-flipped': hobby.position.y < 40 }">
-                  <div class="marker-tip-title">{{ hobby.tip.title }}</div>
-                  <div class="marker-tip-row">
-                    <span>坐标</span>
-                    <strong>{{ hobby.tip.coords }}</strong>
-                  </div>
-                  <div class="marker-tip-row">
-                    <span>场景</span>
-                    <strong>{{ hobby.tip.scene }}</strong>
-                  </div>
-                </div>
-                <div class="marker-pulse" />
-                <div class="marker-pin">
-                  <span class="marker-dot">
-                    <img v-if="hobby.isSelf" src="/assets/avatar.png" alt="" />
-                  </span>
-                  <span class="marker-stem" />
-                </div>
+        <div class="game-cards-grid">
+          <RevealOnScroll
+            v-for="(game, index) in featuredGames"
+            :key="game.name"
+            :class="['game-card-slot', `game-card-slot--${index + 1}`]"
+            :delay="(index % 3) + 1"
+          >
+            <div
+              class="game-card"
+              :class="{ 'is-active': activeTimeKey === timeChartKeys[index] }"
+              @mouseenter="activeTimeKey = timeChartKeys[index]"
+              @mouseleave="activeTimeKey = null"
+            >
+              <img :src="game.image" :alt="game.name" loading="lazy" />
+              <div class="game-card-overlay">
+                <p class="game-card-description">{{ game.description }}</p>
+                <span class="game-card-tag">{{ game.tag }}</span>
+                <h3 class="game-card-title">{{ game.name }}</h3>
+                <p class="game-card-subtitle">{{ game.subtitle }}</p>
               </div>
             </div>
-          </div>
-        </RevealOnScroll>
+          </RevealOnScroll>
+        </div>
       </div>
     </div>
-
-    <ProjectModal v-model="isModalOpen" direction="left">
-      <div class="modal-body hobby-modal-body">
-        <div class="modal-meta stagger-item-left" :style="{ animationDelay: staggerDelay(0) }">
-          <span class="project-tag accent">{{ selectedHobbyDetail?.tag }}</span>
-          <span class="project-year">{{ selectedHobbyDetail?.year }}</span>
-        </div>
-        <h2 class="modal-title stagger-item-left" :style="{ animationDelay: staggerDelay(1) }">{{ selectedHobbyDetail?.title }}</h2>
-        <p class="modal-desc stagger-item-left" :style="{ animationDelay: staggerDelay(2) }">{{ selectedHobbyDetail?.desc }}</p>
-        <p
-          v-for="(paragraph, index) in selectedHobbyDetail?.paragraphs"
-          :key="paragraph"
-          class="stagger-item-left"
-          :style="{ animationDelay: staggerDelay(index + 3) }"
-        >
-          {{ paragraph }}
-        </p>
-        <h4 class="stagger-item-left" :style="{ animationDelay: staggerDelay(6) }">常用器材 / 技术栈</h4>
-        <div class="modal-tech stagger-item-left" :style="{ animationDelay: staggerDelay(7) }">
-          <span v-for="tech in selectedHobbyDetail?.tech" :key="tech">{{ tech }}</span>
-        </div>
-        <div class="photo-wall-wrapper stagger-item-left" :style="{ animationDelay: staggerDelay(8) }">
-          <h4>照片墙</h4>
-          <div class="modal-photos">
-            <div
-              v-for="height in skeletonHeights"
-              :key="height"
-              class="modal-photo photo-skeleton"
-              :style="{ height: height + 'px' }"
-              aria-hidden="true"
-            >
-            </div>
-          </div>
-          <p class="modal-photos-hint">照片墙正在整理中 · 稍后补上这一组日常记录</p>
-        </div>
-        <button class="modal-cta stagger-item-left" :style="{ animationDelay: staggerDelay(9) }">{{ selectedHobbyDetail?.cta }} →</button>
-      </div>
-    </ProjectModal>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { hobbies, type Hobby } from '@/data/projects'
+import { games } from '@/data/projects'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
-import ProjectModal from './ui/ProjectModal.vue'
 
-const activeHobby = ref('photo')
-const selectedHobby = ref<Hobby | null>(hobbies[0] ?? null)
-const isModalOpen = ref(false)
-const skeletonHeights = [180, 240, 200, 280, 160]
-
-const staggerDelay = (index: number) => `${0.08 + index * 0.07}s`
-
-const setActiveHobby = (id: string) => {
-  activeHobby.value = id
+const gameDescriptions: Record<string, string> = {
+  'Counter-Strike 2': '最喜欢它纯粹又残酷的博弈感，每一颗道具、每一次peek都要为团队节奏负责。',
+  'Apex 英雄': '机动性和临场决策很迷人，打赢一波混战时会有非常强的爽感和节奏感。',
+  '三角洲行动': '偏战术、偏压迫的枪线体验，适合认真研究路线、信息和团队配合。',
+  '无畏契约': '技能和枪法互相牵制，回合制的紧张感很足，残局尤其容易让人上头。',
+  '守望先锋 2': '英雄机制和团战节奏变化很快，最吸引我的是团队位置和技能交换。',
+  '英雄联盟': '长期陪伴型游戏，版本、位置、运营和团战判断总能不断产生新的理解。'
 }
 
-const hobbyDetails: Record<string, {
-  tag: string
-  year: string
-  title: string
-  desc: string
-  paragraphs: string[]
-  tech: string[]
-  cta: string
-}> = {
-  photo: {
-    tag: 'Film · 01',
-    year: '胶片摄影',
-    title: '胶片摄影 · 西安城墙',
-    desc: '一台 Nikon FM2，几卷 Portra 400，和一段厚重的古城墙。',
-    paragraphs: [
-      '西安是我拍胶片最密集的城市。古城墙是天然的引导线，傍晚时分，金色的光沿着砖缝流下来。',
-      '我喜欢在钟楼附近反复行走，让人流、车流和老建筑在取景框里形成自己的节奏。',
-      '胶片摄影对我来说不是怀旧，而是一种慢下来的观察方式。'
-    ],
-    tech: ['Nikon FM2', 'Portra 400', 'Epson V600 扫描', 'Lightroom 调色'],
-    cta: '查看作品集'
-  },
-  hike: {
-    tag: 'Trail · 02',
-    year: '徒步 / 登山',
-    title: '徒步 · 昆明 · 高海拔',
-    desc: '用脚步丈量高原，不是征服，是学会在稀薄空气里找到自己的节奏。',
-    paragraphs: [
-      '昆明周边的山路让我重新理解了“距离”这件事：地图上的短线，走起来常常是完整的一天。',
-      '我喜欢徒步里那种简单的判断：补水、节奏、天气、脚下的路，每一件都真实具体。',
-      '最美的风景往往不在终点，而在“再坚持一下”之后的转角。'
-    ],
-    tech: ['Salomon X Ultra 4', 'Osprey 背包', 'Garmin Fenix 7', '登山杖'],
-    cta: '查看路线笔记'
-  },
-  coffee: {
-    tag: 'Coffee · 03',
-    year: '精品咖啡',
-    title: '精品咖啡 · 上海武康路',
-    desc: '从豆子到杯子，一杯咖啡是一段小型的时间旅行。',
-    paragraphs: [
-      '武康路是我在上海很喜欢的一段路。梧桐树影把阳光切成碎片，几家小店藏在老房子里。',
-      '咖啡对我来说是一种准时开始工作的仪式，不是醒神，而是给一天一个锚点。',
-      '我更在意一杯咖啡背后的风味描述、产地故事，以及它被认真对待的方式。'
-    ],
-    tech: ['Kalita Wave 185', 'Fellow Stagg EKG', '手冲壶', '风味记录本'],
-    cta: '查看豆单笔记'
-  },
-  travel: {
-    tag: 'Travel · 04',
-    year: '城市漫游',
-    title: '城市漫游 · 广州西关',
-    desc: '不急着去景点，只在陌生城市的街区里游荡几个小时。',
-    paragraphs: [
-      '西关是广州老城里很迷人的一片：骑楼街、麻石巷、满洲窗，还有街坊聊天的声音。',
-      '我喜欢在这样的地方慢慢走，听街边的生活声，闻别人家的饭菜香。',
-      '城市漫游训练我对偶然的开放度：走错路，才更容易遇到没有被攻略写过的惊喜。'
-    ],
-    tech: ['纸质地图', '一双合脚的鞋', '相机', '空白笔记本'],
-    cta: '查看旅行清单'
-  },
-  music: {
-    tag: 'Music · 05',
-    year: '黑胶与合成器',
-    title: '黑胶与合成器 · 深圳 OCT',
-    desc: '一种回放时间，一种创造时间，它们都让我暂时离开屏幕。',
-    paragraphs: [
-      '深圳的创意园区里有几家独立唱片店，是我固定会去的地方。',
-      '合成器是近几年新开的坑。把一个 pad 音色调出层次，本身就是一次小创作。',
-      '音乐对我而言是不被语言打扰的时间。项目做累了，切到 DAW 里乱按二十分钟，也是一种恢复。'
-    ],
-    tech: ['Audio-Technica', 'Korg Minilogue XD', 'Ableton Live', 'KRK Rokit'],
-    cta: '查看常听清单'
-  },
-  read: {
-    tag: 'Reading · 06',
-    year: '独立书店',
-    title: '独立书店 · 北京',
-    desc: '认识一座城市，最慢也最可靠的方式，是在它的书店里坐一个下午。',
-    paragraphs: [
-      '北京有几条书店密度很高的街区，我喜欢把它们当作城市里的临时工作台。',
-      '我常常在独立书店里不急着买东西，只是翻完一本诗集，再翻完一本地理散文。',
-      '比起连锁书店，独立书店更像私人策展，选品本身就是一种表达。'
-    ],
-    tech: ['纸质笔记本', 'Moleskine 日程本', 'Kindle Oasis', '铅笔'],
-    cta: '查看书单'
-  }
+const featuredGames = computed(() => (
+  games.slice(0, 5).map((game) => ({
+    ...game,
+    description: gameDescriptions[game.name] ?? game.subtitle
+  }))
+))
+
+/* ── Time 堆叠面积图：复刻 qzq.at 的 d3 stacked area chart ──
+   viewBox 500x300，x 轴为年龄（domain [-1,27]），y 轴为时间占比（domain [0,10] 即 0-100%），
+   各系列自下而上堆叠，鼠标悬浮时白色描边高亮。 */
+const CHART_W = 500
+const CHART_H = 300
+
+const scaleX = (age: number) => ((age + 1) / 28) * CHART_W
+const scaleY = (value: number) => CHART_H - (value / 10) * CHART_H
+
+const xTicks = [0, 5, 10, 15, 20, 25]
+const yTicks = [2, 4, 6, 8]
+
+type TimeKey = 'Study' | 'Music' | 'Game' | 'Coding' | 'Social'
+
+const timeChartKeys: TimeKey[] = ['Study', 'Music', 'Game', 'Coding', 'Social']
+
+/* 当前联动选中的色带 / 卡片（按顺序一一对应：卡片 index ↔ timeChartKeys[index]） */
+const activeTimeKey = ref<TimeKey | null>(null)
+
+const timeChartMeta: Record<TimeKey, { label: string; color: string; labelTransform: string }> = {
+  Study: { label: 'Study', color: '#93c5fd', labelTransform: 'translate(110,240) scale(1.5)' },
+  Music: { label: 'Music', color: '#7dd3fc', labelTransform: 'translate(410,232) scale(1.3)' },
+  Game: { label: 'Game', color: '#67e8f9', labelTransform: 'translate(195,150) scale(1.5)' },
+  Coding: { label: 'Coding', color: '#5eead4', labelTransform: 'translate(340,110) scale(1.5)' },
+  Social: { label: 'Social or Family', color: '#6ee7b7', labelTransform: 'translate(63,65) scale(1.5)' }
 }
 
-const selectedHobbyDetail = computed(() => {
-  const hobby = selectedHobby.value
-  if (!hobby) return null
-  const cleanDetail = hobbyDetails[hobby.id]
-  if (cleanDetail) return cleanDetail
+// 完整覆盖 -1 ~ 27 每个年龄；原锚点之间的数据为线性插值，每行总和保持 10（即 100%）
+const timeChartData: Array<{ index: number } & Record<TimeKey, number>> = [
+  { index: -1, Study: 0, Music: 0, Game: 0, Coding: 0, Social: 10 },
+  { index: 0, Study: 0, Music: 0, Game: 0, Coding: 0, Social: 10 },
+  { index: 1, Study: 1, Music: 0, Game: 0, Coding: 0, Social: 9 },
+  { index: 2, Study: 2, Music: 0, Game: 0, Coding: 0, Social: 8 },
+  { index: 3, Study: 3, Music: 0, Game: 0, Coding: 0, Social: 7 },
+  { index: 4, Study: 4, Music: 0, Game: 0, Coding: 0, Social: 6 },
+  { index: 5, Study: 5, Music: 0, Game: 0, Coding: 0, Social: 5 },
+  { index: 6, Study: 6, Music: 0, Game: 0, Coding: 0, Social: 4 },
+  { index: 7, Study: 5.3, Music: 0, Game: 1, Coding: 0, Social: 3.7 },
+  { index: 8, Study: 4.7, Music: 0, Game: 2, Coding: 0, Social: 3.3 },
+  { index: 9, Study: 4, Music: 0, Game: 3, Coding: 0, Social: 3 },
+  { index: 10, Study: 3.9, Music: 0, Game: 2.9, Coding: 0.3, Social: 2.9 },
+  { index: 11, Study: 3.8, Music: 0, Game: 2.8, Coding: 0.7, Social: 2.7 },
+  { index: 12, Study: 3.7, Music: 0, Game: 2.7, Coding: 1, Social: 2.6 },
+  { index: 13, Study: 3.6, Music: 0, Game: 2.6, Coding: 1.3, Social: 2.5 },
+  { index: 14, Study: 3.4, Music: 0, Game: 2.4, Coding: 1.7, Social: 2.5 },
+  { index: 15, Study: 3.3, Music: 0, Game: 2.3, Coding: 2, Social: 2.4 },
+  { index: 16, Study: 3.2, Music: 0, Game: 2.2, Coding: 2.3, Social: 2.3 },
+  { index: 17, Study: 3.1, Music: 0, Game: 2.1, Coding: 2.7, Social: 2.1 },
+  { index: 18, Study: 3, Music: 0, Game: 2, Coding: 3, Social: 2 },
+  { index: 19, Study: 2.8, Music: 0.2, Game: 2, Coding: 3, Social: 2 },
+  { index: 20, Study: 2.6, Music: 0.4, Game: 2, Coding: 3, Social: 2 },
+  { index: 21, Study: 2.4, Music: 0.6, Game: 2, Coding: 3, Social: 2 },
+  { index: 22, Study: 2.2, Music: 0.8, Game: 2, Coding: 3, Social: 2 },
+  { index: 23, Study: 2, Music: 1, Game: 2, Coding: 3, Social: 2 },
+  { index: 24, Study: 2, Music: 1, Game: 2, Coding: 3, Social: 2 },
+  { index: 25, Study: 2, Music: 1, Game: 2, Coding: 3, Social: 2 },
+  { index: 26, Study: 2.5, Music: 0.5, Game: 1.5, Coding: 3.5, Social: 2 },
+  { index: 27, Study: 3, Music: 0, Game: 1, Coding: 4, Social: 2 }
+]
 
-  return {
-    tag: hobby.isSelf ? 'Travel · 04' : `${hobby.name} · ${hobby.id}`,
-    year: hobby.tip.scene,
-    title: hobby.tip.title,
-    desc: hobby.tip.coords,
-    paragraphs: [
-      hobby.tip.scene,
-      '这里记录的是一次认真抵达：用脚步、镜头和时间，把城市里的细节慢慢收进自己的地图。',
-      '这些地点不是简单的坐标，而是我和不同生活方式短暂相遇的切片。'
-    ],
-    tech: ['纸质地图', '相机', '步行路线', hobby.name],
-    cta: hobby.tag
+interface ChartPoint {
+  x: number
+  y: number
+}
+
+// Catmull-Rom 转三次贝塞尔，生成与 d3 curveCatmullRom 一致的平滑曲线
+function smoothCommands(pts: ChartPoint[]): string {
+  let d = ''
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[i + 2] ?? p2
+    const c1x = p1.x + (p2.x - p0.x) / 6
+    const c1y = p1.y + (p2.y - p0.y) / 6
+    const c2x = p2.x - (p3.x - p1.x) / 6
+    const c2y = p2.y - (p3.y - p1.y) / 6
+    d += `C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`
   }
+  return d
+}
+
+function buildAreaPath(pts: Array<{ x: number; y0: number; y1: number }>): string {
+  const top = pts.map((p) => ({ x: p.x, y: p.y1 }))
+  const bottom = pts.map((p) => ({ x: p.x, y: p.y0 })).reverse()
+  return `M${top[0].x.toFixed(2)},${top[0].y.toFixed(2)}${smoothCommands(top)}L${bottom[0].x.toFixed(2)},${bottom[0].y.toFixed(2)}${smoothCommands(bottom)}Z`
+}
+
+// 5-tap 高斯平滑（边缘重复取样）。对每条堆叠边界做两遍，抹平锚点处的斜率折角，
+// 让色带交界线更圆润；核权重非负且归一，平滑是线性运算——
+// 各色带厚度（相邻边界之差）平滑后仍非负、每层总和仍为 10，不会反转或溢出
+function smoothValues(values: number[]): number[] {
+  const kernel = [1, 4, 6, 4, 1]
+  const pass = (input: number[]) =>
+    input.map((_, i) => {
+      let sum = 0
+      let weightSum = 0
+      for (let k = -2; k <= 2; k++) {
+        const j = Math.min(Math.max(i + k, 0), input.length - 1)
+        const weight = kernel[k + 2]
+        sum += input[j] * weight
+        weightSum += weight
+      }
+      return sum / weightSum
+    })
+  return pass(pass(values))
+}
+
+const timeSeries = computed(() => {
+  // 堆叠边界：boundaries[0] 为底部 0 线，boundaries[k] 为前 k 个系列的累计值，顶部恒为 10
+  const boundaries: number[][] = [timeChartData.map(() => 0)]
+  timeChartKeys.forEach((key, k) => {
+    const prev = boundaries[k]
+    boundaries.push(timeChartData.map((row, i) => prev[i] + row[key]))
+  })
+  const smoothed = boundaries.map(smoothValues)
+  return timeChartKeys.map((key, k) => {
+    const pts = timeChartData.map((row, i) => ({
+      x: scaleX(row.index),
+      // 上下各外扩 1 个单位与相邻色带重叠，消除拉伸渲染时色带间的白色细缝
+      y0: scaleY(smoothed[k][i]) + 1,
+      y1: scaleY(smoothed[k + 1][i]) - 1
+    }))
+    return {
+      key,
+      ...timeChartMeta[key],
+      // 标签以卡片标题为准，与右侧卡片一一对应
+      label: featuredGames.value[k]?.name ?? timeChartMeta[key].label,
+      path: buildAreaPath(pts)
+    }
+  })
 })
-
-const openHobbyModal = (id: string) => {
-  setActiveHobby(id)
-  selectedHobby.value = hobbies.find((hobby) => hobby.id === id) ?? null
-  isModalOpen.value = true
-}
 </script>
 
 <style scoped>
-#hobbies {
-  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
-  padding: 100px 0;
+#game {
+  padding: 50px 0 100px;
+  overflow: hidden;
   position: relative;
-  z-index: 1;
+}
+
+/* 背景与我的足迹（#hobbies）下边缘同色（--bg-alt），交界处无缝，并压到背景球（z-index: -1）之下 */
+#game::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--bg-alt);
+  pointer-events: none;
 }
 
 .container {
@@ -274,7 +263,7 @@ const openHobbyModal = (id: string) => {
   grid-template-columns: auto 1fr;
   gap: 2rem;
   align-items: start;
-  margin-bottom: 4rem;
+  margin-bottom: 2rem;
 }
 
 .section-num {
@@ -309,379 +298,336 @@ const openHobbyModal = (id: string) => {
   white-space: nowrap;
 }
 
-.hobbies-layout {
-  display: grid;
-  grid-template-columns: 0.6fr 1.4fr;
-  gap: 3rem;
-  align-items: start;
+/* Panels Layout — Time 面板居左为主体，右侧为游戏卡片；
+   整体向容器两侧空白区域延伸 */
+.game-panels {
+  display: flex;
+  gap: 1.5rem;
+  margin: 0 -8rem;
+  position: relative;
+  z-index: 1;
 }
 
-.hobbies-left {
+.time-panel-slot {
+  flex: none;
+  min-width: 0;
+  margin-left: -8rem;
+}
+
+.time-panel {
+  height: 100%;
   display: flex;
   flex-direction: column;
+  border-radius: 24px;
+  padding: 1.5rem;
+  background: linear-gradient(to right bottom, #fcfcfd 20%, #f2f2f3 150%);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
-.my-location-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 1rem;
-  background: var(--bg-card);
-  border: 1px solid rgba(255, 107, 107, 0.15);
-  border-left: 3px solid #FF6B6B;
-  margin-bottom: 1.6rem;
-}
-
-.my-location-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: 0;
-}
-
-.my-location-label::before {
-  content: '';
-  width: 1.35rem;
-  height: 1px;
-  background: #FF6B6B;
-  flex-shrink: 0;
-}
-
-.my-location-value {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #FF6B6B;
-  letter-spacing: 0.05em;
-}
-
-.hobbies-intro {
-  font-family: var(--font-display);
-  font-size: 1.08rem;
+.panel-title {
+  font-family: 'Pacifico', cursive;
+  font-size: 2.25rem;
   font-weight: 400;
+  line-height: 1.2;
   color: var(--ink);
-  line-height: 1.9;
-  font-style: italic;
-  margin-bottom: 1.6rem;
+  margin-bottom: 0.75rem;
 }
 
-.hobby-list {
-  display: grid;
-  gap: 0.6rem;
+.panel-desc {
+  font-size: 0.95rem;
+  color: var(--ink-light);
+  max-width: 600px;
+  font-weight: 300;
+  line-height: 1.8;
+  margin-bottom: 1rem;
 }
 
-.hobby-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 1rem;
-  background: var(--bg-card);
-  border: 1px solid rgba(91, 164, 230, 0.12);
-  border-left: 3px solid transparent;
-  cursor: pointer;
-  transition: border-color 0.25s, transform 0.25s, background 0.25s;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-}
-
-.hobby-item:hover {
-  border-left-color: #FF6B6B;
-  transform: translateX(4px);
-}
-
-.hobby-item.is-active {
-  border-left-color: #FF6B6B;
-  background: #fff;
-  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.06);
-}
-
-.hobby-item-left {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  min-width: 0;
-}
-
-.hobby-bullet {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #FF6B6B;
-  flex-shrink: 0;
-  box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.2);
-}
-
-.hobby-item.is-active .hobby-bullet {
-  box-shadow: 0 0 0 6px rgba(255, 107, 107, 0.2), 0 0 14px #FF6B6B;
-}
-
-.hobby-name {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -0.01em;
-}
-
-.hobby-tag {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #FF6B6B;
-  flex-shrink: 0;
-}
-
-/* Map Panel */
-.map-panel {
-  position: relative;
-  background: linear-gradient(180deg, rgba(91, 164, 230, 0.08) 0%, rgba(232, 244, 253, 0.5) 100%);
-  border: 1px solid rgba(91, 164, 230, 0.2);
-  border-radius: 16px;
-  overflow: hidden;
-  aspect-ratio: 1029 / 823;
+/* Time Chart — 固定 900x600，向左侧空白延伸、向下延伸 */
+.time-chart-svg {
+  width: 900px;
+  height: 600px;
   max-width: 100%;
-  box-shadow: 0 8px 32px rgba(27, 58, 75, 0.08);
-  isolation: isolate;
-}
-
-.map-stage {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #E8F4FD;
-  background-image: url('/assets/china-map.jpeg');
-  background-size: contain;
-  background-position: center center;
-  background-repeat: no-repeat;
+  display: block;
   border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  color: #334155;
 }
 
-.map-markers {
-  position: absolute;
-  inset: 0;
-}
-
-.map-marker {
-  position: absolute;
-  transform: translate(-50%, -100%);
+.time-area {
+  stroke: #ffffff;
+  stroke-width: 0;
+  transition: stroke-width 0.5s ease;
   cursor: pointer;
-  z-index: 3;
-  transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), z-index 0s;
 }
 
-.map-marker:hover,
-.map-marker.is-active {
-  z-index: 6;
+.time-area:hover,
+.time-area.is-active {
+  stroke-width: 5;
 }
 
-.marker-pin {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform: translateY(0);
-  transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+.time-area-label {
+  fill: #334155;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 300;
+  pointer-events: none;
 }
 
-.map-marker:hover .marker-pin,
-.map-marker.is-active .marker-pin {
-  transform: translateY(-4px);
+.time-axis line {
+  stroke: currentColor;
 }
 
-.marker-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #FF6B6B;
-  border: 2.5px solid var(--bg-card);
-  box-shadow: 0 0 0 1.5px #FF6B6B, 0 3px 12px rgba(255, 107, 107, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.time-axis text {
+  fill: currentColor;
+  font-family: sans-serif;
+  font-size: 10px;
+  text-anchor: middle;
 }
 
-.map-marker.is-active .marker-dot {
-  width: 18px;
-  height: 18px;
-  background: #FF6B6B;
-  border-color: var(--bg-card);
-  box-shadow: 0 0 0 2px #FF6B6B, 0 0 0 7px rgba(255, 107, 107, 0.2), 0 6px 18px rgba(255, 107, 107, 0.6);
+/* y 轴数值改为左对齐，从刻度线右侧起排，避免与刻度线重叠 */
+.time-axis .time-axis-y-label {
+  text-anchor: start;
 }
 
-.map-marker.is-self .marker-dot {
-  background: transparent;
-  width: 84px;
-  height: 84px;
-  box-shadow: 0 0 0 3px #FF6B6B, 0 4px 16px rgba(255, 107, 107, 0.5);
+.time-axis-title {
+  fill: #334155;
+  font-family: sans-serif;
+  font-size: 16px;
+}
+
+/* Game Cards Grid — 原有 bento 布局；
+   卡片放大，总高度与左侧 Time 面板对齐，向右侧空白延伸 */
+.game-cards-grid {
+  flex: 1;
+  min-width: 0;
+  margin-right: -8rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.game-card-slot {
+  min-height: 0;
+}
+
+.game-card-slot--1 {
+  grid-column: 2 / 4;
+  grid-row: 1 / 3;
+}
+
+.game-card-slot--2 {
+  grid-column: 1 / 2;
+  grid-row: 1 / 3;
+}
+
+.game-card-slot--3 {
+  grid-column: 1 / 2;
+  grid-row: 3 / 4;
+}
+
+.game-card-slot--4 {
+  grid-column: 2 / 3;
+  grid-row: 3 / 4;
+}
+
+.game-card-slot--5 {
+  grid-column: 3 / 4;
+  grid-row: 3 / 4;
+}
+
+.game-card {
+  background: var(--bg-card);
+  border-radius: 16px;
   overflow: hidden;
+  position: relative;
+  height: 100%;
+  min-height: 140px;
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s ease;
+  box-shadow: 0 4px 20px rgba(27, 58, 75, 0.08);
 }
 
-.map-marker.is-self .marker-dot img {
+.game-card:hover,
+.game-card.is-active {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 40px rgba(27, 58, 75, 0.12);
+}
+
+.game-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
   display: block;
+  transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.map-marker.is-self.is-active .marker-dot {
-  width: 104px;
-  height: 104px;
-  box-shadow: 0 0 0 4px #FF6B6B, 0 0 0 12px rgba(255, 107, 107, 0.2), 0 8px 24px rgba(255, 107, 107, 0.55);
+.game-card:hover img,
+.game-card.is-active img {
+  transform: scale(1.08);
 }
 
-.map-marker.is-self.is-active .marker-dot {
-  width: 104px;
-  height: 104px;
-  box-shadow: 0 0 0 4px #FF6B6B, 0 0 0 12px rgba(255, 107, 107, 0.2), 0 8px 24px rgba(255, 107, 107, 0.55);
-}
-
-.marker-stem {
+.game-card-overlay {
   position: absolute;
-  bottom: -6px;
-  left: 50%;
-  width: 1.5px;
-  height: 6px;
-  background: #FF6B6B;
-  transform: translateX(-50%);
-}
-
-.marker-pulse {
-  position: absolute;
-  bottom: -1px;
-  left: 50%;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 107, 107, 0.35);
-  transform: translate(-50%, 0);
-  animation: markerPulse 2.2s ease-out infinite;
-  pointer-events: none;
-}
-
-.map-marker.is-self .marker-pulse {
-  width: 120px;
-  height: 120px;
-  bottom: -12px;
-  background: transparent;
-  border: 3px solid rgba(255, 107, 107, 0.5);
-  animation: markerPulseAvatar 2.4s ease-out infinite;
-}
-
-@keyframes markerPulse {
-  0% { transform: translate(-50%, 0) scale(0.5); opacity: 0.9; }
-  100% { transform: translate(-50%, 0) scale(2.5); opacity: 0; }
-}
-
-@keyframes markerPulseAvatar {
-  0% { transform: translate(-50%, 0) scale(0.35); opacity: 0.85; }
-  100% { transform: translate(-50%, 0) scale(1.6); opacity: 0; }
-}
-
-.marker-tip {
-  position: absolute;
-  bottom: calc(100% + 12px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
-  min-width: 190px;
-  max-width: 240px;
-  padding: 0.7rem 0.85rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 10px 28px rgba(20,18,16,0.12);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s, transform 0.2s;
-  white-space: nowrap;
-}
-
-.marker-tip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: var(--bg-card);
-}
-
-.marker-tip.is-flipped {
-  bottom: auto;
-  top: calc(100% + 12px);
-  transform: translateX(-50%) translateY(-4px);
-}
-
-.marker-tip.is-flipped::after {
-  top: auto;
-  bottom: 100%;
-  border-top-color: transparent;
-  border-bottom-color: var(--bg-card);
-}
-
-.map-marker:hover .marker-tip.is-flipped,
-.map-marker.is-active .marker-tip.is-flipped {
-  transform: translateX(-50%) translateY(0);
-}
-
-.map-marker:hover .marker-tip,
-.map-marker.is-active .marker-tip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.marker-tip-title {
-  font-family: var(--font-display);
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--ink);
-  margin-bottom: 0.3rem;
-  letter-spacing: -0.01em;
-  text-align: center;
-}
-
-.marker-tip-row {
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(20, 18, 16, 0.95) 0%,
+    rgba(20, 18, 16, 0.6) 40%,
+    rgba(20, 18, 16, 0.1) 70%,
+    transparent 100%
+  );
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  color: var(--ink-muted);
-  letter-spacing: 0.05em;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 1rem;
+  transition: background 0.4s ease;
 }
 
-.marker-tip-row strong {
-  color: #FF6B6B;
-  font-weight: 500;
+.game-card:hover .game-card-overlay,
+.game-card.is-active .game-card-overlay {
+  background: linear-gradient(
+    to top,
+    rgba(20, 18, 16, 0.98) 0%,
+    rgba(20, 18, 16, 0.75) 50%,
+    rgba(20, 18, 16, 0.2) 80%,
+    transparent 100%
+  );
 }
 
-/* Hobbies modal body */
-.hobby-modal-body .photo-wall-wrapper h4 {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.game-card-description {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: 1rem;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  background: rgba(232, 244, 253, 0.95);
   color: var(--ink);
-  margin: 1.6rem 0 0.8rem;
+  border-left: 3px solid #FF6B6B;
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(27, 58, 75, 0.15);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  font-weight: 400;
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.2, 0.85, 0.25, 1);
+  pointer-events: none;
 }
 
-@media (max-width: 900px) {
+.game-card:hover .game-card-description,
+.game-card.is-active .game-card-description {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.game-card-tag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #FF6B6B;
+  background: rgba(255, 107, 107, 0.15);
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  width: fit-content;
+}
+
+.game-card-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--bg-card);
+  line-height: 1.2;
+  margin-bottom: 0.3rem;
+}
+
+.game-card-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: rgba(244, 240, 235, 0.7);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.game-card:hover .game-card-subtitle,
+.game-card.is-active .game-card-subtitle {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 1024px) {
   .section-desc {
     max-width: 560px;
     white-space: normal;
   }
 
-  .hobbies-layout {
+  .game-panels {
+    flex-direction: column;
+    margin: 0;
+  }
+
+  .time-panel-slot {
+    margin-left: 0;
+  }
+
+  .time-chart-svg {
+    width: 100%;
+    height: 340px;
+    max-width: none;
+  }
+
+  .game-cards-grid {
+    margin-right: 0;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: none;
+  }
+
+  .game-card-slot {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .game-card-slot--1 {
+    grid-column: 1 / -1;
+  }
+
+  .game-card {
+    aspect-ratio: 4 / 3;
+    height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .game-cards-grid {
     grid-template-columns: 1fr;
+  }
+
+  .game-card-slot--1 {
+    grid-column: auto;
+  }
+
+  .panel-title {
+    font-size: 1.75rem;
+  }
+
+  .time-chart-svg {
+    height: 240px;
+  }
+
+  .game-card-title {
+    font-size: 1.25rem;
+  }
+
+  .game-card-description {
+    font-size: 0.8rem;
+    line-height: 1.55;
   }
 }
 </style>

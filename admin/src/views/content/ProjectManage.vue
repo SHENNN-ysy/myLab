@@ -1,192 +1,174 @@
 <template>
   <div class="project-manage">
-    <el-card shadow="never">
-      <template #header>
+    <a-card :bordered="false">
+      <template #title>
         <div class="card-header">
           <span>项目管理</span>
-          <el-button type="primary" @click="openDrawer()">
-            <i class="ri-add-line" />
+          <a-button type="primary" @click="openDrawer()">
+            <template #icon>
+              <PlusOutlined />
+            </template>
             新建项目
-          </el-button>
+          </a-button>
         </div>
       </template>
 
       <!-- 筛选 -->
       <div class="filter-bar">
-        <el-radio-group v-model="filterTag" @change="handleFilter">
-          <el-radio-button label="">全部</el-radio-button>
-          <el-radio-button label="个人开源项目">个人开源项目</el-radio-button>
-          <el-radio-button label="实验室项目">实验室项目</el-radio-button>
-          <el-radio-button label="商业项目">商业项目</el-radio-button>
-          <el-radio-button label="独立工具">独立工具</el-radio-button>
-          <el-radio-button label="Web 实验">Web 实验</el-radio-button>
-          <el-radio-button label="GameJam">GameJam</el-radio-button>
-        </el-radio-group>
+        <a-radio-group v-model:value="filterTag" @change="handleFilter">
+          <a-radio-button value="">全部</a-radio-button>
+          <a-radio-button value="个人开源项目">个人开源项目</a-radio-button>
+          <a-radio-button value="实验室项目">实验室项目</a-radio-button>
+          <a-radio-button value="商业项目">商业项目</a-radio-button>
+          <a-radio-button value="独立工具">独立工具</a-radio-button>
+          <a-radio-button value="Web 实验">Web 实验</a-radio-button>
+          <a-radio-button value="GameJam">GameJam</a-radio-button>
+        </a-radio-group>
       </div>
 
       <!-- 列表 -->
-      <el-table :data="filteredProjects" v-loading="loading" stripe>
-        <el-table-column label="封面" width="120" align="center">
-          <template #default="{ row }">
-            <el-image
-              :src="row.image"
-              :preview-src-list="[row.image]"
-              fit="cover"
+      <a-table
+        :data-source="filteredProjects"
+        :columns="columns"
+        :loading="loading"
+        row-key="id"
+        :pagination="false"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'cover'">
+            <a-image
+              :src="record.image"
+              :width="80"
+              :height="50"
+              :preview="true"
+              :fallback="fallbackImg"
               class="project-cover"
-            >
-              <template #error>
-                <div class="cover-placeholder">
-                  <i class="ri-image-line" />
-                </div>
-              </template>
-            </el-image>
+            />
           </template>
-        </el-table-column>
-        <el-table-column prop="title" label="项目名称" min-width="160">
-          <template #default="{ row }">
+          <template v-else-if="column.key === 'title'">
             <div class="project-title">
-              {{ row.title }}
-              <el-tag v-if="row.tagType === 'accent'" type="warning" size="small" effect="dark">
-                {{ row.tag }}
-              </el-tag>
+              {{ record.title }}
+              <a-tag v-if="record.tagType === 'accent'" color="orange">
+                {{ record.tag }}
+              </a-tag>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="tag" label="分类" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag size="small">{{ row.tag }}</el-tag>
+          <template v-else-if="column.key === 'tag'">
+            <a-tag>{{ record.tag }}</a-tag>
           </template>
-        </el-table-column>
-        <el-table-column prop="year" label="年份" width="100" align="center" sortable />
-        <el-table-column label="技术栈" min-width="180">
-          <template #default="{ row }">
-            <el-tag
-              v-for="tech in (row.tech || []).slice(0, 3)"
-              :key="tech"
-              size="small"
-              style="margin-right: 4px; margin-bottom: 2px;"
-            >
-              {{ tech }}
-            </el-tag>
-            <span v-if="(row.tech?.length || 0) > 3" class="tech-more">
-              +{{ (row.tech?.length || 0) - 3 }}
+          <template v-else-if="column.key === 'tech'">
+            <template v-for="tech in (record.tech || []).slice(0, 3)" :key="tech">
+              <a-tag style="margin-right: 4px; margin-bottom: 2px;">{{ tech }}</a-tag>
+            </template>
+            <span v-if="(record.tech?.length || 0) > 3" class="tech-more">
+              +{{ (record.tech?.length || 0) - 3 }}
             </span>
           </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" text size="small" @click="openDrawer(row)">
-              编辑
-            </el-button>
-            <el-button type="danger" text size="small" @click="handleDelete(row)">
-              删除
-            </el-button>
+          <template v-else-if="column.key === 'actions'">
+            <a-space>
+              <a-button type="link" size="small" @click="openDrawer(record)">
+                编辑
+              </a-button>
+              <a-button type="link" danger size="small" @click="handleDelete(record)">
+                删除
+              </a-button>
+            </a-space>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+        </template>
+      </a-table>
+    </a-card>
 
     <!-- 抽屉表单 -->
-    <el-drawer
-      v-model="drawerVisible"
+    <a-drawer
+      v-model:open="drawerVisible"
       :title="isEdit ? '编辑项目' : '新建项目'"
-      size="600px"
-      @closed="resetForm"
+      :width="600"
+      @close="resetForm"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="项目名称" prop="title">
-          <el-input v-model="form.title" placeholder="如：Moth and Bat" />
-        </el-form-item>
+      <a-form ref="formRef" :model="form" :rules="rules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="项目名称" name="title">
+          <a-input v-model:value="form.title" placeholder="如：Moth and Bat" />
+        </a-form-item>
 
-        <el-form-item label="简短描述" prop="description">
-          <el-input
-            v-model="form.description"
-            type="textarea"
-            :rows="2"
-            placeholder="一句话描述项目"
+        <a-form-item label="简短描述" name="description">
+          <a-textarea v-model:value="form.description" :rows="2" placeholder="一句话描述项目" />
+        </a-form-item>
+
+        <a-form-item label="分类标签" name="tag">
+          <a-select v-model:value="form.tag" placeholder="选择分类">
+            <a-select-option value="GameJam">GameJam</a-select-option>
+            <a-select-option value="个人开源项目">个人开源项目</a-select-option>
+            <a-select-option value="实验室项目">实验室项目</a-select-option>
+            <a-select-option value="商业项目">商业项目</a-select-option>
+            <a-select-option value="独立工具">独立工具</a-select-option>
+            <a-select-option value="Web 实验">Web 实验</a-select-option>
+          </a-select>
+        </a-form-item>
+
+        <a-form-item label="是否为商业">
+          <a-switch
+            :checked="form.tagType === 'accent'"
+            @change="(val: boolean) => (form.tagType = val ? 'accent' : 'default')"
           />
-        </el-form-item>
-
-        <el-form-item label="分类标签" prop="tag">
-          <el-select v-model="form.tag" placeholder="选择分类">
-            <el-option label="GameJam" value="GameJam" />
-            <el-option label="个人开源项目" value="个人开源项目" />
-            <el-option label="实验室项目" value="实验室项目" />
-            <el-option label="商业项目" value="商业项目" />
-            <el-option label="独立工具" value="独立工具" />
-            <el-option label="Web 实验" value="Web 实验" />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="是否为商业">
-          <el-switch v-model="form.tagType" active-value="accent" inactive-value="default" />
           <span class="form-tip">商业项目会在标签上显示特殊样式</span>
-        </el-form-item>
+        </a-form-item>
 
-        <el-form-item label="年份" prop="year">
-          <el-input-number v-model="form.year" :min="2000" :max="2030" />
-        </el-form-item>
+        <a-form-item label="年份" name="year">
+          <a-input-number v-model:value="form.year" :min="2000" :max="2030" />
+        </a-form-item>
 
-        <el-form-item label="封面图片" prop="image">
-          <el-input v-model="form.image" placeholder="图片 URL">
-            <template #append>
-              <el-button @click="testImage">测试</el-button>
+        <a-form-item label="封面图片" name="image">
+          <a-input v-model:value="form.image" placeholder="图片 URL">
+            <template #suffix>
+              <a-button type="link" @click="testImage">测试</a-button>
             </template>
-          </el-input>
+          </a-input>
           <div v-if="form.image" class="image-preview">
-            <el-image :src="form.image" fit="cover" class="preview-img">
-              <template #error>
-                <div class="preview-error">图片加载失败</div>
-              </template>
-            </el-image>
+            <a-image :src="form.image" :width="200" :height="125" />
           </div>
-        </el-form-item>
+        </a-form-item>
 
-        <el-form-item label="技术栈">
-          <el-select
-            v-model="form.tech"
-            multiple
-            filterable
-            allow-create
-            default-first-option
+        <a-form-item label="技术栈">
+          <a-select
+            v-model:value="form.tech"
+            mode="multiple"
             placeholder="输入后按回车添加"
             style="width: 100%"
+            allow-clear
+            show-search
           >
-            <el-option
-              v-for="tech in allTechs"
-              :key="tech"
-              :label="tech"
-              :value="tech"
-            />
-          </el-select>
-        </el-form-item>
+            <a-select-option v-for="tech in allTechs" :key="tech" :value="tech">
+              {{ tech }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
 
-        <el-form-item label="详细内容">
-          <el-input
-            v-model="form.content"
-            type="textarea"
+        <a-form-item label="详细内容">
+          <a-textarea
+            v-model:value="form.content"
             :rows="4"
             placeholder="项目详细介绍..."
           />
-        </el-form-item>
-      </el-form>
+        </a-form-item>
+      </a-form>
 
       <template #footer>
         <div class="drawer-footer">
-          <el-button @click="drawerVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
+          <a-button @click="drawerVisible = false">取消</a-button>
+          <a-button type="primary" :loading="submitLoading" @click="handleSubmit">
             {{ isEdit ? '保存' : '创建' }}
-          </el-button>
+          </a-button>
         </div>
       </template>
-    </el-drawer>
+    </a-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
+import type { Rule } from 'ant-design-vue/es/form'
 import type { Project } from '@/types'
 import { getProjectsApi, createProjectApi, updateProjectApi, deleteProjectApi } from '@/api/project'
 import { addLog } from '@/api/log'
@@ -198,7 +180,9 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 const currentId = ref('')
 const filterTag = ref('')
-const formRef = ref<FormInstance>()
+const formRef = ref()
+
+const fallbackImg = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="50"><rect width="80" height="50" fill="%23f0f0f0"/><text x="40" y="30" font-size="12" fill="%238c8c8c" text-anchor="middle">暂无图片</text></svg>'
 
 const allTechs = [
   'Vue', 'React', 'TypeScript', 'JavaScript', 'Python', 'Java', 'C#', '.NET',
@@ -218,7 +202,7 @@ const form = reactive({
   tech: [] as string[]
 })
 
-const rules: FormRules = {
+const rules: Record<string, Rule[]> = {
   title: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
   description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }],
   tag: [{ required: true, message: '请选择分类', trigger: 'change' }],
@@ -226,12 +210,60 @@ const rules: FormRules = {
   image: [{ required: true, message: '请输入封面图片URL', trigger: 'blur' }]
 }
 
+const columns = [
+  {
+    title: '封面',
+    key: 'cover',
+    width: 120,
+    align: 'center' as const
+  },
+  {
+    title: '项目名称',
+    dataIndex: 'title',
+    key: 'title',
+    minWidth: 160
+  },
+  {
+    title: '描述',
+    dataIndex: 'description',
+    key: 'description',
+    minWidth: 200,
+    ellipsis: true
+  },
+  {
+    title: '分类',
+    dataIndex: 'tag',
+    key: 'tag',
+    width: 120,
+    align: 'center' as const
+  },
+  {
+    title: '年份',
+    dataIndex: 'year',
+    key: 'year',
+    width: 100,
+    align: 'center' as const,
+    sorter: (a: Project, b: Project) => a.year - b.year
+  },
+  {
+    title: '技术栈',
+    key: 'tech',
+    minWidth: 180
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 160,
+    align: 'center' as const,
+    fixed: 'right' as const
+  }
+]
+
 const filteredProjects = computed(() => {
   if (!filterTag.value) return projects.value
   return projects.value.filter(p => p.tag === filterTag.value)
 })
 
-// 加载数据
 const loadData = async () => {
   loading.value = true
   try {
@@ -245,7 +277,6 @@ const handleFilter = () => {
   // 筛选由 computed 自动处理
 }
 
-// 打开抽屉
 const openDrawer = (row?: Project) => {
   if (row) {
     isEdit.value = true
@@ -267,7 +298,6 @@ const openDrawer = (row?: Project) => {
   drawerVisible.value = true
 }
 
-// 重置表单
 const resetForm = () => {
   formRef.value?.resetFields()
   Object.assign(form, {
@@ -282,14 +312,12 @@ const resetForm = () => {
   })
 }
 
-// 测试图片
 const testImage = () => {
   if (form.image) {
     window.open(form.image, '_blank')
   }
 }
 
-// 提交
 const handleSubmit = async () => {
   if (!formRef.value) return
   try {
@@ -304,37 +332,35 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       await updateProjectApi(currentId.value, data)
       addLog('更新', `项目：${form.title}`, 'success')
-      ElMessage.success('更新成功')
+      message.success('更新成功')
     } else {
       await createProjectApi(data)
       addLog('新建', `项目：${form.title}`, 'success')
-      ElMessage.success('创建成功')
+      message.success('创建成功')
     }
 
     drawerVisible.value = false
     await loadData()
-  } catch (e) {
-    // 验证失败
+  } catch {
+    // 校验失败
   } finally {
     submitLoading.value = false
   }
 }
 
-// 删除
-const handleDelete = async (row: Project) => {
-  try {
-    await ElMessageBox.confirm(`确定要删除项目「${row.title}」吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await deleteProjectApi(row.id)
-    addLog('删除', `项目：${row.title}`, 'success')
-    ElMessage.success('删除成功')
-    await loadData()
-  } catch {
-    // 取消
-  }
+const handleDelete = (row: Project) => {
+  Modal.confirm({
+    title: '提示',
+    content: `确定要删除项目「${row.title}」吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      await deleteProjectApi(row.id)
+      addLog('删除', `项目：${row.title}`, 'success')
+      message.success('删除成功')
+      await loadData()
+    }
+  })
 }
 
 onMounted(() => {
@@ -344,7 +370,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .project-manage {
-  :deep(.el-card) {
+  :deep(.ant-card) {
     border: none;
     border-radius: 8px;
   }
@@ -354,6 +380,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 
   span {
     font-size: 16px;
@@ -363,28 +390,10 @@ onMounted(() => {
 
 .filter-bar {
   margin-bottom: 16px;
-
-  :deep(.el-radio-button__inner) {
-    border-radius: 4px;
-  }
 }
 
 .project-cover {
-  width: 80px;
-  height: 50px;
   border-radius: 4px;
-}
-
-.cover-placeholder {
-  width: 80px;
-  height: 50px;
-  background: #f5f7fa;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-  font-size: 24px;
 }
 
 .project-title {
@@ -396,34 +405,21 @@ onMounted(() => {
 
 .tech-more {
   font-size: 12px;
-  color: #909399;
+  color: #8c8c8c;
 }
 
 .form-tip {
   margin-left: 12px;
   font-size: 12px;
-  color: #909399;
+  color: #8c8c8c;
 }
 
 .image-preview {
   margin-top: 12px;
 
-  .preview-img {
-    width: 200px;
-    height: 125px;
+  :deep(.ant-image) {
     border-radius: 8px;
-  }
-
-  .preview-error {
-    width: 200px;
-    height: 125px;
-    background: #f5f7fa;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #909399;
-    font-size: 12px;
+    overflow: hidden;
   }
 }
 
@@ -431,7 +427,5 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid #f0f2f5;
 }
 </style>

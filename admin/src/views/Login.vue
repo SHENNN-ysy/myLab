@@ -7,48 +7,52 @@
         <p class="login-subtitle">管理后台</p>
       </div>
 
-      <el-form
+      <a-form
         ref="formRef"
         :model="form"
         :rules="rules"
         class="login-form"
-        @submit.prevent="handleLogin"
+        @finish="handleLogin"
       >
-        <el-form-item prop="username">
-          <el-input
-            v-model="form.username"
+        <a-form-item name="username">
+          <a-input
+            v-model:value="form.username"
             placeholder="请输入用户名"
             size="large"
-            prefix-icon="ri-user-line"
-            clearable
-          />
-        </el-form-item>
+            allow-clear
+          >
+            <template #prefix>
+              <UserOutlined />
+            </template>
+          </a-input>
+        </a-form-item>
 
-        <el-form-item prop="password">
-          <el-input
-            v-model="form.password"
-            type="password"
+        <a-form-item name="password">
+          <a-input-password
+            v-model:value="form.password"
             placeholder="请输入密码"
             size="large"
-            prefix-icon="ri-lock-line"
-            show-password
-            clearable
-            @keyup.enter="handleLogin"
-          />
-        </el-form-item>
+            allow-clear
+            @press-enter="handleLogin"
+          >
+            <template #prefix>
+              <LockOutlined />
+            </template>
+          </a-input-password>
+        </a-form-item>
 
-        <el-form-item>
-          <el-button
+        <a-form-item>
+          <a-button
             type="primary"
             size="large"
             :loading="loading"
-            class="login-btn"
-            native-type="submit"
+            html-type="submit"
+            block
           >
             {{ loading ? '登录中...' : '登 录' }}
-          </el-button>
-        </el-form-item>
-      </el-form>
+          </a-button>
+        </a-form-item>
+      </a-form>
 
       <div class="login-footer">
         <p class="demo-hint">演示账号: <strong>admin</strong> / <strong>Admin@123456</strong></p>
@@ -60,7 +64,9 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, FormInstance, FormRules } from 'element-plus'
+import { message } from 'ant-design-vue'
+import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
+import type { Rule } from 'ant-design-vue/es/form'
 import { useAuth } from '@/composables/useAuth'
 import { loginApi } from '@/api/auth'
 
@@ -68,7 +74,7 @@ const router = useRouter()
 const route = useRoute()
 const { login } = useAuth()
 
-const formRef = ref<FormInstance>()
+const formRef = ref()
 const loading = ref(false)
 
 const form = reactive({
@@ -76,7 +82,7 @@ const form = reactive({
   password: ''
 })
 
-const rules: FormRules = {
+const rules: Record<string, Rule[]> = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' }
   ],
@@ -96,14 +102,16 @@ const handleLogin = async () => {
     const { token, user } = await loginApi(form.username, form.password)
     login(token, user)
 
-    ElMessage.success('登录成功')
+    message.success('登录成功')
 
-    const redirect = route.query.redirect as string || '/dashboard'
+    const redirect = (route.query.redirect as string) || '/dashboard'
     router.push(redirect)
   } catch (error: any) {
-    if (error !== false) {
-      ElMessage.error(error.message || '登录失败')
+    if (error?.errorFields) {
+      // 表单校验失败
+      return
     }
+    message.error(error?.message || '登录失败')
   } finally {
     loading.value = false
   }
@@ -142,35 +150,20 @@ const handleLogin = async () => {
 .login-title {
   font-size: 28px;
   font-weight: 600;
-  color: #303133;
+  color: #1f1f1f;
   margin: 0 0 4px;
 }
 
 .login-subtitle {
   font-size: 14px;
-  color: #909399;
+  color: #8c8c8c;
   margin: 0;
 }
 
 .login-form {
-  :deep(.el-form-item) {
+  :deep(.ant-form-item) {
     margin-bottom: 24px;
   }
-
-  :deep(.el-input__wrapper) {
-    padding: 4px 15px;
-  }
-
-  :deep(.el-input__prefix) {
-    color: #909399;
-  }
-}
-
-.login-btn {
-  width: 100%;
-  height: 44px;
-  font-size: 16px;
-  letter-spacing: 4px;
 }
 
 .login-footer {
@@ -180,10 +173,10 @@ const handleLogin = async () => {
 
 .demo-hint {
   font-size: 13px;
-  color: #909399;
+  color: #8c8c8c;
 
   strong {
-    color: #409EFF;
+    color: var(--ant-primary-color);
   }
 }
 </style>
