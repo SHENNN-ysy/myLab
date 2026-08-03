@@ -1,8 +1,8 @@
 <template>
   <main class="mylab">
     <!-- ============ Hero：标题 + 记录总数 ============ -->
-    <section class="mylab-hero" aria-label="myLab 页头">
-      <h1 class="mylab-title">myLab</h1>
+    <section class="mylab-hero" aria-label="MyLab 页头">
+      <h1 class="mylab-title">MyLab</h1>
       <p class="mylab-count">
         <svg
           xmlns="http://www.w3.org/2000/svg"

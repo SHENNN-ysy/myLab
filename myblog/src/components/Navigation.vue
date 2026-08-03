@@ -127,7 +127,7 @@ const navLinks: NavItem[] = [
   { label: '足迹', hash: '#hobbies' },
   { label: '爱好', hash: '#game' },
   { label: 'Vibe Coding', hash: '#aicoding' },
-  { label: 'myLab', path: '/mylab' },
+  { label: 'MyLab', path: '/mylab' },
 ]
 
 /* ============ 导航点击：同页平滑滚动 / 跨页路由跳转 ============ */

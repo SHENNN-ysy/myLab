@@ -1,7 +1,6 @@
 <template>
-  <!-- myLab 记录卡片：中枢链路 / 矩阵网格两种视图共用 -->
-  <!-- TODO: 点击卡片跳转到详情页（事件暂未实现） -->
-  <article class="lab-card">
+  <!-- myLab 记录卡片：中枢链路 / 矩阵网格两种视图共用，点击进入详情页 -->
+  <article class="lab-card" @click="router.push(`/mylab/post/${post.id}`)">
     <!-- 头图：加载完成前 / 未配图时显示骨架占位 -->
     <div class="lab-card-media" :class="{ 'is-loaded': imageLoaded }">
       <img
@@ -43,11 +42,14 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import type { LabPost } from '../data/labPosts'
 
 defineProps<{
   post: LabPost
 }>()
+
+const router = useRouter()
 
 const imageLoaded = ref(false)
 </script>

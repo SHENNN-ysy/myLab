@@ -14,6 +14,11 @@ const router = createRouter({
       name: 'myLab',
       component: () => import('../views/MyLabView.vue'),
     },
+    {
+      path: '/mylab/post/:id',
+      name: 'myLabPost',
+      component: () => import('../views/MyLabPostView.vue'),
+    },
   ],
   scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) return savedPosition
