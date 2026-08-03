@@ -411,10 +411,34 @@ onBeforeUnmount(() => {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(91, 164, 230, 0.16) 100%);
 }
 
-.photo-skeleton-shimmer {
-  display: none;
+/* 骨架微光扫过动画（同 myLab 卡片头图占位）：照片未加载时持续显示 */
+.photo-skeleton::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: photoShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes photoShimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-skeleton::before {
+    animation: none;
+  }
 }
 
 .modal-photos-hint {

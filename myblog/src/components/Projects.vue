@@ -27,8 +27,14 @@
             @blur="clearLinks"
             @click="openModal(project)"
           >
-            <div class="project-thumb">
-              <img :src="project.image" :alt="project.title" loading="lazy" />
+            <div class="project-thumb" :class="{ 'is-loaded': loadedThumbs[project.id] }">
+              <img
+                :src="project.image"
+                :alt="project.title"
+                loading="lazy"
+                decoding="async"
+                @load="loadedThumbs[project.id] = true"
+              />
               <span class="project-view">查看详情 →</span>
             </div>
             <div class="project-body">
@@ -45,6 +51,19 @@
     </div>
 
     <ProjectModal v-model="isModalOpen" direction="right">
+      <div
+        v-if="selectedProject"
+        class="modal-hero-wrap stagger-item-right"
+        :class="{ 'is-loaded': modalHeroLoaded }"
+        :style="{ animationDelay: staggerDelay(0) }"
+      >
+        <img
+          class="modal-hero"
+          :src="selectedProject.image"
+          :alt="selectedProject.title"
+          @load="modalHeroLoaded = true"
+        />
+      </div>
       <div class="modal-body">
         <div class="modal-meta stagger-item-right" :style="{ animationDelay: staggerDelay(0) }">
           <span class="project-tag" :class="{ accent: selectedProject?.tagType === 'accent' }">{{ selectedProjectDetail?.tag }}</span>
@@ -75,13 +94,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { projects, type Project } from '@/data/projects'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 import ProjectModal from './ui/ProjectModal.vue'
 
 const isModalOpen = ref(false)
 const selectedProject = ref<Project | null>(null)
+// 卡片缩略图 / 详情头图的加载完成标记（加载前显示骨架扫光占位）
+const loadedThumbs = reactive<Record<string, boolean>>({})
+const modalHeroLoaded = ref(false)
 
 const staggerDelay = (index: number) => `${0.08 + index * 0.07}s`
 
@@ -165,6 +187,7 @@ const projectParagraphs = computed(() => {
 
 const openModal = (project: Project) => {
   clearLinks()
+  modalHeroLoaded.value = false
   selectedProject.value = project
   isModalOpen.value = true
 }
@@ -270,15 +293,52 @@ const clearLinks = () => {
   width: 100%;
   aspect-ratio: 16/10;
   overflow: hidden;
+  background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(91, 164, 230, 0.16) 100%);
+}
+
+/* 骨架微光扫过动画：图未加载时持续显示（与 myLab 卡片一致） */
+.project-thumb::before,
+.modal-hero-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: projectShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes projectShimmer {
+  to {
+    transform: translateX(100%);
+  }
 }
 
 .project-thumb img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.4s;
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.4s;
   filter: saturate(0.8) hue-rotate(5deg);
+}
+
+.project-thumb.is-loaded img {
+  opacity: 1;
+}
+
+/* 图加载完成后停掉骨架扫光，避免在图上闪 */
+.project-thumb.is-loaded::before,
+.modal-hero-wrap.is-loaded::before {
+  animation: none;
+  opacity: 0;
 }
 
 .project-card:hover .project-thumb img {
@@ -355,11 +415,27 @@ const clearLinks = () => {
 }
 
 /* Modal styles */
-.modal-hero {
+.modal-hero-wrap {
+  position: relative;
   width: 100%;
   aspect-ratio: 16/8;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(91, 164, 230, 0.16) 100%);
+}
+
+.modal-hero {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   display: block;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.modal-hero-wrap.is-loaded .modal-hero {
+  opacity: 1;
 }
 
 .modal-body {
@@ -430,6 +506,13 @@ const clearLinks = () => {
   background: linear-gradient(135deg, var(--accent-dark), var(--accent));
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(91, 164, 230, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-thumb::before,
+  .modal-hero-wrap::before {
+    animation: none;
+  }
 }
 
 @media (max-width: 980px) {

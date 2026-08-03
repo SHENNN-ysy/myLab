@@ -158,7 +158,7 @@ onMounted(() => {
   grid-template-columns: auto 1fr;
   gap: 2rem;
   align-items: start;
-  margin-bottom: 4rem;
+  margin-bottom: 2rem;
 }
 
 .section-num {
@@ -187,9 +187,10 @@ onMounted(() => {
 .section-desc {
   font-size: 0.95rem;
   color: var(--ink-light);
-  max-width: 480px;
+  max-width: 760px;
   font-weight: 300;
   line-height: 1.8;
+  white-space: nowrap;
 }
 
 .skills-layout {
@@ -406,6 +407,11 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .section-desc {
+    max-width: 560px;
+    white-space: normal;
+  }
+
   .skills-layout {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.8rem;

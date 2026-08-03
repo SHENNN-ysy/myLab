@@ -178,9 +178,10 @@ onMounted(() => {
 .section-desc {
   font-size: 0.95rem;
   color: var(--ink-light);
-  max-width: 480px;
+  max-width: 760px;
   font-weight: 300;
   line-height: 1.8;
+  white-space: nowrap;
 }
 
 .ai-coding-body {
@@ -290,6 +291,11 @@ onMounted(() => {
 .ai-tool-item:nth-child(6) .ai-tool-fill { transition-delay: 0.85s; }
 
 @media (max-width: 900px) {
+  .section-desc {
+    max-width: 560px;
+    white-space: normal;
+  }
+
   .ai-coding-body {
     grid-template-columns: 1fr;
   }

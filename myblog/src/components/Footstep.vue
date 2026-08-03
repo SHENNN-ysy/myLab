@@ -84,10 +84,6 @@
 
     <ProjectModal v-model="isModalOpen" direction="left">
       <div class="modal-body hobby-modal-body">
-        <div class="modal-meta stagger-item-left" :style="{ animationDelay: staggerDelay(0) }">
-          <span class="project-tag accent">{{ selectedHobbyDetail?.tag }}</span>
-          <span class="project-year">{{ selectedHobbyDetail?.year }}</span>
-        </div>
         <h2 class="modal-title stagger-item-left" :style="{ animationDelay: staggerDelay(1) }">{{ selectedHobbyDetail?.title }}</h2>
         <p class="modal-desc stagger-item-left" :style="{ animationDelay: staggerDelay(2) }">{{ selectedHobbyDetail?.desc }}</p>
         <p
@@ -98,10 +94,6 @@
         >
           {{ paragraph }}
         </p>
-        <h4 class="stagger-item-left" :style="{ animationDelay: staggerDelay(6) }">常用器材 / 技术栈</h4>
-        <div class="modal-tech stagger-item-left" :style="{ animationDelay: staggerDelay(7) }">
-          <span v-for="tech in selectedHobbyDetail?.tech" :key="tech">{{ tech }}</span>
-        </div>
         <div class="photo-wall-wrapper stagger-item-left" :style="{ animationDelay: staggerDelay(8) }">
           <h4>照片墙</h4>
           <div class="modal-photos">

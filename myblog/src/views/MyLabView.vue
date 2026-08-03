@@ -206,6 +206,8 @@ const filteredPosts = computed(() => {
 /* ============ Hero ============ */
 .mylab-hero {
   position: relative;
+  /* 压到背景滚动球体（固定层 z-index: 1）之下，让球体柔光浮在蓝色面板上 */
+  z-index: 0;
   overflow: hidden;
   padding: clamp(8rem, 18vh, 11rem) 1.5rem clamp(4.5rem, 10vh, 7rem);
   text-align: center;

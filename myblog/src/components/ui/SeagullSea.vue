@@ -78,9 +78,34 @@ function buildCloudSprite(img: HTMLImageElement) {
   cloudSprite = off
 }
 
+/** 元素相对指定祖先的布局纵向偏移（offsetTop 链，不受入场 transform 影响） */
+function offsetWithin(el: HTMLElement, ancestor: HTMLElement): number {
+  let y = 0
+  let node: HTMLElement | null = el
+  while (node && node !== ancestor) {
+    y += node.offsetTop
+    node = node.offsetParent as HTMLElement | null
+  }
+  return y
+}
+
+/** 将海平面（画布底上 26px）对齐到“标题下方描述 与 图片面板”间距的中间 */
+function alignHorizon(canvas: HTMLCanvasElement) {
+  const section = canvas.parentElement
+  const desc = section?.querySelector<HTMLElement>('.section-desc')
+  const panel = section?.querySelector<HTMLElement>('.ai-coding-img-panel')
+  if (!section || !desc || !panel) return
+  const descBottom = offsetWithin(desc, section) + desc.offsetHeight
+  const panelTop = offsetWithin(panel, section)
+  if (panelTop <= descBottom) return
+  const mid = (descBottom + panelTop) / 2
+  canvas.style.top = `${mid - (canvas.clientHeight - 26)}px`
+}
+
 function resize() {
   const canvas = canvasRef.value
   if (!canvas || !ctx) return
+  alignHorizon(canvas)
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   viewW = canvas.clientWidth
   viewH = canvas.clientHeight
@@ -248,7 +273,8 @@ onBeforeUnmount(() => {
   position: absolute;
   left: 0;
   right: 0;
-  /* 海平面（画布底上 26px）位于描述文字与图片面板间距的中间：约区块顶部下 260px 处 */
+  /* top 仅为初始值：挂载后由 alignHorizon() 动态设置，
+     使海平面（画布底上 26px）落在描述文字与图片面板间距的中间 */
   top: -14px;
   width: 100%;
   height: 300px;

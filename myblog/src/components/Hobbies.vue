@@ -68,7 +68,6 @@
               <img :src="game.image" :alt="game.name" loading="lazy" />
               <div class="game-card-overlay">
                 <p class="game-card-description">{{ game.description }}</p>
-                <span class="game-card-tag">{{ game.tag }}</span>
                 <h3 class="game-card-title">{{ game.name }}</h3>
                 <p class="game-card-subtitle">{{ game.subtitle }}</p>
               </div>
@@ -522,20 +521,6 @@ const timeSeries = computed(() => {
 .game-card.is-active .game-card-description {
   opacity: 1;
   transform: translateY(0);
-}
-
-.game-card-tag {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #FF6B6B;
-  background: rgba(255, 107, 107, 0.15);
-  padding: 0.25rem 0.6rem;
-  border-radius: 4px;
-  display: inline-block;
-  margin-bottom: 0.5rem;
-  width: fit-content;
 }
 
 .game-card-title {
