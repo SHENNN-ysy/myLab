@@ -1,10 +1,14 @@
 package com.myblog.common.exception;
 
-import org.springframework.http.HttpStatus;
+import com.myblog.common.enumeration.ErrorCode;
 
 /** 20001 - internal server error. */
 public class InternalException extends BaseException {
     public InternalException(String message) {
-        super(HttpStatus.INTERNAL_SERVER_ERROR, 20001, message);
+        super(ErrorCode.INTERNAL_ERROR, message);
+    }
+
+    public InternalException(ErrorCode errorCode, String detail) {
+        super(errorCode, detail);
     }
 }

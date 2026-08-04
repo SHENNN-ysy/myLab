@@ -3,6 +3,7 @@ package com.myblog.application.service.file;
 import com.myblog.application.model.entity.FileRecord;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.exception.ValidationException;
+import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.application.model.command.file.UploadFile;
 import com.myblog.application.repository.FileRepository;
 import com.myblog.common.properties.AppProperties;
@@ -53,15 +54,16 @@ public class FileServiceImpl implements FileService {
     public FileOutVO upload(CurrentUser actor, UploadFile file) {
         Authorization.requireAdmin(actor);
         if (file.empty()) {
-            throw new ValidationException("File is empty");
+            throw new ValidationException(ErrorCode.FILE_EMPTY, null);
         }
         String contentType = file.contentType();
         if (contentType == null || !ALLOWED_TYPES.contains(contentType)) {
-            throw new ValidationException("Unsupported content type: " + contentType);
+            throw new ValidationException(ErrorCode.FILE_TYPE_UNSUPPORTED, "媒体类型：" + contentType);
         }
         long maxBytes = (long) props.ossMaxFileSizeMb() * 1024L * 1024L;
         if (file.size() > maxBytes) {
-            throw new ValidationException("File exceeds maximum allowed size");
+            throw new ValidationException(ErrorCode.FILE_TOO_LARGE,
+                    "最大允许 " + props.ossMaxFileSizeMb() + "MB");
         }
         String name = Objects.requireNonNullElse(file.originalName(), "file");
         String ext = extensionFor(contentType);
@@ -92,7 +94,7 @@ public class FileServiceImpl implements FileService {
         Authorization.requireAdmin(actor);
         FileRecord record = files.findById(id);
         if (record == null || Boolean.TRUE.equals(record.getIsDeleted())) {
-            throw new NotFoundException("File not found");
+            throw new NotFoundException(ErrorCode.FILE_NOT_FOUND, null);
         }
         String url = isPublicImage(record.getMimeType())
                 ? storage.publicUrl(record.getObjectKey())
@@ -106,7 +108,7 @@ public class FileServiceImpl implements FileService {
         Authorization.requireAdmin(actor);
         FileRecord record = files.findById(id);
         if (record == null || Boolean.TRUE.equals(record.getIsDeleted())) {
-            throw new NotFoundException("File not found");
+            throw new NotFoundException(ErrorCode.FILE_NOT_FOUND, null);
         }
         record.setIsDeleted(true);
         record.setUpdatedAt(OffsetDateTime.now());
@@ -134,7 +136,7 @@ public class FileServiceImpl implements FileService {
             case "image/webp" -> "webp";
             case "image/gif" -> "gif";
             case "application/pdf" -> "pdf";
-            default -> throw new ValidationException("Unsupported content type: " + contentType);
+            default -> throw new ValidationException(ErrorCode.FILE_TYPE_UNSUPPORTED, "媒体类型：" + contentType);
         };
     }
 }

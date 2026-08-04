@@ -6,8 +6,8 @@
         <div class="section-header">
           <span class="section-num">04</span>
           <div class="section-title-group">
-            <h2 class="section-title">我的<em>足迹</em></h2>
-            <p class="section-desc">用脚步和镜头,在地图上留下这些城市的名字。每个地点背后,都有一次认真的抵达。</p>
+            <h2 class="section-title">{{ section.title }}<em>{{ section.highlight }}</em></h2>
+            <p class="section-desc">{{ section.description }}</p>
           </div>
         </div>
       </RevealOnScroll>
@@ -17,16 +17,16 @@
           <div class="hobbies-left">
             <div class="my-location-bar">
               <span class="my-location-label">我的位置</span>
-              <span class="my-location-value">广州</span>
+              <span class="my-location-value">{{ section.current_location }}</span>
             </div>
 
             <div class="hobbies-intro">
-              <p>点击列表中的任意一项,或在地图上点亮一个标记,可以查看我在那里的足迹。</p>
+              <p>{{ section.intro }}</p>
             </div>
 
             <div class="hobby-list">
               <button
-                v-for="hobby in hobbies"
+                v-for="hobby in footprintItems"
                 :key="hobby.id"
                 class="hobby-item"
                 :class="{ 'is-active': activeHobby === hobby.id }"
@@ -50,7 +50,7 @@
 
             <div class="map-markers">
               <div
-                v-for="hobby in hobbies"
+                v-for="hobby in footprintItems"
                 :key="hobby.id"
                 class="map-marker"
                 :class="{ 'is-active': activeHobby === hobby.id, 'is-self': hobby.isSelf }"
@@ -97,18 +97,14 @@
         <div class="photo-wall-wrapper stagger-item-left" :style="{ animationDelay: staggerDelay(8) }">
           <h4>照片墙</h4>
           <div class="modal-photos">
-            <div
-              v-for="height in skeletonHeights"
-              :key="height"
-              class="modal-photo photo-skeleton"
-              :style="{ height: height + 'px' }"
-              aria-hidden="true"
-            >
+            <div v-for="(image, index) in selectedHobbyDetail?.images" :key="image" class="modal-photo" :style="{ height: skeletonHeights[index % skeletonHeights.length] + 'px' }">
+              <img :src="image" :alt="`${selectedHobbyDetail?.title} 照片 ${index + 1}`" loading="lazy" />
             </div>
+            <div v-if="!selectedHobbyDetail?.images?.length" v-for="height in skeletonHeights" :key="height" class="modal-photo photo-skeleton" :style="{ height: height + 'px' }" aria-hidden="true" />
           </div>
-          <p class="modal-photos-hint">照片墙正在整理中 · 稍后补上这一组日常记录</p>
+          <p v-if="!selectedHobbyDetail?.images?.length" class="modal-photos-hint">照片墙正在整理中 · 稍后补上这一组日常记录</p>
         </div>
-        <button class="modal-cta stagger-item-left" :style="{ animationDelay: staggerDelay(9) }">{{ selectedHobbyDetail?.cta }} →</button>
+        <button class="modal-cta stagger-item-left" :style="{ animationDelay: staggerDelay(9) }" @click="openFootprintLink">{{ selectedHobbyDetail?.cta }} →</button>
       </div>
     </ProjectModal>
   </section>
@@ -116,13 +112,43 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { hobbies, type Hobby } from '@/data/projects'
+import { hobbies as fallbackFootprints, type Hobby } from '@/data/projects'
+import { usePublicContent } from '@/composables/usePublicContent'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 import ProjectModal from './ui/ProjectModal.vue'
 import DinoRunner from './ui/DinoRunner.vue'
 
-const activeHobby = ref('photo')
-const selectedHobby = ref<Hobby | null>(hobbies[0] ?? null)
+type ManagedFootprint = Hobby & { detailTitle?: string; detailSummary?: string; paragraphs?: string[]; images?: string[]; ctaText?: string; ctaUrl?: string }
+const { content } = usePublicContent()
+const section = {
+  title: '我的', highlight: '足迹',
+  description: '用脚步和镜头,在地图上留下这些城市的名字。每个地点背后,都有一次认真的抵达。',
+  intro: '点击列表中的任意一项,或在地图上点亮一个标记,可以查看我在那里的足迹。', current_location: '广州'
+}
+const footprintItems = computed<ManagedFootprint[]>(() => {
+  const details = content.value.footprints?.details
+  const detailById = new Map<string, any>()
+  if (Array.isArray(details)) {
+    details.forEach((detail: any) => {
+      if (typeof detail?.id === 'string') detailById.set(detail.id, detail)
+    })
+  }
+  return fallbackFootprints.map((city) => {
+    const detail = detailById.get(city.id)
+    if (!detail) return city
+    return {
+      ...city,
+      detailTitle: detail.title,
+      detailSummary: detail.summary,
+      paragraphs: Array.isArray(detail.paragraphs) ? detail.paragraphs : [],
+      images: Array.isArray(detail.images) ? detail.images : [],
+      ctaText: detail.cta_text,
+      ctaUrl: detail.cta_url,
+    }
+  })
+})
+const activeHobby = ref(footprintItems.value[0]?.id || 'photo')
+const selectedHobby = ref<ManagedFootprint | null>(footprintItems.value[0] ?? null)
 const isModalOpen = ref(false)
 const skeletonHeights = [180, 240, 200, 280, 160]
 
@@ -224,8 +250,19 @@ const hobbyDetails: Record<string, {
 const selectedHobbyDetail = computed(() => {
   const hobby = selectedHobby.value
   if (!hobby) return null
+  if (hobby.detailTitle) return {
+    tag: hobby.tag,
+    year: hobby.name,
+    title: hobby.detailTitle,
+    desc: hobby.detailSummary || hobby.tip.coords,
+    paragraphs: hobby.paragraphs || [],
+    tech: [],
+    cta: hobby.ctaText || '查看更多',
+    ctaUrl: hobby.ctaUrl || '',
+    images: hobby.images || [],
+  }
   const cleanDetail = hobbyDetails[hobby.id]
-  if (cleanDetail) return cleanDetail
+  if (cleanDetail) return { ...cleanDetail, ctaUrl: '', images: [] as string[] }
 
   return {
     tag: hobby.isSelf ? 'Travel · 04' : `${hobby.name} · ${hobby.id}`,
@@ -238,14 +275,21 @@ const selectedHobbyDetail = computed(() => {
       '这些地点不是简单的坐标，而是我和不同生活方式短暂相遇的切片。'
     ],
     tech: ['纸质地图', '相机', '步行路线', hobby.name],
-    cta: hobby.tag
+    cta: hobby.tag,
+    ctaUrl: '',
+    images: [] as string[]
   }
 })
 
 const openHobbyModal = (id: string) => {
   setActiveHobby(id)
-  selectedHobby.value = hobbies.find((hobby) => hobby.id === id) ?? null
+  selectedHobby.value = footprintItems.value.find((hobby) => hobby.id === id) ?? null
   isModalOpen.value = true
+}
+
+const openFootprintLink = () => {
+  const url = selectedHobbyDetail.value?.ctaUrl
+  if (url) window.open(url, '_blank', 'noopener,noreferrer')
 }
 </script>
 
@@ -677,6 +721,14 @@ const openHobbyModal = (id: string) => {
   text-transform: uppercase;
   color: var(--ink);
   margin: 1.6rem 0 0.8rem;
+}
+
+.modal-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 @media (max-width: 900px) {

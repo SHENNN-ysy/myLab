@@ -5,8 +5,8 @@
         <div class="section-header">
           <span class="section-num">05</span>
           <div class="section-title-group">
-            <h2 class="section-title">我的<em>爱好</em></h2>
-            <p class="section-desc">游戏、音乐与那些让我忘记时间的事。</p>
+            <h2 class="section-title">{{ section.title }}<em>{{ section.highlight }}</em></h2>
+            <p class="section-desc">{{ section.description }}</p>
           </div>
         </div>
       </RevealOnScroll>
@@ -14,7 +14,7 @@
       <div class="game-panels">
         <RevealOnScroll class="time-panel-slot">
           <div class="time-panel">
-            <h3 class="panel-title">Time</h3>
+            <h3 class="panel-title">{{ section.panel_title }}</h3>
 
             <svg class="time-chart-svg" viewBox="0 0 500 300" preserveAspectRatio="none" role="img" aria-label="时间分配堆叠面积图">
               <g>
@@ -69,7 +69,6 @@
               <div class="game-card-overlay">
                 <p class="game-card-description">{{ game.description }}</p>
                 <h3 class="game-card-title">{{ game.name }}</h3>
-                <p class="game-card-subtitle">{{ game.subtitle }}</p>
               </div>
             </div>
           </RevealOnScroll>
@@ -81,7 +80,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { games } from '@/data/projects'
+import { games as fallbackGames } from '@/data/projects'
+import { usePublicContent } from '@/composables/usePublicContent'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 
 const gameDescriptions: Record<string, string> = {
@@ -93,12 +93,21 @@ const gameDescriptions: Record<string, string> = {
   '英雄联盟': '长期陪伴型游戏，版本、位置、运营和团战判断总能不断产生新的理解。'
 }
 
-const featuredGames = computed(() => (
-  games.slice(0, 5).map((game) => ({
+const { content } = usePublicContent()
+const section = {
+  title: '我的', highlight: '爱好', description: '游戏、音乐与那些让我忘记时间的事。', panel_title: 'Time'
+}
+const featuredGames = computed(() => {
+  const cards = content.value.hobbies?.cards
+  if (Array.isArray(cards)) return cards.filter((card: any) => card.enabled !== false).slice(0, 5).map((card: any) => ({
+    id: card.id, name: card.title, image: card.image, description: card.description
+  }))
+  return fallbackGames.slice(0, 5).map((game, index) => ({
     ...game,
+    id: `fallback-${index}`,
     description: gameDescriptions[game.name] ?? game.subtitle
   }))
-))
+})
 
 /* ── Time 堆叠面积图：复刻 qzq.at 的 d3 stacked area chart ──
    viewBox 500x300，x 轴为年龄（domain [-1,27]），y 轴为时间占比（domain [0,10] 即 0-100%），
@@ -128,7 +137,7 @@ const timeChartMeta: Record<TimeKey, { label: string; color: string; labelTransf
 }
 
 // 完整覆盖 -1 ~ 27 每个年龄；原锚点之间的数据为线性插值，每行总和保持 10（即 100%）
-const timeChartData: Array<{ index: number } & Record<TimeKey, number>> = [
+const fallbackTimeChartData: Array<{ index: number } & Record<TimeKey, number>> = [
   { index: -1, Study: 0, Music: 0, Game: 0, Coding: 0, Social: 10 },
   { index: 0, Study: 0, Music: 0, Game: 0, Coding: 0, Social: 10 },
   { index: 1, Study: 1, Music: 0, Game: 0, Coding: 0, Social: 9 },
@@ -159,6 +168,8 @@ const timeChartData: Array<{ index: number } & Record<TimeKey, number>> = [
   { index: 26, Study: 2.5, Music: 0.5, Game: 1.5, Coding: 3.5, Social: 2 },
   { index: 27, Study: 3, Music: 0, Game: 1, Coding: 4, Social: 2 }
 ]
+
+const timeChartData = computed<Array<{ index: number } & Record<TimeKey, number>>>(() => fallbackTimeChartData)
 
 interface ChartPoint {
   x: number
@@ -210,14 +221,15 @@ function smoothValues(values: number[]): number[] {
 
 const timeSeries = computed(() => {
   // 堆叠边界：boundaries[0] 为底部 0 线，boundaries[k] 为前 k 个系列的累计值，顶部恒为 10
-  const boundaries: number[][] = [timeChartData.map(() => 0)]
+  const rows = timeChartData.value
+  const boundaries: number[][] = [rows.map(() => 0)]
   timeChartKeys.forEach((key, k) => {
     const prev = boundaries[k]
-    boundaries.push(timeChartData.map((row, i) => prev[i] + row[key]))
+    boundaries.push(rows.map((row, i) => prev[i] + row[key]))
   })
   const smoothed = boundaries.map(smoothValues)
   return timeChartKeys.map((key, k) => {
-    const pts = timeChartData.map((row, i) => ({
+    const pts = rows.map((row, i) => ({
       x: scaleX(row.index),
       // 上下各外扩 1 个单位与相邻色带重叠，消除拉伸渲染时色带间的白色细缝
       y0: scaleY(smoothed[k][i]) + 1,

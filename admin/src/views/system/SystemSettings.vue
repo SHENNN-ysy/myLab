@@ -118,61 +118,6 @@
           </a-form>
         </a-tab-pane>
 
-        <!-- 数据管理 -->
-        <a-tab-pane key="data" tab="数据管理">
-          <div class="data-section">
-            <div class="data-card">
-              <div class="data-info">
-                <h4>导出数据</h4>
-                <p>将所有数据导出为 JSON 文件，方便备份或迁移</p>
-              </div>
-              <a-button type="primary" @click="exportData">
-                <template #icon>
-                  <DownloadOutlined />
-                </template>
-                导出 JSON
-              </a-button>
-            </div>
-
-            <a-divider />
-
-            <div class="data-card">
-              <div class="data-info">
-                <h4>导入数据</h4>
-                <p>从 JSON 文件恢复数据，会覆盖现有数据</p>
-              </div>
-              <a-button @click="triggerImport">
-                <template #icon>
-                  <UploadOutlined />
-                </template>
-                选择文件
-              </a-button>
-              <input
-                ref="fileInputRef"
-                type="file"
-                accept=".json"
-                style="display: none"
-                @change="handleImport"
-              />
-            </div>
-
-            <a-divider />
-
-            <div class="data-card danger">
-              <div class="data-info">
-                <h4>重置数据</h4>
-                <p>将所有数据重置为默认值，包括技术栈、项目、足迹等</p>
-              </div>
-              <a-button danger @click="resetData">
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                一键重置
-              </a-button>
-            </div>
-          </div>
-        </a-tab-pane>
-
         <!-- 关于系统 -->
         <a-tab-pane key="about" tab="关于系统">
           <div class="about-section">
@@ -185,14 +130,13 @@
             </div>
             <a-descriptions :column="2" bordered class="about-desc">
               <a-descriptions-item label="技术栈">Vue 3 + Vite + TypeScript + Ant Design Vue</a-descriptions-item>
-              <a-descriptions-item label="数据存储">localStorage</a-descriptions-item>
+              <a-descriptions-item label="内容存储">PostgreSQL + JSONB</a-descriptions-item>
               <a-descriptions-item label="图表库">ECharts 5</a-descriptions-item>
               <a-descriptions-item label="图标库">RemixIcon + Ant Design Icons</a-descriptions-item>
             </a-descriptions>
             <div class="about-tips">
               <a-alert type="info" :closable="false">
-                本系统为前端演示项目，数据存储在浏览器本地。
-                后续可接入真实后端 API 实现数据持久化。
+                内容集合通过后端草稿、发布、下线、历史版本和回滚流程持久化。
               </a-alert>
             </div>
           </div>
@@ -204,25 +148,18 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import {
   MailOutlined,
   GithubOutlined,
   WeiboOutlined,
-  WechatOutlined,
-  DownloadOutlined,
-  UploadOutlined,
-  ReloadOutlined
+  WechatOutlined
 } from '@ant-design/icons-vue'
 import { storage } from '@/utils/storage'
 import { STORAGE_KEYS } from '@/utils/storage'
-import { resetSkillsApi } from '@/api/skill'
-import { resetProjectsApi } from '@/api/project'
-import { resetFootprintsApi } from '@/api/footprint'
 import { addLog } from '@/api/log'
 
 const activeTab = ref('basic')
-const fileInputRef = ref<HTMLInputElement>()
 
 const basicForm = reactive({
   siteName: '',
@@ -305,75 +242,6 @@ const saveNotification = () => {
   message.success('保存成功')
 }
 
-const exportData = () => {
-  const data = {
-    skills: storage.get(STORAGE_KEYS.SKILLS),
-    projects: storage.get(STORAGE_KEYS.PROJECTS),
-    footprints: storage.get(STORAGE_KEYS.FOOTPRINTS),
-    settings: storage.get(STORAGE_KEYS.SETTINGS),
-    exportTime: new Date().toLocaleString('zh-CN')
-  }
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `myblog-backup-${Date.now()}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-
-  addLog('导出', '全部数据', 'success')
-  message.success('导出成功')
-}
-
-const triggerImport = () => {
-  fileInputRef.value?.click()
-}
-
-const handleImport = async (e: Event) => {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file) return
-
-  try {
-    const text = await file.text()
-    const data = JSON.parse(text)
-
-    if (data.skills) storage.set(STORAGE_KEYS.SKILLS, data.skills)
-    if (data.projects) storage.set(STORAGE_KEYS.PROJECTS, data.projects)
-    if (data.footprints) storage.set(STORAGE_KEYS.FOOTPRINTS, data.footprints)
-    if (data.settings) storage.set(STORAGE_KEYS.SETTINGS, data.settings)
-
-    addLog('导入', '数据文件', 'success')
-    message.success('导入成功，页面将刷新')
-    setTimeout(() => location.reload(), 1500)
-  } catch {
-    message.error('文件格式错误')
-  }
-}
-
-const resetData = () => {
-  Modal.confirm({
-    title: '警告',
-    content: '确定要重置所有数据吗？此操作不可恢复！',
-    okText: '确定重置',
-    cancelText: '取消',
-    okButtonProps: { danger: true },
-    onOk: async () => {
-      await Promise.all([
-        resetSkillsApi(),
-        resetProjectsApi(),
-        resetFootprintsApi()
-      ])
-
-      storage.remove(STORAGE_KEYS.SETTINGS)
-      storage.remove(STORAGE_KEYS.OPERATION_LOGS)
-
-      addLog('重置', '全部数据', 'success')
-      message.success('数据已重置，页面将刷新')
-      setTimeout(() => location.reload(), 1500)
-    }
-  })
-}
 </script>
 
 <style scoped lang="scss">

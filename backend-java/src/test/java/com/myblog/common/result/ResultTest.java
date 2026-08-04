@@ -17,7 +17,7 @@ class ResultTest {
         RequestContext.set("abc");
         Result<Map<String, String>> r = Result.ok(Map.of("status", "healthy"));
         assertThat(r.code()).isZero();
-        assertThat(r.message()).isEqualTo("success");
+        assertThat(r.message()).isEqualTo("成功");
         assertThat(r.requestId()).isEqualTo("abc");
         assertThat(r.timestamp()).isPositive();
         assertThat(r.data()).containsEntry("status", "healthy");

@@ -20,15 +20,12 @@
       <a-col :span="6">
         <div class="stat-card">
           <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-            <UserOutlined />
+            <HeartOutlined />
           </div>
           <div class="stat-info">
-            <div class="stat-value">{{ formatNumber(stats.totalUsers) }}</div>
-            <div class="stat-label">用户数</div>
-            <div class="stat-trend up">
-              <ArrowUpOutlined />
-              今日 {{ formatNumber(stats.todayUsers) }}
-            </div>
+            <div class="stat-value">{{ formatNumber(stats.totalLikes) }}</div>
+            <div class="stat-label">点赞数</div>
+            <div class="stat-trend">由“支持”内容统一维护</div>
           </div>
         </div>
       </a-col>
@@ -121,13 +118,14 @@ import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import {
   EyeOutlined,
-  UserOutlined,
+  HeartOutlined,
   ArrowUpOutlined,
   ThunderboltOutlined,
   CheckCircleOutlined
 } from '@ant-design/icons-vue'
 import { getLogsApi } from '@/api/log'
 import { getVisitStatsApi, getVisitTrendApi } from '@/api/stats'
+import { getContentModuleApi } from '@/api/content'
 import type { OperationLog, VisitTrend } from '@/types'
 
 const trendChartRef = ref<HTMLElement>()
@@ -135,10 +133,9 @@ let trendChart: ECharts | null = null
 
 const stats = reactive({
   totalViews: 0,
-  totalUsers: 0,
+  totalLikes: 0,
   totalVisits: 0,
   todayViews: 0,
-  todayUsers: 0,
   todayVisits: 0
 })
 
@@ -173,8 +170,13 @@ const formatNumber = (num: number): string => {
 }
 
 const loadStats = async () => {
-  const data = await getVisitStatsApi()
-  Object.assign(stats, data)
+  const [data, support] = await Promise.all([
+    getVisitStatsApi(),
+    getContentModuleApi<Record<string, any>>('support')
+  ])
+  Object.assign(stats, data, {
+    totalLikes: Number(support.draft_data?.like_count || 0)
+  })
 }
 
 const loadLogs = async () => {
@@ -188,7 +190,6 @@ const initTrendChart = async () => {
   trendChart = echarts.init(trendChartRef.value)
   const dates = trendData.value.map(t => t.date)
   const views = trendData.value.map(t => t.views)
-  const users = trendData.value.map(t => t.users)
   const visits = trendData.value.map(t => t.visits)
 
   const isLine = trendType.value === 'line'
@@ -199,7 +200,7 @@ const initTrendChart = async () => {
       axisPointer: { type: isLine ? 'line' : 'shadow' }
     },
     legend: {
-      data: ['浏览量', '用户数', '访问数'],
+      data: ['浏览量', '访问数'],
       top: 0,
       textStyle: { color: '#595959' }
     },
@@ -231,19 +232,6 @@ const initTrendChart = async () => {
         barWidth: isLine ? undefined : '20%',
         data: views,
         itemStyle: { color: '#667eea' },
-        ...(isLine && {
-          lineStyle: { width: 2 },
-          symbol: 'circle',
-          symbolSize: 6
-        })
-      },
-      {
-        name: '用户数',
-        type: isLine ? 'line' : 'bar',
-        smooth: isLine,
-        barWidth: isLine ? undefined : '20%',
-        data: users,
-        itemStyle: { color: '#f5576c' },
         ...(isLine && {
           lineStyle: { width: 2 },
           symbol: 'circle',

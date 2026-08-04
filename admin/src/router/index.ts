@@ -26,28 +26,17 @@ const router = createRouter({
           meta: { title: '仪表盘' }
         },
         {
-          path: 'content/skills',
-          name: 'SkillManage',
-          component: () => import('@/views/content/SkillManage.vue'),
-          meta: { title: '技术栈管理' }
-        },
-        {
-          path: 'content/about-bubbles',
-          name: 'AboutBubbleManage',
-          component: () => import('@/views/content/AboutBubbleManage.vue'),
-          meta: { title: '关于气泡管理' }
-        },
-        {
-          path: 'content/projects',
-          name: 'ProjectManage',
-          component: () => import('@/views/content/ProjectManage.vue'),
-          meta: { title: '项目管理' }
-        },
-        {
-          path: 'content/footprints',
-          name: 'FootprintManage',
-          component: () => import('@/views/content/FootprintManage.vue'),
-          meta: { title: '足迹管理' }
+          path: 'content/:moduleKey(skills|projects|footprints|hobbies|vibe|mylab|support)',
+          name: 'ContentModuleManage',
+          component: () => import('@/views/content/ContentModuleManage.vue'),
+          props: route => ({
+            moduleKey: route.params.moduleKey,
+            pageTitle: ({
+              skills: '技术栈管理', projects: '项目管理', footprints: '足迹管理',
+              hobbies: '爱好管理', vibe: 'Vibe Coding 管理', mylab: 'myLab 管理', support: '支持页面管理'
+            } as Record<string, string>)[String(route.params.moduleKey)]
+          }),
+          meta: { title: '内容管理' }
         },
         {
           path: 'system/users',

@@ -17,71 +17,6 @@ CREATE TABLE IF NOT EXISTS users (
     deleted_at      TIMESTAMPTZ
 );
 
-CREATE TABLE IF NOT EXISTS skills (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name        VARCHAR(128) NOT NULL,
-    category    VARCHAR(64),
-    percentage  INTEGER,
-    level       VARCHAR(32),
-    icon        VARCHAR(255),
-    order_num   INTEGER     DEFAULT 0,
-    bar_style   VARCHAR(64),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at  TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS projects (
-    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title        VARCHAR(255) NOT NULL,
-    slug         VARCHAR(128) NOT NULL UNIQUE,
-    description  TEXT,
-    content      TEXT,
-    tag          VARCHAR(64),
-    year         INTEGER,
-    image_url    VARCHAR(512),
-    project_url  VARCHAR(512),
-    repo_url     VARCHAR(512),
-    tech         JSONB,
-    order_num    INTEGER DEFAULT 0,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at   TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS footprints (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name        VARCHAR(128) NOT NULL,
-    slug        VARCHAR(128) NOT NULL UNIQUE,
-    tag         VARCHAR(64),
-    position_x  DOUBLE PRECISION,
-    position_y  DOUBLE PRECISION,
-    is_self     BOOLEAN DEFAULT FALSE,
-    tip_data    JSONB,
-    order_num   INTEGER DEFAULT 0,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at  TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS about_bubbles (
-    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    label        VARCHAR(128) NOT NULL,
-    bg_color     VARCHAR(32),
-    glow_color   VARCHAR(32),
-    text_color   VARCHAR(32),
-    position_x   DOUBLE PRECISION,
-    position_y   DOUBLE PRECISION,
-    radius       DOUBLE PRECISION,
-    tier         VARCHAR(32),
-    order_num    INTEGER DEFAULT 0,
-    enabled      BOOLEAN DEFAULT TRUE,
-    remark       VARCHAR(255),
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at   TIMESTAMPTZ
-);
-
 CREATE TABLE IF NOT EXISTS files (
     id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     object_key     VARCHAR(512) NOT NULL,
@@ -106,3 +41,28 @@ CREATE TABLE IF NOT EXISTS visit_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_visit_logs_visited_at ON visit_logs(visited_at DESC);
+
+CREATE TABLE IF NOT EXISTS content_modules (
+    module_key          VARCHAR(32) PRIMARY KEY,
+    draft_data          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    published_data      JSONB,
+    draft_version       INTEGER     NOT NULL DEFAULT 1,
+    published_version   INTEGER     NOT NULL DEFAULT 0,
+    status              VARCHAR(16) NOT NULL DEFAULT 'draft',
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    published_at        TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS content_publications (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    module_key      VARCHAR(32) NOT NULL REFERENCES content_modules(module_key) ON DELETE CASCADE,
+    version         INTEGER     NOT NULL,
+    data            JSONB       NOT NULL,
+    published_by    UUID,
+    published_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (module_key, version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_content_publications_module_version
+    ON content_publications(module_key, version DESC);

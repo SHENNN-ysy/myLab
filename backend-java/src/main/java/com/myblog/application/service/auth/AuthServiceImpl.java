@@ -2,6 +2,8 @@ package com.myblog.application.service.auth;
 
 import com.myblog.application.model.entity.User;
 import com.myblog.common.exception.UnauthorizedException;
+import com.myblog.common.exception.ValidationException;
+import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.application.port.TokenClaims;
 import com.myblog.application.port.TokenService;
 import com.myblog.application.repository.UserRepository;
@@ -37,7 +39,7 @@ public class AuthServiceImpl implements AuthService {
         if (user == null
                 || !Boolean.TRUE.equals(user.getIsActive())
                 || !bcrypt.matches(password, user.getPasswordHash())) {
-            throw new UnauthorizedException("Invalid username or password");
+            throw new UnauthorizedException(ErrorCode.INVALID_CREDENTIALS, null);
         }
         user.setLastLoginAt(OffsetDateTime.now());
         users.save(user);
@@ -49,7 +51,7 @@ public class AuthServiceImpl implements AuthService {
         TokenClaims claims = tokens.parse(token, "refresh");
         User user = users.findById(claims.userId());
         if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
-            throw new UnauthorizedException("User not found or disabled");
+            throw new UnauthorizedException(ErrorCode.ACCOUNT_DISABLED, null);
         }
         return tokens.pair(user);
     }
@@ -58,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
     public User current(UUID id) {
         User user = users.findById(id);
         if (user == null) {
-            throw new UnauthorizedException("User not found");
+            throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, null);
         }
         return user;
     }
@@ -79,7 +81,7 @@ public class AuthServiceImpl implements AuthService {
     public void change(UUID id, String oldPassword, String newPassword) {
         User user = current(id);
         if (!bcrypt.matches(oldPassword, user.getPasswordHash())) {
-            throw new UnauthorizedException("Old password is incorrect");
+            throw new ValidationException(ErrorCode.OLD_PASSWORD_INCORRECT, null);
         }
         user.setPasswordHash(bcrypt.encode(newPassword));
         users.save(user);

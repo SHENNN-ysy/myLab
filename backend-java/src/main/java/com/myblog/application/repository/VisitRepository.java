@@ -14,4 +14,5 @@ public interface VisitRepository {
     int removeAll();
     long countAll();
     long countDistinctVisitors();
+    long countSessions();
 }

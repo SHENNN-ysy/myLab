@@ -9,7 +9,7 @@
               <span class="runtime-text">已运行 <span class="runtime-num">{{ days }}</span>天 <span class="runtime-num">{{ pad(hours) }}</span>小时 <span class="runtime-num">{{ pad(minutes) }}</span>分钟 <span class="runtime-num">{{ pad(seconds) }}</span>秒</span>
             </div>
             <div class="social-row">
-              <a href="https://github.com" target="_blank" rel="noopener" class="social-btn">
+              <a v-if="support.github_enabled" :href="support.github_url" target="_blank" rel="noopener" class="social-btn">
                 <svg viewBox="0 0 19 19" aria-hidden="true">
                   <path
                     fill="currentColor"
@@ -20,7 +20,7 @@
                 </svg>
                 <span>GitHub</span>
               </a>
-              <a href="mailto:" class="social-btn">
+              <a v-if="support.email_enabled" :href="`mailto:${support.email || ''}`" class="social-btn">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     d="M4.75 6.75h14.5v10.5H4.75z"
@@ -45,36 +45,47 @@
           </div>
 
           <div class="stats-grid">
-            <div class="stat-card">
+            <div v-if="support.visit_enabled" class="stat-card">
               <span class="stat-value">{{ visitors }}</span>
-              <span class="stat-label">访问量</span>
+              <span class="stat-label">{{ support.visit_label }}</span>
             </div>
-            <div class="stat-card">
-              <span class="stat-value">{{ users }}</span>
-              <span class="stat-label">用户数</span>
+            <div v-if="support.like_enabled" class="stat-card">
+              <span class="stat-value">{{ likes }}</span>
+              <span class="stat-label">{{ support.like_label }}</span>
             </div>
-            <div class="stat-card">
+            <div v-if="support.page_view_enabled" class="stat-card">
               <span class="stat-value">{{ views }}</span>
-              <span class="stat-label">浏览量</span>
+              <span class="stat-label">{{ support.page_view_label }}</span>
             </div>
           </div>
         </div>
 
-        <p class="icp-note">2026 &copy; shennn的个人空间 · 备案号 XXXXXXX</p>
-        <p class="cloud-note">由 <strong>阿里云</strong> 提供云服务</p>
+        <p v-if="support.icp_enabled && support.icp_number" class="icp-note">2026 &copy; shennn的个人空间 · 备案号 {{ support.icp_number }}</p>
+        <p v-if="support.cloud_enabled && support.cloud_provider" class="cloud-note">由 <strong>{{ support.cloud_provider }}</strong> 提供云服务</p>
       </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { usePublicContent } from '@/composables/usePublicContent'
 
-const visitors = ref(12847)
-const users = ref(1023)
-const views = ref(68921)
+const { content } = usePublicContent()
+const support = {
+  site_started_at: '2024-04-21T00:00:00+08:00',
+  github_url: 'https://github.com', github_enabled: true,
+  email: '', email_enabled: true,
+  visit_count: 12847, visit_label: '访问量', visit_enabled: true,
+  like_count: 1023, like_label: '点赞数', like_enabled: true,
+  page_view_count: 68921, page_view_label: '浏览量', page_view_enabled: true,
+  icp_number: 'XXXXXXX', icp_enabled: true,
+  cloud_provider: '阿里云', cloud_enabled: true,
+}
+const visitors = computed(() => Number(content.value.support?.visit_count ?? 12847))
+const likes = computed(() => Number(content.value.support?.like_count ?? 1023))
+const views = computed(() => Number(content.value.support?.page_view_count ?? 68921))
 
-const initialRuntimeSeconds = ((835 * 24) * 60 * 60) + (29 * 60) + 36
 const days = ref(0)
 const hours = ref(0)
 const minutes = ref(0)
@@ -85,7 +96,8 @@ let startTime = 0
 const pad = (value: number) => String(value).padStart(2, '0')
 
 const updateRuntime = () => {
-  const total = initialRuntimeSeconds + Math.floor((Date.now() - startTime) / 1000)
+  const startedAt = Date.parse(support.site_started_at)
+  const total = Math.max(0, Math.floor((Date.now() - (Number.isNaN(startedAt) ? startTime : startedAt)) / 1000))
   days.value = Math.floor(total / 86400)
   hours.value = Math.floor((total % 86400) / 3600)
   minutes.value = Math.floor((total % 3600) / 60)

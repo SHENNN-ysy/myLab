@@ -5,15 +5,15 @@
         <div class="section-header">
           <span class="section-num">02</span>
           <div class="section-title-group">
-            <h2 class="section-title">技术<em>栈</em></h2>
-            <p class="section-desc">从前端界面设计到后端服务构建再到AI基础应用，正在努力让我的技能覆盖软件开发的全栈领域。</p>
+            <h2 class="section-title">{{ section.title }}<em>{{ section.highlight }}</em></h2>
+            <p class="section-desc">{{ section.description }}</p>
           </div>
         </div>
       </RevealOnScroll>
 
       <div class="skills-layout">
         <RevealOnScroll
-          v-for="(skill, idx) in skills"
+          v-for="(skill, idx) in skillItems"
           :key="skill.name"
           :delay="(idx % 4) + 1"
         >
@@ -52,14 +52,35 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted } from 'vue'
-import { skills } from '@/data/projects'
+import { computed, reactive, onMounted } from 'vue'
+import { skills as fallbackSkills } from '@/data/projects'
+import { usePublicContent } from '@/composables/usePublicContent'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 
 const animatedWidths = reactive<Record<string, string>>({})
-const newSkillNames = new Set(['JavaScript / TypeScript', 'Python', 'React / Vue'])
+const { content } = usePublicContent()
+const section = {
+  title: '技术', highlight: '栈',
+  description: '从前端界面设计到后端服务构建再到AI基础应用，正在努力让我的技能覆盖软件开发的全栈领域。'
+}
+const skillItems = computed(() => {
+  const items = content.value.skills?.items
+  if (!Array.isArray(items)) return fallbackSkills
+  return items.filter((item: any) => item.enabled !== false).map((item: any) => ({
+    name: item.name,
+    percentage: item.percentage,
+    level: item.level,
+    levelText: item.level_text,
+    icon: item.icon,
+    barStyle: item.bar_style,
+    isNew: item.is_new,
+  }))
+})
+const fallbackNewSkillNames = new Set(['JavaScript / TypeScript', 'Python', 'React / Vue'])
+const hasManagedSkills = computed(() => Array.isArray(content.value.skills?.items))
 
-const isNewSkill = (name: string) => newSkillNames.has(name)
+const isNewSkill = (name: string) => skillItems.value.some((skill: any) => skill.name === name && skill.isNew)
+  || (!hasManagedSkills.value && fallbackNewSkillNames.has(name))
 
 const showSkillLinks = (skill: string) => {
   window.dispatchEvent(new CustomEvent('portfolio-link-hover', {

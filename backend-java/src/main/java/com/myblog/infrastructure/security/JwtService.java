@@ -4,6 +4,7 @@ import com.myblog.application.model.entity.User;
 import com.myblog.common.exception.TokenExpiredException;
 import com.myblog.common.exception.TokenRevokedException;
 import com.myblog.common.exception.UnauthorizedException;
+import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.application.port.TokenClaims;
 import com.myblog.application.port.TokenService;
 import com.myblog.common.properties.AppProperties;
@@ -57,11 +58,11 @@ public class JwtService implements TokenService {
         } catch (ExpiredJwtException e) {
             throw new TokenExpiredException();
         } catch (Exception e) {
-            throw new UnauthorizedException("Access token expired or invalid");
+            throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, "访问令牌无效");
         }
         String actualType = claims.get("type", String.class);
         if (!expectedType.equals(actualType)) {
-            throw new UnauthorizedException("Invalid token type");
+            throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, "令牌类型错误");
         }
         if (Boolean.TRUE.equals(redis.hasKey(BLACKLIST_PREFIX + claims.getId()))) {
             throw new TokenRevokedException();

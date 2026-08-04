@@ -1,10 +1,10 @@
 package com.myblog.common.exception;
 
-import org.springframework.http.HttpStatus;
+import com.myblog.common.enumeration.ErrorCode;
 
 /** 10002 - token expired. */
 public class TokenExpiredException extends BaseException {
     public TokenExpiredException() {
-        super(HttpStatus.UNAUTHORIZED, 10002, "Token expired");
+        super(ErrorCode.TOKEN_EXPIRED);
     }
 }

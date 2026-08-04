@@ -1,49 +1,3 @@
-// Skill - 技术栈
-export interface Skill {
-  id: string
-  name: string
-  percentage: number
-  level: 'proficient' | 'competent' | 'novice'
-  levelText: string
-  icon: string
-  barStyle?: 'coral' | 'teal'
-}
-
-// Project - 项目
-export interface Project {
-  id: string
-  title: string
-  description: string
-  tag: string
-  tagType?: 'default' | 'accent'
-  year: number
-  image: string
-  content?: string
-  tech?: string[]
-}
-
-// Footprint - 足迹（对应 Hobby）
-export interface Footprint {
-  id: string
-  name: string
-  tag: string
-  position: { x: number; y: number }
-  isSelf?: boolean
-  tip: {
-    title: string
-    coords: string
-    scene: string
-  }
-}
-
-// Game - 游戏
-export interface Game {
-  name: string
-  tag: string
-  image: string
-  subtitle: string
-}
-
 // User - 用户
 export interface User {
   id: string
@@ -104,7 +58,6 @@ export interface MenuItem {
 export interface VisitTrend {
   date: string       // 日期，如 "7/8"
   views: number      // 浏览量
-  users: number      // 用户数
   visits: number     // 访问数
 }
 
@@ -171,15 +124,3 @@ export interface SystemDynamic {
   dbConnCount: number
 }
 
-// About Bubble - 关于我的悬浮气泡
-export interface AboutBubble {
-  id: string
-  label: string
-  tier: 'big' | 'mid' | 'small'
-  bg: string
-  glow: string
-  textColor: string
-  enabled: boolean
-  sort: number
-  remark?: string
-}

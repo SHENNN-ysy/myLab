@@ -1,7 +1,7 @@
 package com.myblog.starter.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.myblog.common.constant.MessageConstant;
+import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.common.json.JacksonObjectMapper;
 import com.myblog.common.properties.AppProperties;
 import com.myblog.common.result.Result;
@@ -32,6 +32,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/swagger-ui/")
+                || path.equals("/swagger-ui.html")
+                || path.startsWith("/v3/api-docs")
+                || path.startsWith("/actuator/health");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
         String ip = req.getHeader("X-Forwarded-For");
@@ -50,7 +59,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 res.setStatus(429);
                 res.setContentType("application/json");
                 om.writeValue(res.getOutputStream(),
-                        Result.fail(10008, MessageConstant.TOO_MANY_REQUESTS, null));
+                        Result.fail(ErrorCode.RATE_LIMIT_EXCEEDED, null));
                 return;
             }
         } catch (Exception ignored) {

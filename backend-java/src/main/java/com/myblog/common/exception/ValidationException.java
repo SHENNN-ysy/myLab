@@ -1,10 +1,14 @@
 package com.myblog.common.exception;
 
-import org.springframework.http.HttpStatus;
+import com.myblog.common.enumeration.ErrorCode;
 
 /** 10007 - validation failure. */
 public class ValidationException extends BaseException {
     public ValidationException(String message) {
-        super(HttpStatus.UNPROCESSABLE_ENTITY, 10007, message);
+        super(ErrorCode.VALIDATION_FAILED, message);
+    }
+
+    public ValidationException(ErrorCode errorCode, String detail) {
+        super(errorCode, detail);
     }
 }

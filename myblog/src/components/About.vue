@@ -90,25 +90,23 @@
         <article ref="profilePanelRef" class="about-reveal-panel about-profile-panel">
           <div class="about-reveal-grid">
             <div class="about-reveal-heading">
-              <span class="about-reveal-kicker">Profile</span>
-              <h2>关于我</h2>
+              <span class="about-reveal-kicker">{{ profile.kicker }}</span>
+              <h2>{{ profile.title }}</h2>
             </div>
             <div class="about-avatar">
-              <img src="/assets/avatar.png" alt="DNSamuel" />
+              <img :src="profile.avatar" :alt="profile.avatar_alt" />
             </div>
             <div class="about-card">
               <div class="about-card-right">
                 <h3 class="about-card-title">个人简介</h3>
                 <p class="about-bio">
-                  你好，我是<span class="about-bio-strong">SHENNN</span>，目前专注于全栈开发、AI agent学习实践中...
+                  {{ profile.intro }}
                 </p>
                 <ul class="about-bio about-bio-list">
-                  <li>上位机开发：<span class="about-bio-strong">C#/.NET</span>，负责为实验室内若干智能装备进行上位机软件开发与维护</li>
-                  <li>web开发：<span class="about-bio-strong">Java/SpringBoot</span>服务端，<span class="about-bio-strong">TypeScript/React</span>前端，做些个人兴趣项目</li>
-                  <li>爱好自然观光、city walk，喜欢探索这个世界的美</li>
+                  <li v-for="bullet in profile.bullets" :key="bullet">{{ bullet }}</li>
                 </ul>
                 <p class="about-bio">
-                  努力成长，希望成为一名AI超级个人，通过AI让生活变得更美好。
+                  {{ profile.outro }}
                 </p>
               </div>
             </div>
@@ -117,11 +115,9 @@
 
         <article ref="ingredientsPanelRef" class="about-reveal-panel about-ingredients-panel">
           <div class="about-reveal-heading">
-            <span class="about-reveal-kicker">Ingredients</span>
-            <h2>我的成分</h2>
-            <p>
-              之前有人想查我的成分，我认真的思考了一下，我的成分应该是这样，不过随时有可能会变就是啦
-            </p>
+            <span class="about-reveal-kicker">{{ ingredients.kicker }}</span>
+            <h2>{{ ingredients.title }}</h2>
+            <p>{{ ingredients.description }}</p>
           </div>
           <div class="linked-card" ref="linkedCardEl">
             <div class="linked-card-track" ref="linkedTrackEl" />
@@ -141,6 +137,20 @@ import Card3D from './ui/Card3D.vue'
 gsap.registerPlugin(ScrollTrigger)
 
 const introWords = ['welcome', 'to', 'shennn']
+const profile = {
+  kicker: 'Profile', title: '关于我', avatar: '/assets/avatar.png', avatar_alt: 'DNSamuel',
+  display_name: 'SHENNN', intro: '你好，我是 SHENNN，目前专注于全栈开发、AI agent学习实践中...',
+  bullets: [
+    '上位机开发：C#/.NET，负责为实验室内若干智能装备进行上位机软件开发与维护',
+    'web开发：Java/SpringBoot服务端，TypeScript/React前端，做些个人兴趣项目',
+    '爱好自然观光、city walk，喜欢探索这个世界的美'
+  ],
+  outro: '努力成长，希望成为一名AI超级个人，通过AI让生活变得更美好。'
+}
+const ingredients = {
+  kicker: 'Ingredients', title: '我的成分',
+  description: '之前有人想查我的成分，我认真的思考了一下，我的成分应该是这样，不过随时有可能会变就是啦'
+}
 const panelRevealRef = ref<HTMLElement | null>(null)
 const cardShellRef = ref<HTMLElement | null>(null)
 const travelerPanelRef = ref<HTMLElement | null>(null)
@@ -228,8 +238,8 @@ function setupIngredientBubbles() {
     '动物保护旅行者': { bg: 'rgba(102, 187, 106, 0.25)', glow: 'rgba(102, 187, 106, 0.4)', textColor: '#81C784' },
     '技术探索者': { bg: 'rgba(91, 164, 230, 0.25)', glow: 'rgba(91, 164, 230, 0.4)', textColor: '#81D4FA' },
   }
-
-  type Bubble = { x: number; y: number; r: number; label: string; tier: string }
+  type BubbleTier = 'big' | 'mid' | 'small'
+  type Bubble = { x: number; y: number; r: number; label: string; tier: BubbleTier }
 
   class GridLayout {
     gx: number
@@ -268,27 +278,18 @@ function setupIngredientBubbles() {
   const grid = new GridLayout(120, CARD_W, CARD_H)
   const bubbles: Bubble[] = []
 
-  for (let i = 0; i < 5; i++) {
-    for (let j = 0; j < 120; j++) {
-      const r = 44 + Math.random() * 12
-      const x = CARD_W * 0.18 + Math.random() * CARD_W * 0.64
-      const y = CARD_H * 0.18 + Math.random() * CARD_H * 0.64
-      if (!grid.collides({ x, y, r })) {
-        const bubble = { x, y, r, label: LABELS[i], tier: 'big' }
-        grid.add(bubble)
-        bubbles.push(bubble)
-        break
-      }
-    }
-  }
+  const labeledBubbles: Array<Pick<Bubble, 'label' | 'tier'>> = [
+    ...LABELS.slice(0, 5).map(label => ({ label, tier: 'big' as const })),
+    ...LABELS.slice(5).map(label => ({ label, tier: 'mid' as const })),
+  ]
 
-  for (let i = 0; i < 8; i++) {
+  for (const configured of labeledBubbles) {
     for (let j = 0; j < 120; j++) {
-      const r = 32 + Math.random() * 14
-      const x = CARD_W * 0.1 + Math.random() * CARD_W * 0.8
-      const y = CARD_H * 0.1 + Math.random() * CARD_H * 0.8
+      const r = configured.tier === 'big' ? 44 + Math.random() * 12 : 32 + Math.random() * 14
+      const x = r + Math.random() * (CARD_W - r * 2)
+      const y = r + Math.random() * (CARD_H - r * 2)
       if (!grid.collides({ x, y, r })) {
-        const bubble = { x, y, r, label: LABELS[(i + 3) % LABELS.length], tier: 'mid' }
+        const bubble: Bubble = { x, y, r, label: configured.label, tier: configured.tier }
         grid.add(bubble)
         bubbles.push(bubble)
         break
@@ -302,7 +303,7 @@ function setupIngredientBubbles() {
       const x = r + Math.random() * (CARD_W - r * 2)
       const y = r + Math.random() * (CARD_H - r * 2)
       if (!grid.collides({ x, y, r })) {
-        const bubble = { x, y, r, label: '', tier: 'small' }
+        const bubble: Bubble = { x, y, r, label: '', tier: 'small' }
         grid.add(bubble)
         bubbles.push(bubble)
         break
@@ -366,7 +367,7 @@ function setupIngredientBubbles() {
       shadowStyle,
     ].filter(Boolean).join('')
 
-    if (b.label) {
+    if (b.label && b.tier !== 'small') {
       const lbl = document.createElement('div')
       lbl.className = 'linked-dot-label'
       const labelLength = Array.from(b.label).length

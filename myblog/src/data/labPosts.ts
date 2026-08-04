@@ -1,3 +1,5 @@
+import { projects } from './projects'
+
 /* ============ myLab 研究/折腾记录数据 ============
  * 新增记录：往数组顶部追加一条即可，页面会自动汇总标签与计数。
  */
@@ -20,7 +22,27 @@ export interface LabPost {
   sections: LabPostSection[]
 }
 
+const projectLabPosts: LabPost[] = projects.map((project) => ({
+  id: `project-${project.id}`,
+  date: `${project.year}-01-01`,
+  title: `${project.title}：项目研究记录`,
+  tags: [project.tag, ...(project.tech ?? [])],
+  summary: project.description,
+  image: project.image,
+  sections: [
+    {
+      heading: '项目说明',
+      paragraphs: project.content ? [project.content] : [project.description]
+    },
+    {
+      heading: '技术栈',
+      paragraphs: [project.tech?.join('、') || '持续整理中']
+    }
+  ]
+}))
+
 export const labPosts: LabPost[] = [
+  ...projectLabPosts,
   {
     id: 'blog-docker-deploy',
     date: '2026-07-28',

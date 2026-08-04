@@ -1,10 +1,10 @@
 package com.myblog.common.exception;
 
-import org.springframework.http.HttpStatus;
+import com.myblog.common.enumeration.ErrorCode;
 
 /** 10003 - token revoked. */
 public class TokenRevokedException extends BaseException {
     public TokenRevokedException() {
-        super(HttpStatus.UNAUTHORIZED, 10003, "Token has been revoked");
+        super(ErrorCode.TOKEN_REVOKED);
     }
 }

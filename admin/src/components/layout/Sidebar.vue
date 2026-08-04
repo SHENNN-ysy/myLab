@@ -30,10 +30,6 @@
           <CodeOutlined />
           <span>技术栈</span>
         </a-menu-item>
-        <a-menu-item key="/content/about-bubbles">
-          <BulbOutlined />
-          <span>关于气泡</span>
-        </a-menu-item>
         <a-menu-item key="/content/projects">
           <FolderOpenOutlined />
           <span>项目管理</span>
@@ -41,6 +37,22 @@
         <a-menu-item key="/content/footprints">
           <EnvironmentOutlined />
           <span>足迹管理</span>
+        </a-menu-item>
+        <a-menu-item key="/content/hobbies">
+          <HeartOutlined />
+          <span>爱好管理</span>
+        </a-menu-item>
+        <a-menu-item key="/content/vibe">
+          <RobotOutlined />
+          <span>Vibe Coding</span>
+        </a-menu-item>
+        <a-menu-item key="/content/mylab">
+          <ExperimentOutlined />
+          <span>myLab 管理</span>
+        </a-menu-item>
+        <a-menu-item key="/content/support">
+          <CustomerServiceOutlined />
+          <span>支持页面</span>
         </a-menu-item>
       </a-sub-menu>
 
@@ -58,7 +70,7 @@
           <span>文件管理</span>
         </a-menu-item>
         <a-menu-item key="/system/visits">
-          <FileListOutlined />
+          <UnorderedListOutlined />
           <span>访问日志</span>
         </a-menu-item>
         <a-menu-item key="/system/info">
@@ -81,7 +93,6 @@ import {
   DashboardOutlined,
   FileTextOutlined,
   CodeOutlined,
-  BulbOutlined,
   FolderOpenOutlined,
   EnvironmentOutlined,
   SettingOutlined,
@@ -89,7 +100,11 @@ import {
   PictureOutlined,
   UnorderedListOutlined,
   InfoCircleOutlined,
-  ToolOutlined
+  ToolOutlined,
+  HeartOutlined,
+  RobotOutlined,
+  ExperimentOutlined,
+  CustomerServiceOutlined
 } from '@ant-design/icons-vue'
 
 defineProps<{

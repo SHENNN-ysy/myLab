@@ -1,10 +1,10 @@
 package com.myblog.common.exception;
 
-import org.springframework.http.HttpStatus;
+import com.myblog.common.enumeration.ErrorCode;
 
 /** 10008 - rate limit exceeded. */
 public class RateLimitException extends BaseException {
     public RateLimitException() {
-        super(HttpStatus.TOO_MANY_REQUESTS, 10008, "Too many requests");
+        super(ErrorCode.RATE_LIMIT_EXCEEDED);
     }
 }

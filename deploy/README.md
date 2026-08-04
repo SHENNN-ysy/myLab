@@ -37,7 +37,7 @@
 - `BLOG_DOMAIN`、`ADMIN_DOMAIN`；
 - `OSS_ENDPOINT`：使用同地域内网Endpoint；
 - RAM用户的 `OSS_ACCESS_KEY_ID` 与 `OSS_ACCESS_KEY_SECRET`；
-- `OSS_BUCKET`、`OSS_CDN_DOMAIN`、`STATIC_CDN_BASE`。
+- `OSS_BUCKET`、`OSS_CDN_DOMAIN`。
 
 不要提交 `.env`。应用启动不会创建Bucket，Bucket与CDN必须提前准备完成。
 
@@ -49,7 +49,7 @@
 .\scripts\upload-static-assets-to-oss.ps1 -Bucket myblog-production
 ```
 
-脚本把 `myblog/public` 原有目录结构上传到 `oss://<Bucket>/static/`。Nginx会把 `/assets/*` 和 `/game_posters/*` 重定向到 `STATIC_CDN_BASE` 对应路径。
+脚本可把 `myblog/public` 原有目录结构上传到 `oss://<Bucket>/static/` 作为独立备份；当前 Nginx 直接由前台容器提供 `/assets/*` 和 `/game_posters/*` 静态资源，避免未配置 CDN 时产生循环跳转。
 
 ## 5. 启动
 

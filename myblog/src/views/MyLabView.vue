@@ -163,20 +163,42 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import LabCard from '../components/LabCard.vue'
-import { labPosts } from '../data/labPosts'
+import { labPosts as fallbackLabPosts, type LabPost } from '../data/labPosts'
+import { usePublicContent } from '../composables/usePublicContent'
+
+const { content } = usePublicContent()
+const labPosts = computed<LabPost[]>(() => {
+  const posts = content.value.mylab?.posts
+  if (!Array.isArray(posts)) return fallbackLabPosts
+  return posts.filter((post: any) => post.enabled !== false).map((post: any) => ({
+    id: post.id,
+    date: post.date,
+    title: post.title,
+    tags: post.tags || [],
+    summary: post.summary || '',
+    image: post.image || undefined,
+    sections: post.sections || [],
+  }))
+})
 
 /* ============ 筛选状态 ============ */
 const keyword = ref('')
 const activeTag = ref<string | null>(null)
 const viewMode = ref<'chain' | 'grid'>('chain')
 
-/* 标签汇总：按出现次数降序 */
+/* 后台已配置标签时按后台顺序展示，并遵循启停状态；静态兜底仍按出现次数汇总。 */
 const tagSummary = computed(() => {
   const counts = new Map<string, number>()
-  for (const post of labPosts) {
+  for (const post of labPosts.value) {
     for (const tag of post.tags) {
       counts.set(tag, (counts.get(tag) ?? 0) + 1)
     }
+  }
+  const managedTags = content.value.mylab?.tags
+  if (Array.isArray(managedTags)) {
+    return managedTags
+      .filter((tag: any) => tag.enabled !== false)
+      .map((tag: any) => ({ tag: tag.name, count: counts.get(tag.name) ?? 0 }))
   }
   return [...counts.entries()]
     .map(([tag, count]) => ({ tag, count }))
@@ -186,7 +208,7 @@ const tagSummary = computed(() => {
 /* 搜索（标题/摘要/标签）+ 标签筛选 */
 const filteredPosts = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
-  return labPosts.filter((post) => {
+  return labPosts.value.filter((post) => {
     if (activeTag.value !== null && !post.tags.includes(activeTag.value)) {
       return false
     }

@@ -1,10 +1,14 @@
 package com.myblog.common.exception;
 
-import org.springframework.http.HttpStatus;
+import com.myblog.common.enumeration.ErrorCode;
 
 /** 10006 - resource conflict (duplicate). */
 public class ConflictException extends BaseException {
     public ConflictException(String message) {
-        super(HttpStatus.CONFLICT, 10006, message);
+        super(ErrorCode.RESOURCE_CONFLICT, message);
+    }
+
+    public ConflictException(ErrorCode errorCode, String detail) {
+        super(errorCode, detail);
     }
 }

@@ -5,15 +5,15 @@
         <div class="section-header">
           <span class="section-num">03</span>
           <div class="section-title-group">
-            <h2 class="section-title">我做过的<em>项目</em></h2>
-            <p class="section-desc">开源项目、个人玩具与实验室折腾记录。</p>
+            <h2 class="section-title">{{ section.title }}<em>{{ section.highlight }}</em></h2>
+            <p class="section-desc">{{ section.description }}</p>
           </div>
         </div>
       </RevealOnScroll>
 
       <div class="projects-grid">
         <RevealOnScroll
-          v-for="(project, index) in projects"
+          v-for="(project, index) in projectItems"
           :key="project.id"
           :delay="(index % 3) + 1"
         >
@@ -87,7 +87,20 @@
         >
           <span v-for="tech in selectedProject.tech" :key="tech">{{ tech }}</span>
         </div>
-        <button class="modal-cta stagger-item-right" :style="{ animationDelay: staggerDelay(projectParagraphs.length + 5) }">查看项目 →</button>
+        <div
+          v-if="selectedProjectImages.length"
+          class="modal-gallery stagger-item-right"
+          :style="{ animationDelay: staggerDelay(projectParagraphs.length + 5) }"
+        >
+          <img
+            v-for="(image, index) in selectedProjectImages"
+            :key="image"
+            :src="image"
+            :alt="`${selectedProjectDetail?.title || '项目'} 项目图片 ${index + 1}`"
+            loading="lazy"
+          />
+        </div>
+        <button class="modal-cta stagger-item-right" :style="{ animationDelay: staggerDelay(projectParagraphs.length + 6) }" @click="viewProject">查看项目 →</button>
       </div>
     </ProjectModal>
   </section>
@@ -95,12 +108,45 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { projects, type Project } from '@/data/projects'
+import { useRouter } from 'vue-router'
+import { projects as fallbackProjects, type Project } from '@/data/projects'
+import { usePublicContent } from '@/composables/usePublicContent'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 import ProjectModal from './ui/ProjectModal.vue'
 
 const isModalOpen = ref(false)
 const selectedProject = ref<Project | null>(null)
+const router = useRouter()
+const { content } = usePublicContent()
+const section = {
+  title: '我做过的', highlight: '项目', description: '开源项目、个人玩具与实验室折腾记录。'
+}
+type ManagedProject = Project & { detailTitle?: string; detailSummary?: string; paragraphs?: string[]; labPostId?: string; images?: string[] }
+const projectItems = computed<ManagedProject[]>(() => {
+  const items = content.value.projects?.items
+  if (!Array.isArray(items)) {
+    return fallbackProjects.map((project) => ({
+      ...project,
+      labPostId: `project-${project.id}`
+    }))
+  }
+  return items.filter((item: any) => item.enabled !== false).map((item: any) => ({
+    id: item.id,
+    title: item.card_title,
+    description: item.card_summary,
+    tag: item.tag,
+    tagType: item.accent ? 'accent' : 'default',
+    year: item.year,
+    image: item.image,
+    tech: item.tech || [],
+    content: (item.paragraphs || []).join('\n'),
+    detailTitle: item.detail_title,
+    detailSummary: item.detail_summary,
+    paragraphs: item.paragraphs || [],
+    labPostId: item.lab_post_id,
+    images: item.images || [],
+  }))
+})
 // 卡片缩略图 / 详情头图的加载完成标记（加载前显示骨架扫光占位）
 const loadedThumbs = reactive<Record<string, boolean>>({})
 const modalHeroLoaded = ref(false)
@@ -172,12 +218,24 @@ const projectDetails: Record<string, { tag: string; title: string; year: number;
 
 const selectedProjectDetail = computed(() => {
   if (!selectedProject.value) return null
-  return projectDetails[selectedProject.value.id] ?? {
+  const managed = selectedProject.value as ManagedProject
+  if (managed.detailTitle) return {
+    tag: managed.tag,
+    title: managed.detailTitle,
+    year: managed.year,
+    desc: managed.detailSummary || managed.description,
+    paragraphs: managed.paragraphs || [],
+    labPostId: managed.labPostId,
+  }
+  const localDetail = projectDetails[selectedProject.value.id]
+  if (localDetail) return { ...localDetail, labPostId: managed.labPostId }
+  return {
     tag: selectedProject.value.tag,
     title: selectedProject.value.title,
     year: selectedProject.value.year,
     desc: selectedProject.value.description,
-    paragraphs: selectedProject.value.content ? [selectedProject.value.content] : []
+    paragraphs: selectedProject.value.content ? [selectedProject.value.content] : [],
+    labPostId: managed.labPostId
   }
 })
 
@@ -185,11 +243,24 @@ const projectParagraphs = computed(() => {
   return selectedProjectDetail.value?.paragraphs ?? []
 })
 
+const selectedProjectImages = computed(() => {
+  return (selectedProject.value as ManagedProject | null)?.images?.filter(Boolean) ?? []
+})
+
 const openModal = (project: Project) => {
   clearLinks()
   modalHeroLoaded.value = false
   selectedProject.value = project
   isModalOpen.value = true
+}
+
+const viewProject = async () => {
+  const labPostId = selectedProjectDetail.value && 'labPostId' in selectedProjectDetail.value
+    ? selectedProjectDetail.value.labPostId
+    : undefined
+  if (!labPostId) return
+  isModalOpen.value = false
+  await router.push({ path: '/mylab', hash: `#lab-post-${labPostId}` })
 }
 
 const showProjectLinks = (projectId: string) => {
@@ -482,6 +553,21 @@ const clearLinks = () => {
   border: 1px solid var(--border);
   color: var(--ink-muted);
   letter-spacing: 0.05em;
+}
+
+.modal-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.modal-gallery img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
 }
 
 .modal-cta {

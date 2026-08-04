@@ -4,6 +4,7 @@ import com.myblog.application.model.entity.User;
 import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.exception.ValidationException;
+import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.application.model.command.user.UserCommands;
 import com.myblog.application.repository.UserRepository;
 import com.myblog.common.result.PageResult;
@@ -39,16 +40,16 @@ public class UserServiceImpl implements UserService {
     public User create(CurrentUser actor, UserCommands.Create command) {
         Authorization.requireSuperadmin(actor);
         if (command.username() == null || command.email() == null || command.password() == null) {
-            throw new ValidationException("username, email and password are required");
+            throw new ValidationException("username、email 和 password 为必填字段");
         }
         String username = command.username();
         String email = command.email();
         String password = command.password();
         if (username.length() < 3 || password.length() < 8 || !email.contains("@")) {
-            throw new ValidationException("Invalid user payload");
+            throw new ValidationException("用户名至少 3 位、密码至少 8 位且邮箱格式必须正确");
         }
         if (users.usernameOrEmailExists(username, email)) {
-            throw new ConflictException("Username or email already exists");
+            throw new ConflictException(ErrorCode.USER_ALREADY_EXISTS, null);
         }
         User user = new User();
         user.setId(UUID.randomUUID());
@@ -71,7 +72,7 @@ public class UserServiceImpl implements UserService {
         Authorization.requireAdmin(actor);
         User user = users.findById(id);
         if (user == null) {
-            throw new NotFoundException("User not found");
+            throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
         if (command.email() != null) {
             user.setEmail(command.email());
@@ -107,7 +108,7 @@ public class UserServiceImpl implements UserService {
     public void delete(CurrentUser actor, UUID id) {
         Authorization.requireSuperadmin(actor);
         if (!users.remove(id)) {
-            throw new NotFoundException("User not found");
+            throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
     }
 }

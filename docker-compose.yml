@@ -38,7 +38,7 @@ services:
       - --appendonly
       - "yes"
       - --requirepass
-      - ${REDIS_PASSWORD}
+      - ${REDIS_PASSWORD:-myblog_redis_secret}
       - --maxmemory
       - 128mb
       - --maxmemory-policy
@@ -46,7 +46,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-myblog_redis_secret}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,7 +71,7 @@ services:
       DB_MIN_IDLE: "1"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-myblog_redis_secret}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS}
       OSS_ENDPOINT: ${OSS_ENDPOINT}
@@ -82,8 +82,8 @@ services:
       OSS_OBJECT_PREFIX: ${OSS_OBJECT_PREFIX:-images}
       OSS_MAX_FILE_SIZE_MB: ${OSS_MAX_FILE_SIZE_MB:-10}
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
-      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD}
-      INIT_ADMIN_EMAIL: ${INIT_ADMIN_EMAIL}
+      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD:-Admin@123456}
+      INIT_ADMIN_EMAIL: ${INIT_ADMIN_EMAIL:-admin@myblog.local}
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -99,7 +99,6 @@ services:
     environment:
       BLOG_DOMAIN: ${BLOG_DOMAIN}
       ADMIN_DOMAIN: ${ADMIN_DOMAIN}
-      STATIC_CDN_BASE: ${STATIC_CDN_BASE}
     ports:
       - "80:80"
     depends_on:

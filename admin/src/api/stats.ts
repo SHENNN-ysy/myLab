@@ -3,10 +3,8 @@ import type { VisitTrend } from '@/types'
 
 export interface VisitStats {
   totalViews: number
-  totalUsers: number
   totalVisits: number
   todayViews: number
-  todayUsers: number
   todayVisits: number
 }
 
@@ -18,10 +16,8 @@ export const getVisitStatsApi = async (): Promise<VisitStats> => {
   const data = res.data || {}
   return {
     totalViews: data.total_pv ?? data.pv ?? 0,
-    totalUsers: data.total_uv ?? data.uv ?? 0,
     totalVisits: data.total_visits ?? data.pv ?? 0,
     todayViews: data.pv ?? 0,
-    todayUsers: data.uv ?? 0,
     todayVisits: data.pv ?? 0
   }
 }
@@ -39,7 +35,6 @@ export const getVisitTrendApi = async (): Promise<VisitTrend[]> => {
       return {
         date: `${date.getMonth() + 1}/${date.getDate()}`,
         views: data.pv ?? 0,
-        users: data.uv ?? 0,
         visits: data.pv ?? 0
       }
     })

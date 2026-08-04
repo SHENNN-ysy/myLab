@@ -1,8 +1,8 @@
 package com.myblog.starter.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.myblog.common.constant.MessageConstant;
 import com.myblog.common.constant.SecurityConstant;
+import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.common.json.JacksonObjectMapper;
 import com.myblog.common.properties.AppProperties;
 import com.myblog.common.result.Result;
@@ -38,7 +38,11 @@ public class SecurityConfig {
                         .requestMatchers(SecurityConstant.HEALTH_PREFIX + "/**",
                                 SecurityConstant.HEALTH_API,
                                 SecurityConstant.AUTH_LOGIN,
-                                SecurityConstant.AUTH_REFRESH)
+                                SecurityConstant.AUTH_REFRESH,
+                                SecurityConstant.OPENAPI_JSON,
+                                SecurityConstant.OPENAPI_YAML,
+                                SecurityConstant.SWAGGER_UI,
+                                SecurityConstant.SWAGGER_UI_RESOURCES)
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, SecurityConstant.PUBLIC_GET_PREFIXES.stream()
                                 .map(p -> p + "/**").toArray(String[]::new))
@@ -50,13 +54,13 @@ public class SecurityConfig {
                             res.setStatus(401);
                             res.setContentType(MediaType.APPLICATION_JSON_VALUE);
                             objectMapper.writeValue(res.getOutputStream(),
-                                    Result.fail(10001, MessageConstant.AUTH_FAILED, null));
+                                    Result.fail(ErrorCode.AUTHENTICATION_FAILED, null));
                         })
                         .accessDeniedHandler((req, res, x) -> {
                             res.setStatus(403);
                             res.setContentType(MediaType.APPLICATION_JSON_VALUE);
                             objectMapper.writeValue(res.getOutputStream(),
-                                    Result.fail(10004, MessageConstant.FORBIDDEN, null));
+                                    Result.fail(ErrorCode.FORBIDDEN, null));
                         }))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

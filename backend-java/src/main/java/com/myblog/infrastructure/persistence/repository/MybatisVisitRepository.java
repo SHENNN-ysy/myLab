@@ -55,4 +55,12 @@ public class MybatisVisitRepository implements VisitRepository {
         Long count = jdbc.queryForObject("select count(distinct ip) from visit_logs", Long.class);
         return count == null ? 0L : count;
     }
+
+    @Override
+    public long countSessions() {
+        Long count = jdbc.queryForObject(
+                "select count(*) from (select ip, date_trunc('day', visited_at) from visit_logs group by ip, date_trunc('day', visited_at)) sessions",
+                Long.class);
+        return count == null ? 0L : count;
+    }
 }

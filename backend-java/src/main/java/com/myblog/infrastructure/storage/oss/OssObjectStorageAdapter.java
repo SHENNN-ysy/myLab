@@ -4,6 +4,8 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.myblog.common.properties.AppProperties;
 import com.myblog.application.port.ObjectStorage;
+import com.myblog.common.enumeration.ErrorCode;
+import com.myblog.common.exception.InternalException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -35,7 +37,13 @@ public class OssObjectStorageAdapter implements ObjectStorage {
         metadata.setContentLength(size);
         metadata.setContentType(contentType);
         metadata.setCacheControl("public, max-age=2592000, immutable");
-        oss.putObject(props.ossBucket(), objectKey, input, metadata);
+        try {
+            oss.putObject(props.ossBucket(), objectKey, input, metadata);
+        } catch (InternalException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new InternalException(ErrorCode.STORAGE_UNAVAILABLE, null);
+        }
     }
 
     @Override
@@ -69,7 +77,13 @@ public class OssObjectStorageAdapter implements ObjectStorage {
     public String signedUrl(String objectKey, long expiresSeconds) {
         requireConfigured();
         Date expiresAt = Date.from(Instant.now().plusSeconds(expiresSeconds));
-        return oss.generatePresignedUrl(props.ossBucket(), objectKey, expiresAt).toString();
+        try {
+            return oss.generatePresignedUrl(props.ossBucket(), objectKey, expiresAt).toString();
+        } catch (InternalException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new InternalException(ErrorCode.STORAGE_UNAVAILABLE, null);
+        }
     }
 
     @Override
@@ -82,7 +96,7 @@ public class OssObjectStorageAdapter implements ObjectStorage {
 
     private void requireConfigured() {
         if (!configured()) {
-            throw new IllegalStateException("OSS is not configured");
+            throw new InternalException(ErrorCode.STORAGE_UNAVAILABLE, "对象存储尚未配置");
         }
     }
 

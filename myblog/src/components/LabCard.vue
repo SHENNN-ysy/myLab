@@ -1,6 +1,6 @@
 <template>
   <!-- myLab 记录卡片：中枢链路 / 矩阵网格两种视图共用，点击进入详情页 -->
-  <article class="lab-card" @click="router.push(`/mylab/post/${post.id}`)">
+  <article :id="`lab-post-${post.id}`" class="lab-card" @click="router.push(`/mylab/post/${post.id}`)">
     <!-- 头图：加载完成前 / 未配图时显示骨架占位 -->
     <div class="lab-card-media" :class="{ 'is-loaded': imageLoaded }">
       <img

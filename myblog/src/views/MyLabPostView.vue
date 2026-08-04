@@ -96,11 +96,21 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { labPosts } from '../data/labPosts'
+import { labPosts as fallbackLabPosts, type LabPost } from '../data/labPosts'
+import { usePublicContent } from '../composables/usePublicContent'
 
 const route = useRoute()
+const { content } = usePublicContent()
+const labPosts = computed<LabPost[]>(() => {
+  const posts = content.value.mylab?.posts
+  if (!Array.isArray(posts)) return fallbackLabPosts
+  return posts.filter((item: any) => item.enabled !== false).map((item: any) => ({
+    id: item.id, date: item.date, title: item.title, tags: item.tags || [],
+    summary: item.summary || '', image: item.image || undefined, sections: item.sections || []
+  }))
+})
 
-const post = computed(() => labPosts.find((p) => p.id === route.params.id) ?? null)
+const post = computed(() => labPosts.value.find((p) => p.id === route.params.id) ?? null)
 
 /* 头图骨架：切换文章时重置加载状态 */
 const heroLoaded = ref(false)
@@ -115,7 +125,7 @@ watch(
 const recommended = computed(() => {
   if (!post.value) return []
   const current = post.value
-  const others = labPosts.filter((p) => p.id !== current.id)
+  const others = labPosts.value.filter((p) => p.id !== current.id)
   const shared = others.filter((p) => p.tags.some((t) => current.tags.includes(t)))
   const rest = others.filter((p) => !shared.includes(p))
   return [...shared, ...rest].slice(0, 3)

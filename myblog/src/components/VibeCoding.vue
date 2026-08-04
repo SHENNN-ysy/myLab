@@ -6,8 +6,8 @@
         <div class="section-header">
           <span class="section-num">06</span>
           <div class="section-title-group">
-            <h2 class="section-title">Vibe <em>Coding</em></h2>
-            <p class="section-desc">这是我日常写代码时绕不开的工具链与核心技术栈。左手 LLM，右手 IDE，人机协作正在重塑我做产品的方式。</p>
+            <h2 class="section-title">{{ section.title }} <em>{{ section.highlight }}</em></h2>
+            <p class="section-desc">{{ section.description }}</p>
           </div>
         </div>
       </RevealOnScroll>
@@ -66,7 +66,7 @@
 
         <div class="ai-coding-lists">
           <RevealOnScroll
-            v-for="tool in aiTools"
+            v-for="tool in toolItems"
             :key="tool.name"
             :delay="2"
           >
@@ -88,13 +88,24 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted } from 'vue'
-import { aiTools } from '@/data/projects'
+import { computed, reactive, onMounted } from 'vue'
+import { aiTools as fallbackTools } from '@/data/projects'
+import { usePublicContent } from '@/composables/usePublicContent'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 import PathEasedLogo from './ui/PathEasedLogo.vue'
 import SeagullSea from './ui/SeagullSea.vue'
 
 const animatedWidths = reactive<Record<string, string>>({})
+const { content } = usePublicContent()
+const section = {
+  title: 'Vibe', highlight: 'Coding',
+  description: '这是我日常写代码时绕不开的工具链与核心技术栈。左手 LLM，右手 IDE，人机协作正在重塑我做产品的方式。'
+}
+const toolItems = computed(() => {
+  const tools = content.value.vibe?.tools
+  if (!Array.isArray(tools)) return fallbackTools
+  return tools.filter((tool: any) => tool.enabled !== false)
+})
 
 onMounted(() => {
   const items = document.querySelectorAll('.ai-tool-item')

@@ -33,10 +33,7 @@ application/
 └── service/            # 用例实现
     ├── auth/
     ├── user/
-    ├── project/
-    ├── skill/
-    ├── footprint/
-    ├── about/
+    ├── content/
     ├── file/
     ├── visit/
     └── system/
@@ -48,10 +45,7 @@ application/
 | --- | --- |
 | `auth` | 登录、刷新令牌、退出和修改密码 |
 | `user` | 后台用户管理 |
-| `project` | 项目展示与管理 |
-| `skill` | 技能展示与管理 |
-| `footprint` | 足迹地图数据 |
-| `about` | 关于页面气泡数据 |
+| `content` | 七类内容模块的草稿、发布、下线、历史与回滚 |
 | `file` | 文件元数据、OSS上传和CDN地址 |
 | `visit` | 访问日志、PV与UV统计 |
 | `system` | 健康状态与系统运行信息 |
