@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 
-export type ContentModuleKey = 'skills' | 'footprints' | 'hobbies' | 'vibe' | 'mylab'
+export type ContentModuleKey = 'home' | 'about' | 'skills' | 'footprints' | 'hobbies' | 'vibe' | 'mylab'
 
 export interface ContentModule<T = unknown> {
   module_key: ContentModuleKey

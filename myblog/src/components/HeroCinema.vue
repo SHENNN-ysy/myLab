@@ -96,8 +96,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import HeroWordmark from './HeroWordmark.vue'
+import { usePublicContent } from '@/composables/usePublicContent'
 
-const slides = [
+const fallbackSlides = [
   { src: '/assets/hero/hero-1.webp', alt: '香港太平山城市远景', position: '50% 35%' },
   { src: '/assets/hero/hero-2.webp', alt: '蓝天下飞翔的海鸥', position: '50% 42%' },
   { src: '/assets/hero/hero-3.webp', alt: '海面与云层', position: '50% 50%' },
@@ -105,6 +106,19 @@ const slides = [
   { src: '/assets/hero/hero-5.webp', alt: '落日晚霞山景', position: '50% 50%' },
   { src: '/assets/hero/hero-6.webp', alt: '海边公路与云', position: '50% 50%' },
 ] as const
+
+const { content } = usePublicContent()
+const slides = computed(() => {
+  const managed = content.value.home?.images
+  if (!Array.isArray(managed) || managed.length !== 6 || managed.some(image => !image.image_url)) {
+    return [...fallbackSlides]
+  }
+  return managed.map((image, index) => ({
+    src: image.image_url as string,
+    alt: image.alt || `首页图片 ${index + 1}`,
+    position: image.object_position || '50% 50%'
+  }))
+})
 
 const INTERVAL_MS = 9000
 
@@ -155,7 +169,7 @@ function scheduleExitProgress() {
 
 function preloadIndex(index: number) {
   if (typeof Image === 'undefined') return
-  const slide = slides[index]
+  const slide = slides.value[index]
   if (!slide) return
 
   const img = new Image()
@@ -175,19 +189,19 @@ function startTimer() {
   if (lockedIndex.value !== -1) return
   stopTimer()
   timerId = window.setInterval(() => {
-    activeIndex.value = (activeIndex.value + 1) % slides.length
-    preloadIndex((activeIndex.value + 1) % slides.length)
+    activeIndex.value = (activeIndex.value + 1) % slides.value.length
+    preloadIndex((activeIndex.value + 1) % slides.value.length)
   }, INTERVAL_MS)
 }
 
 /* ============ 圆点选择条 ============ */
 function lockTo(index: number) {
-  if (index < 0 || index >= slides.length) return
+  if (index < 0 || index >= slides.value.length) return
   lockedIndex.value = index
   activeIndex.value = index
   stopTimer()
   /* 预加载锁定项的下一张，避免解锁后下一次切卡 */
-  preloadIndex((index + 1) % slides.length)
+  preloadIndex((index + 1) % slides.value.length)
 }
 
 function onBgLoaded(index: number) {
@@ -248,7 +262,7 @@ onMounted(() => {
     isReady.value = true
   }, 2500)
 
-  for (let index = 1; index < slides.length; index += 1) {
+  for (let index = 1; index < slides.value.length; index += 1) {
     preloadIndex(index)
   }
 

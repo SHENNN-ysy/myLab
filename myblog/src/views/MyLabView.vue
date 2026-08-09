@@ -181,10 +181,10 @@ const tagSummary = computed(() => {
     }
   }
   const managedTags = content.value.mylab?.tags
-  if (Array.isArray(managedTags) && managedTags.length > 0 && content.value.mylab?.cards?.length > 0) {
+  if (Array.isArray(managedTags) && managedTags.length > 0 && (content.value.mylab?.cards?.length ?? 0) > 0) {
     return managedTags
-      .filter((tag: any) => tag.enabled !== false)
-      .map((tag: any) => ({ tag: tag.name, count: counts.get(tag.name) ?? 0 }))
+      .filter(tag => tag.enabled !== false && Boolean(tag.name))
+      .map(tag => ({ tag: tag.name as string, count: counts.get(tag.name as string) ?? 0 }))
   }
   return [...counts.entries()]
     .map(([tag, count]) => ({ tag, count }))

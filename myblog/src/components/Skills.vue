@@ -31,7 +31,10 @@
               <span class="badge-star">✦</span>
               <span>NEW</span>
             </div>
-            <div class="skill-icon" v-html="getIcon(skill.icon)" />
+            <div class="skill-icon">
+              <img v-if="skill.iconUrl" :src="skill.iconUrl" :alt="`${skill.name} 图标`" />
+              <span v-else v-html="getIcon(skill.icon)" />
+            </div>
             <div class="skill-name">{{ skill.name }}</div>
             <div class="skill-track">
               <div 
@@ -53,7 +56,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, onMounted } from 'vue'
-import { skills as fallbackSkills } from '@/data/projects'
+import { skills as fallbackSkills, type Skill } from '@/data/projects'
 import { usePublicContent } from '@/composables/usePublicContent'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 
@@ -63,15 +66,17 @@ const section = {
   title: '技术', highlight: '栈',
   description: '从前端界面设计到后端服务构建再到AI基础应用，正在努力让我的技能覆盖软件开发的全栈领域。'
 }
-const skillItems = computed(() => {
+type ManagedSkill = Skill & { iconUrl?: string; isNew?: boolean }
+const skillItems = computed<ManagedSkill[]>(() => {
   const items = content.value.skills?.items
   if (!Array.isArray(items) || items.length === 0) return fallbackSkills
-  return items.filter((item: any) => item.enabled !== false).map((item: any) => ({
-    name: item.name,
-    percentage: item.percentage,
-    level: item.level,
-    levelText: item.level_text,
-    icon: item.icon,
+  return items.filter(item => item.enabled !== false).map(item => ({
+    name: item.name || '',
+    percentage: item.percentage || 0,
+    level: item.level_code || item.level || 'novice',
+    levelText: item.level_text || '',
+    icon: 'code',
+    iconUrl: item.icon_url,
     barStyle: item.bar_style,
     isNew: item.is_new,
   }))
@@ -79,7 +84,7 @@ const skillItems = computed(() => {
 const fallbackNewSkillNames = new Set(['JavaScript / TypeScript', 'Python', 'React / Vue'])
 const hasManagedSkills = computed(() => Array.isArray(content.value.skills?.items) && content.value.skills.items.length > 0)
 
-const isNewSkill = (name: string) => skillItems.value.some((skill: any) => skill.name === name && skill.isNew)
+const isNewSkill = (name: string) => skillItems.value.some(skill => skill.name === name && skill.isNew)
   || (!hasManagedSkills.value && fallbackNewSkillNames.has(name))
 
 const showSkillLinks = (skill: string) => {
@@ -338,6 +343,14 @@ onMounted(() => {
   stroke-width: 1.4;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.skill-icon img,
+.skill-icon span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .skill-name {

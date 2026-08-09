@@ -129,15 +129,16 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Card3D from './ui/Card3D.vue'
+import { usePublicContent } from '@/composables/usePublicContent'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const introWords = ['welcome', 'to', 'shennn']
-const profile = {
+const fallbackProfile = {
   kicker: 'Profile', title: '关于我', avatar: '/assets/avatar.png', avatar_alt: 'DNSamuel',
   display_name: 'SHENNN', intro: '你好，我是 SHENNN，目前专注于全栈开发、AI agent学习实践中...',
   bullets: [
@@ -147,10 +148,50 @@ const profile = {
   ],
   outro: '努力成长，希望成为一名AI超级个人，通过AI让生活变得更美好。'
 }
-const ingredients = {
+const fallbackIngredients = {
   kicker: 'Ingredients', title: '我的成分',
   description: '之前有人想查我的成分，我认真的思考了一下，我的成分应该是这样，不过随时有可能会变就是啦'
 }
+const fallbackBubbles = [
+  { text: 'FPS牢玩家', size: 'big', background_color: '#FF6B6B', glow_color: '#FF6B6B', text_color: '#FF8A80' },
+  { text: '健身旅行者', size: 'big', background_color: '#2EC4B6', glow_color: '#2EC4B6', text_color: '#64FFDA' },
+  { text: '动物保护旅行者', size: 'big', background_color: '#66BB6A', glow_color: '#66BB6A', text_color: '#81C784' },
+  { text: '养老二次元', size: 'big', background_color: '#DB7093', glow_color: '#DB7093', text_color: '#F48FB1' },
+  { text: '游戏旅行者', size: 'big', background_color: '#FF8A65', glow_color: '#FF8A65', text_color: '#FFAB91' },
+  { text: '美食探索旅行者', size: 'mid', background_color: '#FF8A65', glow_color: '#FF8A65', text_color: '#FFCCBC' },
+  { text: '自然风光旅行者', size: 'mid', background_color: '#4CAF50', glow_color: '#4CAF50', text_color: '#A5D6A7' },
+  { text: '技术探索者', size: 'mid', background_color: '#5BA4E6', glow_color: '#5BA4E6', text_color: '#81D4FA' },
+  { text: '摄影旅行者', size: 'mid', background_color: '#FFB347', glow_color: '#FFB347', text_color: '#FFE082' },
+  { text: 'city walk', size: 'mid', background_color: '#64B5F6', glow_color: '#64B5F6', text_color: '#90CAF9' },
+  { text: '电动版骑行爱好者', size: 'mid', background_color: '#66BB6A', glow_color: '#66BB6A', text_color: '#A5D6A7' },
+  { text: '吃瓜旅行者', size: 'mid', background_color: '#AB47BC', glow_color: '#AB47BC', text_color: '#CE93D8' },
+  { text: '代码强迫症', size: 'mid', background_color: '#26A69A', glow_color: '#26A69A', text_color: '#80CBC4' },
+  { text: 'AI大人的爱徒', size: 'mid', background_color: '#00BCD4', glow_color: '#00BCD4', text_color: '#4DD0E1' }
+] as const
+const { content } = usePublicContent()
+const profile = computed(() => {
+  const managed = content.value.about?.profile
+  if (!managed?.title) return fallbackProfile
+  return {
+    kicker: 'Profile',
+    title: managed.title,
+    avatar: managed.avatar_url || fallbackProfile.avatar,
+    avatar_alt: managed.avatar_alt || fallbackProfile.avatar_alt,
+    display_name: 'SHENNN',
+    intro: managed.intro || '',
+    bullets: managed.bullets || [],
+    outro: managed.outro || ''
+  }
+})
+const ingredients = computed(() => ({
+  kicker: 'Ingredients',
+  title: content.value.about?.ingredients?.title || fallbackIngredients.title,
+  description: content.value.about?.ingredients?.description || fallbackIngredients.description
+}))
+const bubbleItems = computed(() => {
+  const managed = content.value.about?.bubbles?.filter(bubble => bubble.text)
+  return managed?.length ? managed : [...fallbackBubbles]
+})
 const panelRevealRef = ref<HTMLElement | null>(null)
 const cardShellRef = ref<HTMLElement | null>(null)
 const travelerPanelRef = ref<HTMLElement | null>(null)
@@ -220,26 +261,17 @@ function setupIngredientBubbles() {
   const G_FACTOR = 2000000
   const G_DECAY = 0.1
 
-  const LABELS = ['FPS牢玩家', '健身旅行者', '动物保护旅行者', '养老二次元', '游戏旅行者', '美食探索旅行者', '自然风光旅行者', '技术探索者', '摄影旅行者', 'city walk', '电动版骑行爱好者', '吃瓜旅行者', '代码强迫症', 'AI大人的爱徒']
-
-  const BUBBLE_STYLES: Record<string, { bg: string; glow: string; textColor: string }> = {
-    'FPS牢玩家': { bg: 'rgba(255, 107, 107, 0.25)', glow: 'rgba(255, 107, 107, 0.4)', textColor: '#FF8A80' },
-    '健身旅行者': { bg: 'rgba(46, 196, 182, 0.25)', glow: 'rgba(46, 196, 182, 0.4)', textColor: '#64FFDA' },
-    '养老二次元': { bg: 'rgba(219, 112, 147, 0.25)', glow: 'rgba(219, 112, 147, 0.4)', textColor: '#F48FB1' },
-    '美食探索旅行者': { bg: 'rgba(255, 138, 101, 0.25)', glow: 'rgba(255, 138, 101, 0.4)', textColor: '#FFCCBC' },
-    '自然风光旅行者': { bg: 'rgba(76, 175, 80, 0.25)', glow: 'rgba(76, 175, 80, 0.4)', textColor: '#A5D6A7' },
-    'city walk': { bg: 'rgba(100, 181, 246, 0.25)', glow: 'rgba(100, 181, 246, 0.4)', textColor: '#90CAF9' },
-    '电动版骑行爱好者': { bg: 'rgba(102, 187, 106, 0.25)', glow: 'rgba(102, 187, 106, 0.4)', textColor: '#A5D6A7' },
-    '吃瓜旅行者': { bg: 'rgba(171, 71, 188, 0.25)', glow: 'rgba(171, 71, 188, 0.4)', textColor: '#CE93D8' },
-    '代码强迫症': { bg: 'rgba(38, 166, 154, 0.25)', glow: 'rgba(38, 166, 154, 0.4)', textColor: '#80CBC4' },
-    'AI大人的爱徒': { bg: 'rgba(0, 188, 212, 0.25)', glow: 'rgba(0, 188, 212, 0.4)', textColor: '#4DD0E1' },
-    '游戏旅行者': { bg: 'rgba(255, 138, 101, 0.25)', glow: 'rgba(255, 138, 101, 0.4)', textColor: '#FFAB91' },
-    '摄影旅行者': { bg: 'rgba(255, 179, 71, 0.25)', glow: 'rgba(255, 179, 71, 0.4)', textColor: '#FFE082' },
-    '动物保护旅行者': { bg: 'rgba(102, 187, 106, 0.25)', glow: 'rgba(102, 187, 106, 0.4)', textColor: '#81C784' },
-    '技术探索者': { bg: 'rgba(91, 164, 230, 0.25)', glow: 'rgba(91, 164, 230, 0.4)', textColor: '#81D4FA' },
-  }
   type BubbleTier = 'big' | 'mid' | 'small'
-  type Bubble = { x: number; y: number; r: number; label: string; tier: BubbleTier }
+  type BubbleStyle = { bg: string; glow: string; textColor: string }
+  type Bubble = { x: number; y: number; r: number; label: string; tier: BubbleTier; style?: BubbleStyle }
+
+  const hexToRgba = (hex: string, alpha: number) => {
+    const value = /^#[0-9a-f]{6}$/i.test(hex) ? hex.slice(1) : '5BA4E6'
+    const red = Number.parseInt(value.slice(0, 2), 16)
+    const green = Number.parseInt(value.slice(2, 4), 16)
+    const blue = Number.parseInt(value.slice(4, 6), 16)
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+  }
 
   class GridLayout {
     gx: number
@@ -278,24 +310,28 @@ function setupIngredientBubbles() {
   const grid = new GridLayout(120, CARD_W, CARD_H)
   const bubbles: Bubble[] = []
 
-  const labeledBubbles: Array<Pick<Bubble, 'label' | 'tier'>> = [
-    ...LABELS.slice(0, 5).map(label => ({ label, tier: 'big' as const })),
-    ...LABELS.slice(5).map(label => ({ label, tier: 'mid' as const })),
-  ]
-
-  for (const configured of labeledBubbles) {
-    for (let j = 0; j < 120; j++) {
-      const r = configured.tier === 'big' ? 44 + Math.random() * 12 : 32 + Math.random() * 14
-      const x = r + Math.random() * (CARD_W - r * 2)
-      const y = r + Math.random() * (CARD_H - r * 2)
-      if (!grid.collides({ x, y, r })) {
-        const bubble: Bubble = { x, y, r, label: configured.label, tier: configured.tier }
-        grid.add(bubble)
-        bubbles.push(bubble)
-        break
-      }
+  const labeledBubbles: Array<Pick<Bubble, 'label' | 'tier' | 'style'>> = bubbleItems.value.map(item => ({
+    label: item.text || '',
+    tier: item.size === 'big' ? 'big' : 'mid',
+    style: {
+      bg: hexToRgba(item.background_color || '#5BA4E6', 0.25),
+      glow: hexToRgba(item.glow_color || '#5BA4E6', 0.4),
+      textColor: item.text_color || '#81D4FA'
     }
-  }
+  }))
+
+  // 文字气泡使用固定网格槽位，保证后台配置的每一条都能显示；随机性只用于后续装饰小气泡。
+  const labelColumns = Math.max(1, Math.ceil(labeledBubbles.length / 2))
+  const labelCellWidth = CARD_W / labelColumns
+  const labelCellHeight = CARD_H / 2
+  labeledBubbles.forEach((configured, index) => {
+    const r = configured.tier === 'big' ? 46 : 36
+    const x = (index % labelColumns + 0.5) * labelCellWidth
+    const y = (Math.floor(index / labelColumns) + 0.5) * labelCellHeight
+    const bubble: Bubble = { x, y, r, label: configured.label, tier: configured.tier, style: configured.style }
+    grid.add(bubble)
+    bubbles.push(bubble)
+  })
 
   for (let i = 0; i < 32; i++) {
     for (let j = 0; j < 80; j++) {
@@ -343,7 +379,7 @@ function setupIngredientBubbles() {
     const isBig = b.tier === 'big'
     const isMid = b.tier === 'mid'
     const opacity = isBig ? 1 : isMid ? 0.9 : (0.5 + Math.random() * 0.15)
-    const style = b.label && BUBBLE_STYLES[b.label]
+    const style = b.style
     const bg = style ? style.bg : 'rgba(91, 164, 230, 0.25)'
     const textColor = style ? style.textColor : '#5BA4E6'
     const glowColor = style ? style.glow : 'rgba(91, 164, 230, 0.4)'

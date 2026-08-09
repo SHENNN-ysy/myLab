@@ -113,7 +113,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { hobbies as fallbackFootprints, type Hobby } from '@/data/projects'
-import { usePublicContent } from '@/composables/usePublicContent'
+import { usePublicContent, type PublicFootprint } from '@/composables/usePublicContent'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 import ProjectModal from './ui/ProjectModal.vue'
 import DinoRunner from './ui/DinoRunner.vue'
@@ -127,10 +127,11 @@ const section = {
 }
 const footprintItems = computed<ManagedFootprint[]>(() => {
   const details = content.value.footprints?.details
-  const detailById = new Map<string, any>()
+  const detailById = new Map<string, PublicFootprint>()
   if (Array.isArray(details)) {
-    details.forEach((detail: any) => {
-      if (typeof detail?.id === 'string') detailById.set(detail.id, detail)
+    details.forEach(detail => {
+      const key = detail.city_key || detail.id
+      if (key) detailById.set(key, detail)
     })
   }
   return fallbackFootprints.map((city) => {
@@ -140,7 +141,9 @@ const footprintItems = computed<ManagedFootprint[]>(() => {
       ...city,
       detailTitle: detail.title,
       detailSummary: detail.summary,
-      paragraphs: Array.isArray(detail.paragraphs) ? detail.paragraphs : [],
+      paragraphs: Array.isArray(detail.paragraphs)
+        ? detail.paragraphs
+        : String(detail.contents || '').split(/(?:\r?\n){2,}/).filter(Boolean),
       images: Array.isArray(detail.images) ? detail.images : [],
       ctaText: detail.cta_text,
       ctaUrl: detail.cta_url,

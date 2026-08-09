@@ -2,6 +2,7 @@ export type StaticContentModuleKey = 'skills' | 'footprints' | 'hobbies' | 'vibe
 
 export interface SkillItem {
   id: string
+  rowId?: string
   name: string
   percentage: number
   levelCode: 'proficient' | 'competent' | 'novice'
@@ -14,6 +15,7 @@ export interface SkillItem {
 
 export interface FootprintItem {
   id: string
+  rowId?: string
   city: string
   title: string
   summary: string
@@ -27,14 +29,17 @@ export interface FootprintItem {
 
 export interface HobbyItem {
   id: string
+  rowId?: string
   title: string
   description: string
   image: string
+  imageResource: { id: string; name: string; url: string } | null
   enabled: boolean
 }
 
 export interface VibeToolItem {
   id: string
+  rowId?: string
   name: string
   percentage: number
   description: string
@@ -42,6 +47,7 @@ export interface VibeToolItem {
 }
 
 export interface HobbyTimeItem {
+  rowId?: string
   age: number
   Study: number
   Music: number
@@ -54,6 +60,7 @@ export type HobbyTimeKey = keyof Omit<HobbyTimeItem, 'age'>
 
 export interface HobbyTimeTag {
   id: string
+  rowId?: string
   dataKey: HobbyTimeKey
   name: string
   color: string
@@ -115,11 +122,11 @@ export const frontendContent: StaticContentMap = {
     }
   ],
   hobbies: [
-    { id: 'counter-strike-2', title: 'Counter-Strike 2', image: `${blogOrigin}/game_posters/cs2.jpg`, description: '最喜欢它纯粹又残酷的博弈感，每一颗道具、每一次peek都要为团队节奏负责。', enabled: true },
-    { id: 'apex', title: 'Apex 英雄', image: `${blogOrigin}/game_posters/apex.jpg`, description: '机动性和临场决策很迷人，打赢一波混战时会有非常强的爽感和节奏感。', enabled: true },
-    { id: 'delta-force', title: '三角洲行动', image: `${blogOrigin}/game_posters/delta-force.jpg`, description: '偏战术、偏压迫的枪线体验，适合认真研究路线、信息和团队配合。', enabled: true },
-    { id: 'valorant', title: '无畏契约', image: `${blogOrigin}/game_posters/the-finals.jpg`, description: '技能和枪法互相牵制，回合制的紧张感很足，残局尤其容易让人上头。', enabled: true },
-    { id: 'overwatch-2', title: '守望先锋 2', image: `${blogOrigin}/game_posters/overwatch2.jpeg`, description: '英雄机制和团战节奏变化很快，最吸引我的是团队位置和技能交换。', enabled: true }
+    { id: 'counter-strike-2', title: 'Counter-Strike 2', image: `${blogOrigin}/game_posters/cs2.jpg`, imageResource: null, description: '最喜欢它纯粹又残酷的博弈感，每一颗道具、每一次peek都要为团队节奏负责。', enabled: true },
+    { id: 'apex', title: 'Apex 英雄', image: `${blogOrigin}/game_posters/apex.jpg`, imageResource: null, description: '机动性和临场决策很迷人，打赢一波混战时会有非常强的爽感和节奏感。', enabled: true },
+    { id: 'delta-force', title: '三角洲行动', image: `${blogOrigin}/game_posters/delta-force.jpg`, imageResource: null, description: '偏战术、偏压迫的枪线体验，适合认真研究路线、信息和团队配合。', enabled: true },
+    { id: 'valorant', title: '无畏契约', image: `${blogOrigin}/game_posters/the-finals.jpg`, imageResource: null, description: '技能和枪法互相牵制，回合制的紧张感很足，残局尤其容易让人上头。', enabled: true },
+    { id: 'overwatch-2', title: '守望先锋 2', image: `${blogOrigin}/game_posters/overwatch2.jpeg`, imageResource: null, description: '英雄机制和团战节奏变化很快，最吸引我的是团队位置和技能交换。', enabled: true }
   ],
   vibe: [
     { id: 'cursor', name: 'Cursor', percentage: 80, description: '代码编写主力，执行明确任务，性价比高', enabled: true },

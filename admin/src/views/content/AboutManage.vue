@@ -14,6 +14,7 @@
         </div>
       </template>
 
+      <a-spin :spinning="loading">
       <a-tabs v-model:active-key="activePanel">
         <a-tab-pane key="current" tab="当前内容">
           <a-alert
@@ -62,15 +63,10 @@
 
         <a-tab-pane key="draft" tab="草稿内容">
           <div class="draft-toolbar">
-            <a-alert
-              type="warning"
-              show-icon
-              message="关于我后端接口暂未接入"
-              description="当前可完成内容编辑与气泡管理；保存、发布按钮暂不写入服务器。"
-            />
+            <a-alert type="info" show-icon message="草稿通过后端版本接口保存" description="头像使用 OSS 资源；保存草稿后可发布为新的当前版本。" />
             <a-space>
-              <a-button @click="notifyPending('保存草稿')">保存草稿</a-button>
-              <a-button type="primary" @click="notifyPending('发布')">发布</a-button>
+              <a-button :loading="saving" @click="saveDraft">保存草稿</a-button>
+              <a-button type="primary" :loading="publishing" @click="publishDraft">发布</a-button>
             </a-space>
           </div>
 
@@ -81,7 +77,7 @@
             <a-row :gutter="20">
               <a-col :xs="24" :lg="8">
                 <a-form-item label="头像资源">
-                  <MediaField v-model="draftContent.profile.avatar" />
+                  <OssImageResourcePicker v-model="draftContent.profile.avatarResource" />
                 </a-form-item>
                 <a-form-item label="头像说明">
                   <a-input v-model:value="draftContent.profile.avatarAlt" :maxlength="100" />
@@ -165,6 +161,7 @@
           </section>
         </a-tab-pane>
       </a-tabs>
+      </a-spin>
     </a-card>
 
     <a-modal
@@ -205,17 +202,20 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import type { FormInstance, FormProps } from 'ant-design-vue'
 import { PictureOutlined, PlusOutlined } from '@ant-design/icons-vue'
-import MediaField from '@/components/content/MediaField.vue'
+import OssImageResourcePicker, { type OssImageResourceValue } from '@/components/content/OssImageResourcePicker.vue'
+import { getContentModuleApi, publishContentApi, saveContentDraftApi, type ContentModule } from '@/api/content'
+import type { AboutContentData } from '@/types/content'
 
 type BubbleSize = 'big' | 'mid'
 
 interface IngredientBubble {
   id: string
+  rowId?: string
   text: string
   size: BubbleSize
   backgroundColor: string
@@ -227,6 +227,7 @@ interface AboutContent {
   profile: {
     title: string
     avatar: string
+    avatarResource: OssImageResourceValue | null
     avatarAlt: string
     intro: string
     bullets: string[]
@@ -241,7 +242,10 @@ interface AboutContent {
 
 const router = useRouter()
 const activePanel = ref('current')
-const blogOrigin = (import.meta.env.VITE_BLOG_ORIGIN || 'http://localhost:5173').replace(/\/$/, '')
+const loading = ref(false)
+const saving = ref(false)
+const publishing = ref(false)
+const moduleMeta = ref<ContentModule<AboutContentData> | null>(null)
 
 const bubbleSeed: Array<Omit<IngredientBubble, 'id'>> = [
   { text: 'FPS牢玩家', size: 'big', backgroundColor: '#FF6B6B', glowColor: '#FF6B6B', textColor: '#FF8A80' },
@@ -260,10 +264,11 @@ const bubbleSeed: Array<Omit<IngredientBubble, 'id'>> = [
   { text: 'AI大人的爱徒', size: 'mid', backgroundColor: '#00BCD4', glowColor: '#00BCD4', textColor: '#4DD0E1' }
 ]
 
-const currentContent: AboutContent = {
+const initialContent: AboutContent = {
   profile: {
     title: '关于我',
-    avatar: `${blogOrigin}/assets/avatar.png`,
+    avatar: '',
+    avatarResource: null,
     avatarAlt: 'DNSamuel',
     intro: '你好，我是 SHENNN，目前专注于全栈开发、AI agent学习实践中...',
     bullets: [
@@ -280,13 +285,64 @@ const currentContent: AboutContent = {
   bubbles: bubbleSeed.map((item, index) => ({ id: `ingredient-${index + 1}`, ...item }))
 }
 
-const draftContent = reactive<AboutContent>(JSON.parse(JSON.stringify(currentContent)))
+const currentContent = ref<AboutContent>(JSON.parse(JSON.stringify(initialContent)))
+const draftContent = ref<AboutContent>(JSON.parse(JSON.stringify(initialContent)))
 const bubbleModalOpen = ref(false)
 const editingBubbleId = ref<string | null>(null)
 const bubbleFormRef = ref<FormInstance>()
 const bubbleForm = reactive<IngredientBubble>({
   id: '', text: '', size: 'mid', backgroundColor: '#5BA4E6', textColor: '#81D4FA', glowColor: '#5BA4E6'
 })
+
+const toView = (data?: AboutContentData): AboutContent => {
+  const source = data || { profile: { bullets: [] }, ingredients: {}, bubbles: [] } as unknown as AboutContentData
+  const profile = source.profile || {} as AboutContentData['profile']
+  const bullets = [...(profile.bullets || [])]
+  while (bullets.length < 3) bullets.push('')
+  return {
+    profile: {
+      title: profile.title || '',
+      avatar: profile.avatar_url || '',
+      avatarResource: profile.avatar_resource_id ? {
+        id: profile.avatar_resource_id,
+        name: '关于我头像',
+        url: profile.avatar_url || ''
+      } : null,
+      avatarAlt: profile.avatar_alt || '',
+      intro: profile.intro || '',
+      bullets: bullets.slice(0, 3),
+      outro: profile.outro || ''
+    },
+    ingredients: {
+      title: source.ingredients?.title || '',
+      description: source.ingredients?.description || ''
+    },
+    bubbles: (source.bubbles || []).map((bubble, index) => ({
+      id: bubble.row_id || `ingredient-${index + 1}`,
+      rowId: bubble.row_id,
+      text: bubble.text || '',
+      size: bubble.size || 'mid',
+      backgroundColor: bubble.background_color || '#5BA4E6',
+      textColor: bubble.text_color || '#81D4FA',
+      glowColor: bubble.glow_color || '#5BA4E6'
+    }))
+  }
+}
+
+const replaceData = (module: ContentModule<AboutContentData>) => {
+  moduleMeta.value = module
+  currentContent.value = toView(module.published_data)
+  draftContent.value = toView(module.draft_data)
+}
+
+const load = async () => {
+  loading.value = true
+  try {
+    replaceData(await getContentModuleApi<AboutContentData>('about'))
+  } finally {
+    loading.value = false
+  }
+}
 
 const hexRule = /^#[0-9A-Fa-f]{6}$/
 const bubbleRules: FormProps['rules'] = {
@@ -321,31 +377,98 @@ const openBubbleForm = (bubble?: IngredientBubble) => {
 const submitBubble = async () => {
   await bubbleFormRef.value?.validate()
   const value = { ...bubbleForm }
-  const index = draftContent.bubbles.findIndex(item => item.id === editingBubbleId.value)
-  if (index >= 0) draftContent.bubbles.splice(index, 1, value)
-  else draftContent.bubbles.push(value)
+  const index = draftContent.value.bubbles.findIndex(item => item.id === editingBubbleId.value)
+  if (index >= 0) draftContent.value.bubbles.splice(index, 1, value)
+  else draftContent.value.bubbles.push(value)
   bubbleModalOpen.value = false
   message.success(editingBubbleId.value ? '气泡已更新' : '气泡已添加')
 }
 
 const moveBubble = (index: number, delta: number) => {
   const target = index + delta
-  if (target < 0 || target >= draftContent.bubbles.length) return
-  const [item] = draftContent.bubbles.splice(index, 1)
-  draftContent.bubbles.splice(target, 0, item)
+  if (target < 0 || target >= draftContent.value.bubbles.length) return
+  const [item] = draftContent.value.bubbles.splice(index, 1)
+  draftContent.value.bubbles.splice(target, 0, item)
 }
 
 const removeBubble = (id: string) => {
   Modal.confirm({
     title: '确认删除这个气泡？',
-    content: '该操作只影响当前页面中的草稿数据。',
-    onOk: () => { draftContent.bubbles = draftContent.bubbles.filter(item => item.id !== id) }
+    content: '删除后需保存草稿并发布才会影响博客前台。',
+    onOk: () => { draftContent.value.bubbles = draftContent.value.bubbles.filter(item => item.id !== id) }
   })
 }
 
-const notifyPending = (action: string) => {
-  message.info(`${action}接口尚未接入，本次调整不会写入服务器`)
+const payload = (): AboutContentData => ({
+  profile: {
+    title: draftContent.value.profile.title.trim(),
+    avatar_resource_id: draftContent.value.profile.avatarResource?.id,
+    avatar_alt: draftContent.value.profile.avatarAlt.trim(),
+    intro: draftContent.value.profile.intro.trim(),
+    bullets: draftContent.value.profile.bullets.map(item => item.trim()),
+    outro: draftContent.value.profile.outro.trim()
+  },
+  ingredients: {
+    title: draftContent.value.ingredients.title.trim(),
+    description: draftContent.value.ingredients.description.trim()
+  },
+  bubbles: draftContent.value.bubbles.map((bubble, index) => ({
+    row_id: bubble.rowId,
+    text: bubble.text.trim(),
+    size: bubble.size,
+    background_color: bubble.backgroundColor,
+    text_color: bubble.textColor,
+    glow_color: bubble.glowColor,
+    sort_order: index
+  }))
+})
+
+const validate = () => {
+  const profile = draftContent.value.profile
+  if (!profile.avatarResource || !profile.title.trim() || !profile.avatarAlt.trim() || !profile.intro.trim() || !profile.outro.trim()) {
+    message.error('请完整填写头像和个人简介')
+    return false
+  }
+  if (profile.bullets.length !== 3 || profile.bullets.some(item => !item.trim())) {
+    message.error('个人简介必须包含三条非空条目')
+    return false
+  }
+  if (!draftContent.value.ingredients.title.trim() || !draftContent.value.ingredients.description.trim()) {
+    message.error('请填写“我的成分”标题和说明')
+    return false
+  }
+  return true
 }
+
+const persistDraft = async () => {
+  if (!moduleMeta.value || !validate()) return null
+  const result = await saveContentDraftApi('about', moduleMeta.value, payload())
+  replaceData(result)
+  return result
+}
+
+const saveDraft = async () => {
+  saving.value = true
+  try {
+    if (await persistDraft()) message.success('关于我草稿已保存')
+  } finally {
+    saving.value = false
+  }
+}
+
+const publishDraft = async () => {
+  publishing.value = true
+  try {
+    if (!await persistDraft()) return
+    replaceData(await publishContentApi<AboutContentData>('about'))
+    activePanel.value = 'current'
+    message.success('关于我内容已发布')
+  } finally {
+    publishing.value = false
+  }
+}
+
+onMounted(load)
 </script>
 
 <style scoped>

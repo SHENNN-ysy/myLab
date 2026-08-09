@@ -46,7 +46,7 @@ const loading = ref(false)
 const modules = ref<ContentModule[]>([])
 const health = ref<HealthStatus | null>(null)
 const moduleNames: Record<ContentModuleKey, string> = {
-  skills: '技术栈', footprints: '城市足迹', hobbies: '爱好卡片', vibe: 'Vibe Coding', mylab: 'MyLab'
+  home: '首页图片', about: '关于我', skills: '技术栈', footprints: '城市足迹', hobbies: '爱好卡片', vibe: 'Vibe Coding', mylab: 'MyLab'
 }
 
 const statusText = (status: string) => status === 'published' ? '已发布' : status === 'offline' ? '已下线' : '草稿'
