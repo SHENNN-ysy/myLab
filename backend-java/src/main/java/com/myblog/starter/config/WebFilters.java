@@ -13,6 +13,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Component
@@ -29,6 +30,7 @@ public class WebFilters implements Filter {
             id = UUID.randomUUID().toString().replace("-", "");
         }
         RequestContext.set(id);
+        res.setCharacterEncoding(StandardCharsets.UTF_8.name());
         res.setHeader("X-Request-ID", id);
         res.setHeader("X-Content-Type-Options", "nosniff");
         res.setHeader("X-Frame-Options", "DENY");

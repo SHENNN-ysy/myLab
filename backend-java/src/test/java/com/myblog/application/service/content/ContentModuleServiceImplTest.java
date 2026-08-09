@@ -23,7 +23,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -86,6 +88,53 @@ class ContentModuleServiceImplTest {
         Map<String, Object> result = (Map<String, Object>) service.publicModule("mylab");
 
         assertThat((List<?>) result.get("cards")).hasSize(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void siteRelativeResourceNeverUsesObjectStorageUrl() {
+        ContentRelease published = release("home", "PUBLISHED");
+        when(releases.findPublished("home")).thenReturn(published);
+        when(releases.readData(published)).thenReturn(Map.of(
+                "images", List.of(Map.of("image_object_key", "/assets/hero/hero-1.webp"))));
+        Map<String, Object> result = (Map<String, Object>) service.publicModule("home");
+        List<Map<String, Object>> images = (List<Map<String, Object>>) result.get("images");
+
+        assertThat(images.getFirst().get("image_url")).isEqualTo("/assets/hero/hero-1.webp");
+        verify(storage, never()).publicUrl(any());
+    }
+
+    @Test
+    void creatingDraftDoesNotReusePublishedBusinessRowIds() {
+        ContentRelease current = release("vibe", "PUBLISHED");
+        UUID publishedRowId = UUID.randomUUID();
+        when(releases.findCurrent("vibe")).thenReturn(current);
+        when(releases.nextVersion("vibe")).thenReturn(2);
+
+        service.saveDraft(admin, "vibe", new ContentDtos.SaveDraft(null, Map.of(
+                "tools", List.of(Map.of(
+                        "row_id", publishedRowId,
+                        "tool_key", "cursor",
+                        "percentage", 80,
+                        "enabled", false)))));
+
+        verify(releases).replaceData(any(ContentRelease.class), argThat(data ->
+                !String.valueOf(data).contains(publishedRowId.toString())));
+    }
+
+    @Test
+    void restoringVersionDoesNotReuseHistoricalBusinessRowIds() {
+        ContentRelease source = release("vibe", "ARCHIVED");
+        UUID historicalRowId = UUID.randomUUID();
+        when(releases.findVersion("vibe", 1)).thenReturn(source);
+        when(releases.nextVersion("vibe")).thenReturn(2);
+        when(releases.readData(source)).thenReturn(Map.of(
+                "tools", List.of(Map.of("row_id", historicalRowId, "tool_key", "cursor"))));
+
+        service.restore(admin, "vibe", 1);
+
+        verify(releases).replaceData(any(ContentRelease.class), argThat(data ->
+                !String.valueOf(data).contains(historicalRowId.toString())));
     }
 
     private ContentRelease release(String module, String state) {

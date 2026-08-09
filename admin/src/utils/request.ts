@@ -32,8 +32,11 @@ const request = axios.create({
 request.interceptors.request.use(
   (config) => {
     const token = storage.get<string>(STORAGE_KEYS.TOKEN)
-    if (token) {
+    const isPublicAuthEntry = config.url?.includes('/auth/login') || config.url?.includes('/auth/refresh')
+    if (token && !isPublicAuthEntry) {
       config.headers.Authorization = `Bearer ${token}`
+    } else if (isPublicAuthEntry) {
+      delete config.headers.Authorization
     }
     return config
   },

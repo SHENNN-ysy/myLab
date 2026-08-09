@@ -53,10 +53,6 @@
           </a-button>
         </a-form-item>
       </a-form>
-
-      <div class="login-footer">
-        <p class="demo-hint">演示账号: <strong>admin</strong> / <strong>Admin@123456</strong></p>
-      </div>
     </div>
   </div>
 </template>
@@ -165,17 +161,4 @@ const handleLogin = async () => {
   }
 }
 
-.login-footer {
-  text-align: center;
-  margin-top: 24px;
-}
-
-.demo-hint {
-  font-size: 13px;
-  color: #8c8c8c;
-
-  strong {
-    color: var(--ant-primary-color);
-  }
-}
 </style>

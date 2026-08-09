@@ -5,7 +5,7 @@ name: myblog
 services:
   db:
     ports:
-      - "127.0.0.1:15432:5433" # 本机 5432 被本地 PostgreSQL 占用，主机侧改映射到 15432
+      - "127.0.0.1:15432:5432" # 本机 5432 被本地 PostgreSQL 占用，主机侧改映射到 15432
     image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -65,6 +65,8 @@ services:
       context: ./backend-java
       dockerfile: Dockerfile
     image: ${API_IMAGE:-myblog-api:latest}
+    ports:
+      - "127.0.0.1:8000:8000"
     environment:
       APP_PORT: "8000"
       TZ: ${TZ:-Asia/Shanghai}

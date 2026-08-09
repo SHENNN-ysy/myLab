@@ -2,6 +2,7 @@ package com.myblog.application.service.content;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.myblog.application.model.dto.ContentDtos;
 import com.myblog.application.model.entity.ContentRelease;
 import com.myblog.application.model.entity.FileRecord;
@@ -99,6 +100,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
 
         releases.lockModule(moduleKey);
         ContentRelease draft = releases.findDraft(moduleKey);
+        Object draftData = command.data();
         OffsetDateTime now = OffsetDateTime.now();
         if (draft == null) {
             ContentRelease current = releases.findCurrent(moduleKey);
@@ -111,6 +113,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             draft.setCreatedAt(now);
             draft.setUpdatedAt(now);
             releases.add(draft);
+            draftData = withoutRowIds(draftData);
         } else {
             if (command.expectedUpdatedAt() == null) throw conflict("缺少 expected_updated_at，无法确认草稿版本");
             if (!releases.touchDraft(draft.getId(), command.expectedUpdatedAt(), now)) {
@@ -118,7 +121,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             }
             draft.setUpdatedAt(now);
         }
-        releases.replaceData(draft, command.data());
+        releases.replaceData(draft, draftData);
         return view(moduleKey);
     }
 
@@ -188,7 +191,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         draft.setCreatedAt(now);
         draft.setUpdatedAt(now);
         releases.add(draft);
-        releases.replaceData(draft, data);
+        releases.replaceData(draft, withoutRowIds(data));
         return view(moduleKey);
     }
 
@@ -547,7 +550,25 @@ public class ContentModuleServiceImpl implements ContentModuleService {
 
     private String url(String objectKey) {
         if (objectKey == null) return null;
+        if (objectKey.startsWith("/") || objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
+            return objectKey;
+        }
         return storage.configured() ? storage.publicUrl(objectKey) : objectKey;
+    }
+
+    private Object withoutRowIds(Object value) {
+        JsonNode root = OM.valueToTree(value);
+        removeRowIds(root);
+        return OM.convertValue(root, Object.class);
+    }
+
+    private void removeRowIds(JsonNode node) {
+        if (node instanceof ObjectNode object) {
+            object.remove("row_id");
+            object.elements().forEachRemaining(this::removeRowIds);
+            return;
+        }
+        if (node.isArray()) node.elements().forEachRemaining(this::removeRowIds);
     }
 
     private void validateResourceIds(JsonNode ids, String mimePrefix) {

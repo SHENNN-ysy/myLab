@@ -95,9 +95,11 @@ public class FileServiceImpl implements FileService {
         if (record == null || record.getDeletedAt() != null) {
             throw new NotFoundException(ErrorCode.FILE_NOT_FOUND, null);
         }
-        String url = isPublicImage(record.getMimeType())
-                ? storage.publicUrl(record.getObjectKey())
-                : storage.signedUrl(record.getObjectKey(), 3600);
+        String url = isSiteUrl(record.getObjectKey())
+                ? record.getObjectKey()
+                : isPublicImage(record.getMimeType())
+                    ? storage.publicUrl(record.getObjectKey())
+                    : storage.signedUrl(record.getObjectKey(), 3600);
         return Map.of("url", url);
     }
 
@@ -121,7 +123,7 @@ public class FileServiceImpl implements FileService {
 
     private FileOutVO toVo(FileRecord record) {
         String url = isPublicImage(record.getMimeType())
-                ? storage.publicUrl(record.getObjectKey())
+                ? isSiteUrl(record.getObjectKey()) ? record.getObjectKey() : storage.publicUrl(record.getObjectKey())
                 : null;
         return new FileOutVO(record.getId(), record.getObjectKey(), record.getBucket(),
                 record.getOriginalName(), record.getMimeType(), record.getSize(),
@@ -130,6 +132,11 @@ public class FileServiceImpl implements FileService {
 
     private static boolean isPublicImage(String mimeType) {
         return mimeType != null && mimeType.startsWith("image/");
+    }
+
+    private static boolean isSiteUrl(String objectKey) {
+        return objectKey != null && (objectKey.startsWith("/")
+                || objectKey.startsWith("http://") || objectKey.startsWith("https://"));
     }
 
     private static String extensionFor(String contentType) {
