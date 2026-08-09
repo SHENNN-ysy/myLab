@@ -27,7 +27,7 @@ public class FileServiceImpl implements FileService {
 
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "image/png", "image/jpeg", "image/jpg", "image/webp",
-            "image/gif", "application/pdf"
+            "image/gif", "application/pdf", "text/markdown", "text/plain"
     );
 
     private final FileRepository files;
@@ -81,7 +81,6 @@ public class FileServiceImpl implements FileService {
         record.setMimeType(contentType);
         record.setSize(file.size());
         record.setUploadedBy(actor.id());
-        record.setIsDeleted(false);
         OffsetDateTime now = OffsetDateTime.now();
         record.setCreatedAt(now);
         record.setUpdatedAt(now);
@@ -93,7 +92,7 @@ public class FileServiceImpl implements FileService {
     public Map<String, String> presign(CurrentUser actor, UUID id) throws Exception {
         Authorization.requireAdmin(actor);
         FileRecord record = files.findById(id);
-        if (record == null || Boolean.TRUE.equals(record.getIsDeleted())) {
+        if (record == null || record.getDeletedAt() != null) {
             throw new NotFoundException(ErrorCode.FILE_NOT_FOUND, null);
         }
         String url = isPublicImage(record.getMimeType())
@@ -107,10 +106,14 @@ public class FileServiceImpl implements FileService {
     public void delete(CurrentUser actor, UUID id) {
         Authorization.requireAdmin(actor);
         FileRecord record = files.findById(id);
-        if (record == null || Boolean.TRUE.equals(record.getIsDeleted())) {
+        if (record == null || record.getDeletedAt() != null) {
             throw new NotFoundException(ErrorCode.FILE_NOT_FOUND, null);
         }
-        record.setIsDeleted(true);
+        if (files.hasReferences(id)) {
+            throw new com.myblog.common.exception.ConflictException(
+                    ErrorCode.RESOURCE_CONFLICT, "资源仍被内容草稿或历史版本引用");
+        }
+        record.setDeletedAt(OffsetDateTime.now());
         record.setUpdatedAt(OffsetDateTime.now());
         files.save(record);
         storage.deleteAsync(record.getObjectKey());
@@ -136,6 +139,8 @@ public class FileServiceImpl implements FileService {
             case "image/webp" -> "webp";
             case "image/gif" -> "gif";
             case "application/pdf" -> "pdf";
+            case "text/markdown" -> "md";
+            case "text/plain" -> "txt";
             default -> throw new ValidationException(ErrorCode.FILE_TYPE_UNSUPPORTED, "媒体类型：" + contentType);
         };
     }

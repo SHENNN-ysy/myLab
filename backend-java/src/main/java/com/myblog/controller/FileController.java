@@ -45,7 +45,7 @@ public class FileController {
     }
 
     @PostMapping("/upload")
-    @Operation(summary = "上传媒体文件", description = "支持 PNG、JPEG、WebP、GIF 和 PDF，大小上限由 OSS_MAX_FILE_SIZE_MB 配置。")
+    @Operation(summary = "上传资源", description = "支持常用图片、PDF、Markdown 和纯文本，大小上限由 OSS_MAX_FILE_SIZE_MB 配置。")
     public Result<FileOutVO> upload(@AuthenticationPrincipal CurrentUser actor,
                                     @Parameter(description = "待上传文件", required = true) @RequestPart("file") MultipartFile file) throws Exception {
         UploadFile command = new UploadFile(

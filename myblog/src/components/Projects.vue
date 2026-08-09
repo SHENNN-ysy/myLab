@@ -17,35 +17,15 @@
           :key="project.id"
           :delay="(index % 3) + 1"
         >
-          <button
-            class="project-card"
-            type="button"
-            :data-link-project="project.id"
-            @mouseenter="showProjectLinks(project.id)"
+          <div
+            :data-link-project="connectorKey(project.id)"
+            @mouseenter="showProjectLinks(connectorKey(project.id))"
             @mouseleave="clearLinks"
-            @focus="showProjectLinks(project.id)"
-            @blur="clearLinks"
-            @click="openModal(project)"
+            @focusin="showProjectLinks(connectorKey(project.id))"
+            @focusout="clearLinks"
           >
-            <div class="project-thumb" :class="{ 'is-loaded': loadedThumbs[project.id] }">
-              <img
-                :src="project.image"
-                :alt="project.title"
-                loading="lazy"
-                decoding="async"
-                @load="loadedThumbs[project.id] = true"
-              />
-              <span class="project-view">查看详情 →</span>
-            </div>
-            <div class="project-body">
-              <div class="project-meta">
-                <span class="project-tag" :class="{ accent: project.tagType === 'accent' }">{{ project.tag }}</span>
-                <span class="project-year">{{ project.year }}</span>
-              </div>
-              <h3 class="project-title">{{ project.title }}</h3>
-              <p class="project-desc">{{ project.description }}</p>
-            </div>
-          </button>
+            <LabCard :post="project" :navigate="false" :tag-limit="3" @select="openModal" />
+          </div>
         </RevealOnScroll>
       </div>
     </div>
@@ -54,200 +34,91 @@
       <div
         v-if="selectedProject"
         class="modal-hero-wrap stagger-item-right"
-        :class="{ 'is-loaded': modalHeroLoaded }"
-        :style="{ animationDelay: staggerDelay(0) }"
+        :class="{ 'is-loaded': modalHeroLoaded || !selectedProjectHero }"
       >
         <img
+          v-if="selectedProjectHero"
           class="modal-hero"
-          :src="selectedProject.image"
-          :alt="selectedProject.title"
+          :src="selectedProjectHero"
+          :alt="selectedProjectTitle"
           @load="modalHeroLoaded = true"
         />
       </div>
-      <div class="modal-body">
-        <div class="modal-meta stagger-item-right" :style="{ animationDelay: staggerDelay(0) }">
-          <span class="project-tag" :class="{ accent: selectedProject?.tagType === 'accent' }">{{ selectedProjectDetail?.tag }}</span>
-        <span class="project-year">{{ selectedProjectDetail?.year }}</span>
+
+      <div v-if="selectedProject" class="modal-body">
+        <div v-if="selectedProject.tags.length" class="modal-meta stagger-item-right">
+          <span v-for="tag in selectedProject.tags.slice(0, 3)" :key="tag" class="project-tag">#{{ tag }}</span>
         </div>
-        <h2 class="modal-title stagger-item-right" :style="{ animationDelay: staggerDelay(1) }">{{ selectedProjectDetail?.title }}</h2>
-        <p class="modal-desc stagger-item-right" :style="{ animationDelay: staggerDelay(2) }">{{ selectedProjectDetail?.desc }}</p>
-        <p
-          v-for="(paragraph, index) in projectParagraphs"
-          :key="paragraph"
-          class="stagger-item-right"
-          :style="{ animationDelay: staggerDelay(index + 3) }"
-        >
-          {{ paragraph }}
-        </p>
-        <h4 class="stagger-item-right" :style="{ animationDelay: staggerDelay(projectParagraphs.length + 3) }">技术栈</h4>
-        <div
-          class="modal-tech stagger-item-right"
-          v-if="selectedProject?.tech"
-          :style="{ animationDelay: staggerDelay(projectParagraphs.length + 4) }"
-        >
-          <span v-for="tech in selectedProject.tech" :key="tech">{{ tech }}</span>
-        </div>
-        <div
-          v-if="selectedProjectImages.length"
-          class="modal-gallery stagger-item-right"
-          :style="{ animationDelay: staggerDelay(projectParagraphs.length + 5) }"
-        >
+        <h2 class="modal-title stagger-item-right">{{ selectedProjectTitle }}</h2>
+        <p class="modal-desc stagger-item-right">{{ selectedProjectSummary }}</p>
+        <p v-for="paragraph in selectedProjectParagraphs" :key="paragraph" class="stagger-item-right">{{ paragraph }}</p>
+
+        <template v-if="selectedProjectTechnologies.length">
+          <h4 class="stagger-item-right">技术栈</h4>
+          <div class="modal-tech stagger-item-right">
+            <span v-for="tech in selectedProjectTechnologies" :key="tech">{{ tech }}</span>
+          </div>
+        </template>
+
+        <div v-if="selectedProject.projectImages?.length" class="modal-gallery stagger-item-right">
           <img
-            v-for="(image, index) in selectedProjectImages"
+            v-for="(image, index) in selectedProject.projectImages"
             :key="image"
             :src="image"
-            :alt="`${selectedProjectDetail?.title || '项目'} 项目图片 ${index + 1}`"
+            :alt="`${selectedProjectTitle} 项目图片 ${index + 1}`"
             loading="lazy"
           />
         </div>
-        <button class="modal-cta stagger-item-right" :style="{ animationDelay: staggerDelay(projectParagraphs.length + 6) }" @click="viewProject">查看项目 →</button>
+
+        <button class="modal-cta stagger-item-right" @click="viewProject">查看项目 →</button>
       </div>
     </ProjectModal>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { projects as fallbackProjects, type Project } from '@/data/projects'
-import { usePublicContent } from '@/composables/usePublicContent'
+import type { LabPost } from '@/data/labPosts'
+import { useLabPosts } from '@/composables/useLabPosts'
+import LabCard from './LabCard.vue'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 import ProjectModal from './ui/ProjectModal.vue'
 
-const isModalOpen = ref(false)
-const selectedProject = ref<Project | null>(null)
 const router = useRouter()
-const { content } = usePublicContent()
+const { labPosts } = useLabPosts()
 const section = {
-  title: '我做过的', highlight: '项目', description: '开源项目、个人玩具与实验室折腾记录。'
+  title: '我做过的',
+  highlight: '项目',
+  description: '开源项目、个人玩具与实验室折腾记录。',
 }
-type ManagedProject = Project & { detailTitle?: string; detailSummary?: string; paragraphs?: string[]; labPostId?: string; images?: string[] }
-const projectItems = computed<ManagedProject[]>(() => {
-  const items = content.value.projects?.items
-  if (!Array.isArray(items)) {
-    return fallbackProjects.map((project) => ({
-      ...project,
-      labPostId: `project-${project.id}`
-    }))
-  }
-  return items.filter((item: any) => item.enabled !== false).map((item: any) => ({
-    id: item.id,
-    title: item.card_title,
-    description: item.card_summary,
-    tag: item.tag,
-    tagType: item.accent ? 'accent' : 'default',
-    year: item.year,
-    image: item.image,
-    tech: item.tech || [],
-    content: (item.paragraphs || []).join('\n'),
-    detailTitle: item.detail_title,
-    detailSummary: item.detail_summary,
-    paragraphs: item.paragraphs || [],
-    labPostId: item.lab_post_id,
-    images: item.images || [],
-  }))
-})
-// 卡片缩略图 / 详情头图的加载完成标记（加载前显示骨架扫光占位）
-const loadedThumbs = reactive<Record<string, boolean>>({})
+
+const projectItems = computed(() => labPosts.value
+  .filter((post) => post.showInProjects)
+  .sort((left, right) => (left.projectShowOrder ?? 999) - (right.projectShowOrder ?? 999))
+  .slice(0, 6))
+const isModalOpen = ref(false)
 const modalHeroLoaded = ref(false)
+const selectedProject = ref<LabPost | null>(null)
 
-const staggerDelay = (index: number) => `${0.08 + index * 0.07}s`
-
-const projectDetails: Record<string, { tag: string; title: string; year: number; desc: string; paragraphs: string[] }> = {
-  gm1: {
-    tag: 'GameJam',
-    title: 'Moth and Bat',
-    year: 2024,
-    desc: '48 小时 GameJam 作品，关于夜色中两种生物的相会。',
-    paragraphs: [
-      '这是一次关于夜晚相遇的解谜游戏尝试。玩家在不同章节分别操作飞蛾与蝙蝠，用光线和回声理解同一片空间。',
-      '核心体验并不追求复杂系统，而是让两种感知方式在短时间内形成清晰对照。'
-    ]
-  },
-  gm2: {
-    tag: 'GameJam',
-    title: 'Naughty Cat',
-    year: 2023,
-    desc: '一只总想搞破坏的猫，与一个不肯关机的扫地机器人。',
-    paragraphs: [
-      '玩家扮演一只小猫，通过推倒物体和改变路径，让扫地机器人陷入混乱。',
-      '我把物理扰动和简单 AI 行为结合起来，让“捣乱”本身成为正向反馈。'
-    ]
-  },
-  gm3: {
-    tag: 'GameJam',
-    title: 'Naughty Boy',
-    year: 2023,
-    desc: '规则与保护之间的游戏化实验，关于儿童行为心理学的隐喻。',
-    paragraphs: [
-      '这个项目尝试把抽象的心理学理论转化为可玩的关卡。',
-      '玩家不断被告知应该做什么，但真正的目标并不只是服从规则。'
-    ]
-  },
-  gm4: {
-    tag: '商业项目',
-    title: 'Ring of Elysium',
-    year: 2022,
-    desc: '参与腾讯北极光工作室《无限法则》的玩法与系统设计。',
-    paragraphs: [
-      '我参与了角色技能、载具手感和部分玩法系统的设计与调优。',
-      '这段商业项目经历让我更理解面向大规模玩家时，反馈、平衡和可读性的重要性。'
-    ]
-  },
-  gm5: {
-    tag: '独立工具',
-    title: 'Moodlog',
-    year: 2024,
-    desc: '一个极简的情绪记录工具，专注输入体验与一年后的回看。',
-    paragraphs: [
-      'Moodlog 只保留最必要的输入问题，让记录情绪这件事变得轻而不打扰。',
-      '它的重点不是统计图表，而是给未来的自己留下可回望的日常切片。'
-    ]
-  },
-  gm6: {
-    tag: 'Web 实验',
-    title: 'Beat Lab',
-    year: 2023,
-    desc: '浏览器内的鼓机与音序器，使用 Web Audio API 实时合成。',
-    paragraphs: [
-      '这是一次“用代码做乐器”的 Web 实验，所有声音都在浏览器里实时生成。',
-      '项目支持基础节拍编排和参数控制，用来探索交互、声音与视觉反馈的关系。'
-    ]
-  }
-}
-
-const selectedProjectDetail = computed(() => {
-  if (!selectedProject.value) return null
-  const managed = selectedProject.value as ManagedProject
-  if (managed.detailTitle) return {
-    tag: managed.tag,
-    title: managed.detailTitle,
-    year: managed.year,
-    desc: managed.detailSummary || managed.description,
-    paragraphs: managed.paragraphs || [],
-    labPostId: managed.labPostId,
-  }
-  const localDetail = projectDetails[selectedProject.value.id]
-  if (localDetail) return { ...localDetail, labPostId: managed.labPostId }
-  return {
-    tag: selectedProject.value.tag,
-    title: selectedProject.value.title,
-    year: selectedProject.value.year,
-    desc: selectedProject.value.description,
-    paragraphs: selectedProject.value.content ? [selectedProject.value.content] : [],
-    labPostId: managed.labPostId
-  }
+const selectedProjectHero = computed(() => selectedProject.value?.detailImage ?? selectedProject.value?.image)
+const selectedProjectTitle = computed(() => selectedProject.value?.projectDetailTitle ?? selectedProject.value?.title ?? '')
+const selectedProjectSummary = computed(() => selectedProject.value?.projectDetailSummary ?? selectedProject.value?.summary ?? '')
+const selectedProjectParagraphs = computed(() => {
+  const project = selectedProject.value
+  if (!project) return []
+  if (project.projectParagraphs?.length) return project.projectParagraphs
+  return project.sections.flatMap((section) => section.paragraphs)
+})
+const selectedProjectTechnologies = computed(() => {
+  const project = selectedProject.value
+  if (!project) return []
+  return project.projectTechnologies?.length ? project.projectTechnologies : project.tags.slice(1)
 })
 
-const projectParagraphs = computed(() => {
-  return selectedProjectDetail.value?.paragraphs ?? []
-})
+const connectorKey = (postId: string) => postId.startsWith('project-') ? postId.slice(8) : postId
 
-const selectedProjectImages = computed(() => {
-  return (selectedProject.value as ManagedProject | null)?.images?.filter(Boolean) ?? []
-})
-
-const openModal = (project: Project) => {
+const openModal = (project: LabPost) => {
   clearLinks()
   modalHeroLoaded.value = false
   selectedProject.value = project
@@ -255,366 +126,43 @@ const openModal = (project: Project) => {
 }
 
 const viewProject = async () => {
-  const labPostId = selectedProjectDetail.value && 'labPostId' in selectedProjectDetail.value
-    ? selectedProjectDetail.value.labPostId
-    : undefined
-  if (!labPostId) return
+  const postId = selectedProject.value?.id
+  if (!postId) return
   isModalOpen.value = false
-  await router.push({ path: '/mylab', hash: `#lab-post-${labPostId}` })
+  await router.push(`/mylab/post/${postId}`)
 }
 
 const showProjectLinks = (projectId: string) => {
-  window.dispatchEvent(new CustomEvent('portfolio-link-hover', {
-    detail: { type: 'project', key: projectId }
-  }))
+  window.dispatchEvent(new CustomEvent('portfolio-link-hover', { detail: { type: 'project', key: projectId } }))
 }
 
-const clearLinks = () => {
-  window.dispatchEvent(new CustomEvent('portfolio-link-clear'))
-}
+const clearLinks = () => window.dispatchEvent(new CustomEvent('portfolio-link-clear'))
 </script>
 
 <style scoped>
-#work {
-  padding: 50px 0 100px;
-}
-
-.container {
-  max-width: var(--max-w);
-  margin: 0 auto;
-  padding: 0 3rem;
-}
-
-.section-header {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2rem;
-  align-items: start;
-  margin-bottom: 2rem;
-}
-
-.section-num {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.15em;
-  color: var(--ink-muted);
-  padding-top: 0.5rem;
-}
-
-.section-title {
-  font-family: var(--font-display);
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: 900;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-  margin-bottom: 1rem;
-}
-
-.section-title em {
-  font-style: italic;
-  color: #FF6B6B;
-}
-
-.section-desc {
-  font-size: 0.95rem;
-  color: var(--ink-light);
-  max-width: 760px;
-  font-weight: 300;
-  line-height: 1.8;
-  white-space: nowrap;
-}
-
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.2rem;
-}
-
-.project-card {
-  position: relative;
-  background: var(--bg-card);
-  border: 1px solid rgba(91, 164, 230, 0.15);
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              box-shadow 0.35s,
-              border-color 0.35s;
-  will-change: transform;
-  width: 100%;
-  padding: 0;
-}
-
-.project-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 18px 48px rgba(27, 58, 75, 0.12);
-  border-color: var(--accent);
-}
-
-.project-card:active {
-  transform: translateY(-3px) scale(0.985);
-}
-
-.project-thumb {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16/10;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(91, 164, 230, 0.16) 100%);
-}
-
-/* 骨架微光扫过动画：图未加载时持续显示（与 myLab 卡片一致） */
-.project-thumb::before,
-.modal-hero-wrap::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.55) 50%,
-    transparent 80%
-  );
-  transform: translateX(-100%);
-  animation: projectShimmer 1.8s ease-in-out infinite;
-}
-
-@keyframes projectShimmer {
-  to {
-    transform: translateX(100%);
-  }
-}
-
-.project-thumb img {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  opacity: 0;
-  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.4s;
-  filter: saturate(0.8) hue-rotate(5deg);
-}
-
-.project-thumb.is-loaded img {
-  opacity: 1;
-}
-
-/* 图加载完成后停掉骨架扫光，避免在图上闪 */
-.project-thumb.is-loaded::before,
-.modal-hero-wrap.is-loaded::before {
-  animation: none;
-  opacity: 0;
-}
-
-.project-card:hover .project-thumb img {
-  transform: scale(1.06);
-  filter: saturate(1) hue-rotate(0deg);
-}
-
-.project-view {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(27, 58, 75, 0.65);
-  color: rgba(255, 255, 255, 0.95);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.15em;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.project-card:hover .project-view {
-  opacity: 1;
-}
-
-.project-body {
-  padding: 1.2rem 1.4rem 1.4rem;
-}
-
-.project-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.6rem;
-}
-
-.project-tag {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 0.18rem 0.55rem;
-  border: 1px solid rgba(91, 164, 230, 0.3);
-  color: var(--ink-muted);
-}
-
-.project-tag.accent {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.project-year {
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.05em;
-  color: var(--ink-muted);
-}
-
-.project-title {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--ink);
-  margin-bottom: 0.4rem;
-  line-height: 1.3;
-}
-
-.project-desc {
-  font-size: 0.85rem;
-  line-height: 1.55;
-  color: var(--ink-light);
-  font-weight: 300;
-}
-
-/* Modal styles */
-.modal-hero-wrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16/8;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(91, 164, 230, 0.16) 100%);
-}
-
-.modal-hero {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-
-.modal-hero-wrap.is-loaded .modal-hero {
-  opacity: 1;
-}
-
-.modal-body {
-  padding: 2rem 2.4rem 2.4rem;
-}
-
-.modal-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
-}
-
-.modal-title {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 900;
-  color: var(--ink);
-  line-height: 1.15;
-  margin-bottom: 0.8rem;
-}
-
-.modal-desc {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  line-height: 1.85;
-  color: var(--ink-light);
-  font-style: italic;
-  margin-bottom: 1.5rem;
-}
-
-.modal-tech {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.8rem;
-}
-
-.modal-tech span {
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  padding: 0.22rem 0.65rem;
-  border: 1px solid var(--border);
-  color: var(--ink-muted);
-  letter-spacing: 0.05em;
-}
-
-.modal-gallery {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-}
-
-.modal-gallery img {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-}
-
-.modal-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  padding: 0.75rem 1.4rem;
-  background: linear-gradient(135deg, var(--accent), #2EC4B6);
-  color: #fff;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  border-radius: 100px;
-  border: none;
-  cursor: pointer;
-  transition: background 0.25s, transform 0.25s, box-shadow 0.25s;
-}
-
-.modal-cta:hover {
-  background: linear-gradient(135deg, var(--accent-dark), var(--accent));
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(91, 164, 230, 0.3);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .project-thumb::before,
-  .modal-hero-wrap::before {
-    animation: none;
-  }
-}
-
-@media (max-width: 980px) {
-  .section-desc {
-    max-width: 560px;
-    white-space: normal;
-  }
-
-  .projects-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .projects-grid {
-    grid-template-columns: 1fr;
-  }
-}
+#work { padding: 50px 0 100px; }
+.container { max-width: var(--max-w); margin: 0 auto; padding: 0 3rem; }
+.section-header { display: grid; grid-template-columns: auto 1fr; gap: 2rem; align-items: start; margin-bottom: 2rem; }
+.section-num { padding-top: 0.5rem; color: var(--ink-muted); font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.15em; }
+.section-title { margin-bottom: 1rem; color: var(--ink); font-family: var(--font-display); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900; line-height: 0.95; letter-spacing: -0.03em; }
+.section-title em { color: #ff6b6b; font-style: italic; }
+.section-desc { max-width: 760px; color: var(--ink-light); font-size: 0.95rem; font-weight: 300; line-height: 1.8; white-space: nowrap; }
+.projects-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.2rem; }
+.projects-grid > * > div { height: 100%; }
+.modal-hero-wrap { position: relative; width: 100%; overflow: hidden; aspect-ratio: 16 / 8; background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(91, 164, 230, 0.16) 100%); }
+.modal-hero-wrap::before { position: absolute; inset: 0; content: ''; background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.55) 50%, transparent 80%); transform: translateX(-100%); animation: project-shimmer 1.8s ease-in-out infinite; }
+@keyframes project-shimmer { to { transform: translateX(100%); } }
+.modal-hero { position: relative; z-index: 1; display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease; }
+.modal-hero-wrap.is-loaded .modal-hero { opacity: 1; }
+.modal-hero-wrap.is-loaded::before { animation: none; opacity: 0; }
+.modal-body { padding: 2rem 2.4rem 2.4rem; }
+.modal-meta { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
+.project-tag { padding: 0.15rem 0.55rem; color: var(--accent-dark); background: var(--accent-light); border: 1px solid rgba(91, 164, 230, 0.18); border-radius: 8px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em; }
+.modal-title { margin-bottom: 0.8rem; color: var(--ink); font-family: var(--font-display); font-size: 2rem; font-weight: 900; line-height: 1.15; }
+.modal-desc { margin-bottom: 1.5rem; color: var(--ink-light); font-family: var(--font-display); font-size: 1.05rem; font-style: italic; line-height: 1.85; }
+.modal-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-top: 1.5rem; }
+.modal-gallery img { width: 100%; object-fit: cover; aspect-ratio: 16 / 10; border: 1px solid var(--border); border-radius: 10px; }
+@media (prefers-reduced-motion: reduce) { .modal-hero-wrap::before { animation: none; } }
+@media (max-width: 980px) { .section-desc { max-width: 560px; white-space: normal; } .projects-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .container { padding: 0 1.25rem; } .projects-grid, .modal-gallery { grid-template-columns: 1fr; } }
 </style>

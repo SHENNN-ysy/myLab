@@ -4,6 +4,7 @@ import com.myblog.common.result.PageResult;
 import com.myblog.common.result.Result;
 import com.myblog.application.service.user.UserService;
 import com.myblog.application.model.command.user.UserCommands;
+import com.myblog.application.model.vo.UserOutVO;
 import com.myblog.common.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -35,24 +36,24 @@ public class UserController {
 
     @GetMapping
     @Operation(summary = "分页查询管理员账号")
-    public Result<PageResult<?>> list(@AuthenticationPrincipal CurrentUser actor,
-                                      @RequestParam(defaultValue = "1") long page,
-                                      @RequestParam(name = "page_size", defaultValue = "20") long size) {
+    public Result<PageResult<UserOutVO>> list(@AuthenticationPrincipal CurrentUser actor,
+                                              @RequestParam(defaultValue = "1") long page,
+                                              @RequestParam(name = "page_size", defaultValue = "20") long size) {
         return Result.ok(users.page(actor, page, size));
     }
 
     @PostMapping
     @Operation(summary = "创建管理员账号", description = "仅 superadmin 可执行。")
-    public Result<?> create(@AuthenticationPrincipal CurrentUser actor,
-                            @RequestBody UserCommands.Create command) {
+    public Result<UserOutVO> create(@AuthenticationPrincipal CurrentUser actor,
+                                    @RequestBody UserCommands.Create command) {
         return Result.ok(users.create(actor, command));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "更新管理员账号")
-    public Result<?> update(@AuthenticationPrincipal CurrentUser actor,
-                            @PathVariable UUID id,
-                            @RequestBody UserCommands.Update command) {
+    public Result<UserOutVO> update(@AuthenticationPrincipal CurrentUser actor,
+                                    @PathVariable UUID id,
+                                    @RequestBody UserCommands.Update command) {
         return Result.ok(users.update(actor, id, command));
     }
 

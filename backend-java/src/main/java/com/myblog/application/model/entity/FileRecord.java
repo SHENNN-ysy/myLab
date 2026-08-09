@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Data
-@TableName("files")
+@TableName("resources")
 public class FileRecord {
 
     @TableId(type = IdType.ASSIGN_UUID)
@@ -21,7 +21,7 @@ public class FileRecord {
     private String mimeType;
     private Long size;
     private UUID uploadedBy;
-    private Boolean isDeleted;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    private OffsetDateTime deletedAt;
 }

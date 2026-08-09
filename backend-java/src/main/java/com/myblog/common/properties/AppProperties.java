@@ -21,6 +21,5 @@ public record AppProperties(
         String ossObjectPrefix,
         int ossMaxFileSizeMb,
         String initialAdminUsername,
-        String initialAdminPassword,
-        String initialAdminEmail) {
+        String initialAdminPassword) {
 }

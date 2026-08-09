@@ -32,3 +32,10 @@ export const logoutApi = async (): Promise<void> => {
     storage.remove(STORAGE_KEYS.USER_INFO)
   }
 }
+
+export const changePasswordApi = async (oldPassword: string, newPassword: string): Promise<void> => {
+  await request.put('/auth/password', {
+    old_password: oldPassword,
+    new_password: newPassword
+  })
+}

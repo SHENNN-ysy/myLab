@@ -1,6 +1,6 @@
 package com.myblog.common.result;
 
-import com.myblog.common.context.RequestContext;
+import com.myblog.common.json.JacksonObjectMapper;
 import com.myblog.common.exception.ForbiddenException;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.exception.UnauthorizedException;
@@ -13,15 +13,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ResultTest {
 
     @Test
-    void successEnvelopeMatchesContract() {
-        RequestContext.set("abc");
+    void successEnvelopeMatchesContract() throws Exception {
         Result<Map<String, String>> r = Result.ok(Map.of("status", "healthy"));
         assertThat(r.code()).isZero();
         assertThat(r.message()).isEqualTo("成功");
-        assertThat(r.requestId()).isEqualTo("abc");
-        assertThat(r.timestamp()).isPositive();
         assertThat(r.data()).containsEntry("status", "healthy");
-        RequestContext.clear();
+        assertThat(JacksonObjectMapper.get().writeValueAsString(r))
+                .doesNotContain("request_id", "timestamp");
     }
 
     @Test

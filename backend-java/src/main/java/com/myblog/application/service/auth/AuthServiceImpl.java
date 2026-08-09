@@ -70,10 +70,7 @@ public class AuthServiceImpl implements AuthService {
         return new UserPublicVO(
                 user.getId(),
                 user.getUsername(),
-                user.getEmail(),
-                user.getNickname(),
-                user.getRole(),
-                user.getAvatarUrl());
+                user.getRole());
     }
 
     @Override
@@ -96,8 +93,6 @@ public class AuthServiceImpl implements AuthService {
         User admin = new User();
         admin.setId(UUID.randomUUID());
         admin.setUsername(props.initialAdminUsername());
-        admin.setEmail(props.initialAdminEmail());
-        admin.setNickname("Administrator");
         admin.setPasswordHash(bcrypt.encode(props.initialAdminPassword()));
         admin.setRole("superadmin");
         admin.setIsActive(true);

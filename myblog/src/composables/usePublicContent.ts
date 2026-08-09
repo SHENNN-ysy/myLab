@@ -2,12 +2,10 @@ import { readonly, ref } from 'vue'
 
 export interface PublicContent {
   skills?: any
-  projects?: any
   footprints?: any
   hobbies?: any
   vibe?: any
   mylab?: any
-  support?: any
 }
 
 const content = ref<PublicContent>({})
@@ -49,15 +47,3 @@ export const usePublicContent = () => ({
     await loadPublicContent()
   },
 })
-
-export const trackPageView = async (path: string) => {
-  try {
-    await fetch(`${apiBase}/visits/logs/track`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Page-Path': path },
-      keepalive: true,
-    })
-  } catch {
-    // 统计失败不影响访客浏览。
-  }
-}

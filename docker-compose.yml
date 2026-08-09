@@ -4,6 +4,8 @@ name: myblog
 # 图片由Java通过OSS内网上传，并通过CDN域名访问。
 services:
   db:
+    ports:
+      - "127.0.0.1:15432:5433" # 本机 5432 被本地 PostgreSQL 占用，主机侧改映射到 15432
     image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -22,6 +24,8 @@ services:
       - work_mem=4MB
     volumes:
       - pg_data:/var/lib/postgresql/data
+      - ./backend-java/src/main/resources/db/migration/V1__initial_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./backend-java/src/main/resources/db/migration/V2__initial_data.sql:/docker-entrypoint-initdb.d/02_initial_data.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -32,6 +36,8 @@ services:
     restart: unless-stopped
 
   redis:
+    ports:
+      - "127.0.0.1:6379:6379"
     image: ${REDIS_IMAGE:-redis:7-alpine}
     command:
       - redis-server
@@ -83,7 +89,6 @@ services:
       OSS_MAX_FILE_SIZE_MB: ${OSS_MAX_FILE_SIZE_MB:-10}
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
       INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD:-Admin@123456}
-      INIT_ADMIN_EMAIL: ${INIT_ADMIN_EMAIL:-admin@myblog.local}
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }

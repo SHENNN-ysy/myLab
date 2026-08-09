@@ -2,14 +2,18 @@ package com.myblog.application.service.content;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.myblog.application.model.entity.ContentModule;
-import com.myblog.application.model.entity.ContentPublication;
-import com.myblog.application.repository.ContentModuleRepository;
-import com.myblog.application.repository.VisitRepository;
+import com.myblog.application.model.dto.ContentDtos;
+import com.myblog.application.model.entity.ContentRelease;
+import com.myblog.application.model.entity.FileRecord;
+import com.myblog.application.model.entity.MylabTag;
+import com.myblog.application.port.ObjectStorage;
+import com.myblog.application.repository.ContentReleaseRepository;
+import com.myblog.application.repository.FileRepository;
+import com.myblog.application.repository.MylabTagRepository;
+import com.myblog.common.enumeration.ErrorCode;
+import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.exception.ValidationException;
-import com.myblog.common.exception.ConflictException;
-import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.common.json.JacksonObjectMapper;
 import com.myblog.common.security.Authorization;
 import com.myblog.common.security.CurrentUser;
@@ -17,368 +21,473 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class ContentModuleServiceImpl implements ContentModuleService {
-    private static final Set<String> KEYS = Set.of(
-            "skills", "projects", "footprints", "hobbies", "vibe", "mylab", "support");
+    private static final List<String> KEYS = List.of("skills", "footprints", "hobbies", "vibe", "mylab");
     private static final ObjectMapper OM = JacksonObjectMapper.get();
 
-    private final ContentModuleRepository modules;
-    private final VisitRepository visits;
+    private final ContentReleaseRepository releases;
+    private final MylabTagRepository tags;
+    private final FileRepository resources;
+    private final ObjectStorage storage;
 
-    public ContentModuleServiceImpl(ContentModuleRepository modules, VisitRepository visits) {
-        this.modules = modules;
-        this.visits = visits;
+    public ContentModuleServiceImpl(ContentReleaseRepository releases, MylabTagRepository tags,
+                                    FileRepository resources, ObjectStorage storage) {
+        this.releases = releases;
+        this.tags = tags;
+        this.resources = resources;
+        this.storage = storage;
     }
 
     @Override
     public Map<String, Object> publicContent() {
         Map<String, Object> result = new LinkedHashMap<>();
-        modules.findAll().stream()
-                .filter(module -> !"offline".equals(module.getStatus()) && module.getPublishedData() != null)
-                .forEach(module -> result.put(module.getModuleKey(), publicData(module)));
+        for (String key : KEYS) {
+            ContentRelease release = releases.findPublished(key);
+            if (release != null) result.put(key, publicData(key, releases.readData(release)));
+        }
         return result;
     }
 
     @Override
     public Object publicModule(String moduleKey) {
-        ContentModule module = require(moduleKey);
-        if ("offline".equals(module.getStatus()) || module.getPublishedData() == null) {
-            throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, moduleKey);
-        }
-        return publicData(module);
+        requireKey(moduleKey);
+        ContentRelease release = releases.findPublished(moduleKey);
+        if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, moduleKey);
+        return publicData(moduleKey, releases.readData(release));
     }
 
     @Override
-    public List<ContentModule> list(CurrentUser actor) {
-        Authorization.requireAdmin(actor);
-        return modules.findAll();
+    @SuppressWarnings("unchecked")
+    public Object publicMylabDetail(String postKey) {
+        Map<String, Object> root = (Map<String, Object>) publicModule("mylab");
+        List<Map<String, Object>> cards = (List<Map<String, Object>>) root.getOrDefault("cards", List.of());
+        return cards.stream().filter(card -> postKey.equals(card.get("post_key")))
+                .findFirst().orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, postKey));
     }
 
     @Override
-    public ContentModule getDraft(CurrentUser actor, String moduleKey) {
+    public List<ContentDtos.ModuleView> list(CurrentUser actor) {
         Authorization.requireAdmin(actor);
-        return require(moduleKey);
+        return KEYS.stream().map(this::view).toList();
     }
 
     @Override
-    @Transactional
-    public ContentModule saveDraft(CurrentUser actor, String moduleKey, Object data) {
+    public ContentDtos.ModuleView get(CurrentUser actor, String moduleKey) {
         Authorization.requireAdmin(actor);
-        ContentModule module = require(moduleKey);
-        validate(moduleKey, data, false);
-        if ("footprints".equals(moduleKey)) validateFootprintIdsUnchanged(module.getDraftData(), data);
-        module.setDraftData(data);
-        module.setDraftVersion(module.getDraftVersion() + 1);
-        if (!"offline".equals(module.getStatus())) module.setStatus("draft");
-        module.setUpdatedAt(OffsetDateTime.now());
-        modules.save(module);
-        return module;
+        requireKey(moduleKey);
+        return view(moduleKey);
     }
 
     @Override
     @Transactional
-    public ContentModule publish(CurrentUser actor, String moduleKey) {
+    public ContentDtos.ModuleView saveDraft(CurrentUser actor, String moduleKey, ContentDtos.SaveDraft command) {
         Authorization.requireAdmin(actor);
-        ContentModule module = require(moduleKey);
-        validate(moduleKey, module.getDraftData(), true);
-        return createPublication(module, module.getDraftData(), actor.id());
-    }
+        requireKey(moduleKey);
+        if (command == null || command.data() == null) throw validation("data 为必填字段");
+        validate(moduleKey, command.data(), false);
 
-    @Override
-    @Transactional
-    public ContentModule offline(CurrentUser actor, String moduleKey) {
-        Authorization.requireAdmin(actor);
-        ContentModule module = require(moduleKey);
-        module.setStatus("offline");
-        module.setUpdatedAt(OffsetDateTime.now());
-        modules.save(module);
-        return module;
-    }
-
-    @Override
-    public List<ContentPublication> versions(CurrentUser actor, String moduleKey) {
-        Authorization.requireAdmin(actor);
-        require(moduleKey);
-        return modules.findVersions(moduleKey);
-    }
-
-    @Override
-    @Transactional
-    public ContentModule rollback(CurrentUser actor, String moduleKey, int version) {
-        Authorization.requireAdmin(actor);
-        ContentModule module = require(moduleKey);
-        ContentPublication target = modules.findVersion(moduleKey, version);
-        if (target == null) throw new NotFoundException(ErrorCode.CONTENT_VERSION_NOT_FOUND,
-                moduleKey + " v" + version);
-        validate(moduleKey, target.getData(), true);
-        if ("footprints".equals(moduleKey)) validateFootprintIdsUnchanged(module.getDraftData(), target.getData());
-        module.setDraftData(target.getData());
-        module.setDraftVersion(module.getDraftVersion() + 1);
-        return createPublication(module, target.getData(), actor.id());
-    }
-
-    private ContentModule createPublication(ContentModule module, Object data, UUID actorId) {
-        int version = module.getPublishedVersion() + 1;
+        releases.lockModule(moduleKey);
+        ContentRelease draft = releases.findDraft(moduleKey);
         OffsetDateTime now = OffsetDateTime.now();
-        ContentPublication publication = new ContentPublication();
-        publication.setId(UUID.randomUUID());
-        publication.setModuleKey(module.getModuleKey());
-        publication.setVersion(version);
-        publication.setData(data);
-        publication.setPublishedBy(actorId);
-        publication.setPublishedAt(now);
-        modules.addPublication(publication);
+        if (draft == null) {
+            ContentRelease current = releases.findCurrent(moduleKey);
+            draft = new ContentRelease();
+            draft.setId(UUID.randomUUID());
+            draft.setModuleKey(moduleKey);
+            draft.setVersionNo(releases.nextVersion(moduleKey));
+            draft.setState("DRAFT");
+            draft.setSourceReleaseId(current == null ? null : current.getId());
+            draft.setCreatedAt(now);
+            draft.setUpdatedAt(now);
+            releases.add(draft);
+        } else {
+            if (command.expectedUpdatedAt() == null) throw conflict("缺少 expected_updated_at，无法确认草稿版本");
+            if (!releases.touchDraft(draft.getId(), command.expectedUpdatedAt(), now)) {
+                throw conflict("草稿已被其他操作修改，请刷新后重试");
+            }
+            draft.setUpdatedAt(now);
+        }
+        releases.replaceData(draft, command.data());
+        return view(moduleKey);
+    }
 
-        module.setPublishedData(data);
-        module.setPublishedVersion(version);
-        module.setStatus("published");
-        module.setPublishedAt(now);
-        module.setUpdatedAt(now);
-        modules.save(module);
-        return module;
+    @Override
+    @Transactional
+    public ContentDtos.ModuleView publish(CurrentUser actor, String moduleKey) {
+        Authorization.requireAdmin(actor);
+        requireKey(moduleKey);
+        releases.lockModule(moduleKey);
+        ContentRelease draft = releases.findDraft(moduleKey);
+        if (draft == null) throw conflict("当前模块没有可发布草稿");
+        Object data = releases.readData(draft);
+        validate(moduleKey, data, true);
+        releases.publish(draft, releases.findCurrent(moduleKey), actor.id(), OffsetDateTime.now());
+        return view(moduleKey);
+    }
+
+    @Override
+    @Transactional
+    public ContentDtos.ModuleView offline(CurrentUser actor, String moduleKey) {
+        Authorization.requireAdmin(actor);
+        requireKey(moduleKey);
+        releases.lockModule(moduleKey);
+        ContentRelease current = releases.findPublished(moduleKey);
+        if (current == null) throw conflict("当前模块没有已发布版本");
+        releases.offline(current, OffsetDateTime.now());
+        return view(moduleKey);
+    }
+
+    @Override
+    public List<ContentDtos.VersionView> versions(CurrentUser actor, String moduleKey) {
+        Authorization.requireAdmin(actor);
+        requireKey(moduleKey);
+        return releases.findVersions(moduleKey).stream().map(this::versionView).toList();
+    }
+
+    @Override
+    public ContentDtos.VersionView version(CurrentUser actor, String moduleKey, int versionNo) {
+        Authorization.requireAdmin(actor);
+        requireKey(moduleKey);
+        ContentRelease release = releases.findVersion(moduleKey, versionNo);
+        if (release == null || "DRAFT".equals(release.getState())) {
+            throw new NotFoundException(ErrorCode.CONTENT_VERSION_NOT_FOUND, moduleKey + " v" + versionNo);
+        }
+        return versionView(release);
+    }
+
+    @Override
+    @Transactional
+    public ContentDtos.ModuleView restore(CurrentUser actor, String moduleKey, int versionNo) {
+        Authorization.requireAdmin(actor);
+        requireKey(moduleKey);
+        releases.lockModule(moduleKey);
+        if (releases.findDraft(moduleKey) != null) throw conflict("请先保存或放弃当前草稿");
+        ContentRelease source = releases.findVersion(moduleKey, versionNo);
+        if (source == null || "DRAFT".equals(source.getState())) {
+            throw new NotFoundException(ErrorCode.CONTENT_VERSION_NOT_FOUND, moduleKey + " v" + versionNo);
+        }
+        Object data = releases.readData(source);
+        OffsetDateTime now = OffsetDateTime.now();
+        ContentRelease draft = new ContentRelease();
+        draft.setId(UUID.randomUUID());
+        draft.setModuleKey(moduleKey);
+        draft.setVersionNo(releases.nextVersion(moduleKey));
+        draft.setState("DRAFT");
+        draft.setSourceReleaseId(source.getId());
+        draft.setCreatedAt(now);
+        draft.setUpdatedAt(now);
+        releases.add(draft);
+        releases.replaceData(draft, data);
+        return view(moduleKey);
+    }
+
+    @Override
+    @Transactional
+    public void deleteDraft(CurrentUser actor, String moduleKey) {
+        Authorization.requireAdmin(actor);
+        requireKey(moduleKey);
+        ContentRelease draft = releases.findDraft(moduleKey);
+        if (draft == null) throw new NotFoundException(ErrorCode.CONTENT_VERSION_NOT_FOUND, "当前草稿");
+        releases.deleteDraft(draft);
+    }
+
+    private ContentDtos.ModuleView view(String moduleKey) {
+        ContentRelease draft = releases.findDraft(moduleKey);
+        ContentRelease current = releases.findCurrent(moduleKey);
+        Object draftData = draft == null ? (current == null ? emptyData(moduleKey) : releases.readData(current)) : releases.readData(draft);
+        Object publishedData = current == null ? null : releases.readData(current);
+        String status = draft != null ? "draft" : current == null ? "draft" : current.getState().toLowerCase();
+        return new ContentDtos.ModuleView(moduleKey, draft == null ? null : draft.getId(), current == null ? null : current.getId(),
+                draftData, publishedData, draft == null ? null : draft.getVersionNo(),
+                current == null ? null : current.getVersionNo(), status,
+                draft == null ? null : draft.getUpdatedAt(), current == null ? null : current.getPublishedAt());
+    }
+
+    private ContentDtos.VersionView versionView(ContentRelease release) {
+        return new ContentDtos.VersionView(release.getId(), release.getModuleKey(), release.getVersionNo(),
+                release.getState(), releases.readData(release), release.getSourceReleaseId(), release.getPublishedAt());
+    }
+
+    private Object emptyData(String moduleKey) {
+        return switch (moduleKey) {
+            case "skills" -> Map.of("items", List.of());
+            case "footprints" -> Map.of("details", List.of());
+            case "hobbies" -> Map.of("cards", List.of());
+            case "vibe" -> Map.of("tools", List.of());
+            case "mylab" -> Map.of("tags", tags.findAll(false), "cards", List.of());
+            default -> Map.of();
+        };
+    }
+
+    private void requireKey(String moduleKey) {
+        if (!KEYS.contains(moduleKey)) throw new NotFoundException(ErrorCode.CONTENT_MODULE_NOT_FOUND, moduleKey);
+    }
+
+    private void validate(String moduleKey, Object value, boolean publishing) {
+        JsonNode root = OM.valueToTree(value);
+        if (!root.isObject()) throw validation("模块内容必须是 JSON 对象");
+        switch (moduleKey) {
+            case "skills" -> validateSkills(requireArray(root, "items"), publishing);
+            case "footprints" -> validateFootprints(array(root, "details", "items"), publishing);
+            case "hobbies" -> validateHobbies(requireArray(root, "cards"), publishing);
+            case "vibe" -> validateVibe(requireArray(root, "tools"), publishing);
+            case "mylab" -> validateMylab(array(root, "cards", "posts"), publishing);
+            default -> throw validation("未知内容模块");
+        }
+    }
+
+    private void validateSkills(JsonNode items, boolean publishing) {
+        Set<String> keys = new HashSet<>();
+        for (JsonNode item : items) {
+            uniqueKey(keys, item, "skill_key", "id");
+            int percentage = item.path("percentage").asInt(-1);
+            if (percentage < 0 || percentage > 100) throw validation("技能 percentage 必须在 0 到 100 之间");
+            if (publishing && enabled(item)) {
+                requireText(item, "name");
+                if (firstText(item, "level_code", "level") == null || text(item, "level_text") == null) {
+                    throw validation("已启用技能必须填写 level_code 和 level_text");
+                }
+            }
+        }
+    }
+
+    private void validateFootprints(JsonNode items, boolean publishing) {
+        if (!items.isArray()) throw validation("details 必须是数组");
+        Set<String> keys = new HashSet<>();
+        for (JsonNode item : items) {
+            uniqueKey(keys, item, "city_key", "id");
+            validateResourceIds(item.path("resource_ids"), "image/");
+            if (publishing && enabled(item)) {
+                requireText(item, "title");
+                requireText(item, "summary");
+                if (firstText(item, "contents") == null && !item.path("paragraphs").isArray()) {
+                    throw validation("已启用足迹必须填写 contents");
+                }
+            }
+        }
+    }
+
+    private void validateHobbies(JsonNode items, boolean publishing) {
+        Set<String> keys = new HashSet<>();
+        int enabled = 0;
+        for (JsonNode item : items) {
+            uniqueKey(keys, item, "hobby_key", "id");
+            UUID resourceId = uuid(item, "resource_id", "image_resource_id");
+            if (resourceId != null) requireResource(resourceId, "image/");
+            if (enabled(item)) {
+                enabled++;
+                if (publishing) {
+                    requireText(item, "title");
+                    requireText(item, "description");
+                    if (resourceId == null) throw validation("已启用爱好必须选择图片资源");
+                }
+            }
+        }
+        if (publishing && enabled > 5) throw validation("最多只能启用五张爱好卡片");
+    }
+
+    private void validateVibe(JsonNode items, boolean publishing) {
+        Set<String> keys = new HashSet<>();
+        for (JsonNode item : items) {
+            uniqueKey(keys, item, "tool_key", "id");
+            int percentage = item.path("percentage").asInt(-1);
+            if (percentage < 0 || percentage > 100) throw validation("工具 percentage 必须在 0 到 100 之间");
+            if (publishing && enabled(item)) {
+                requireText(item, "name");
+                requireText(item, "description");
+            }
+        }
+    }
+
+    private void validateMylab(JsonNode cards, boolean publishing) {
+        if (!cards.isArray()) throw validation("cards 必须是数组");
+        Set<String> keys = new HashSet<>();
+        Set<Integer> projectOrders = new HashSet<>();
+        for (JsonNode card : cards) {
+            String key = uniqueKey(keys, card, "post_key", "id");
+            String type = Objects.requireNonNullElse(firstText(card, "card_type"),
+                    key.startsWith("project-") ? "PROJECT" : "ARTICLE").toUpperCase();
+            if (!Set.of("PROJECT", "ARTICLE").contains(type)) throw validation("card_type 只允许 PROJECT 或 ARTICLE");
+            Integer projectOrder = card.hasNonNull("project_show_order") ? card.path("project_show_order").asInt() : null;
+            String projectContents = firstText(card, "project_contents", "project_content");
+            if ("PROJECT".equals(type)) {
+                if (projectOrder != null && projectOrder < 0) throw validation("PROJECT 必须填写非负 project_show_order");
+                if (projectOrder != null && !projectOrders.add(projectOrder)) throw validation("PROJECT 的 project_show_order 不能重复");
+                if (publishing && projectOrder == null) throw validation("已发布 PROJECT 必须填写 project_show_order");
+                if (publishing && (projectContents == null || projectContents.isBlank())) {
+                    throw validation("已发布 PROJECT 必须填写 project_contents");
+                }
+            } else if (projectOrder != null || projectContents != null) {
+                throw validation("ARTICLE 不能填写项目侧边栏字段");
+            }
+
+            List<UUID> tagIds = uuidList(card.path("tag_ids"));
+            if (new HashSet<>(tagIds).size() != tagIds.size()) throw validation("tag_ids 不能重复");
+            if (tags.findActiveByIds(tagIds).size() != tagIds.size()) {
+                throw validation("卡片只能引用当前启用且未删除的标签");
+            }
+            UUID imageId = uuid(card, "image_resource_id");
+            UUID contentId = uuid(card, "content_resource_id");
+            if (imageId != null) requireResource(imageId, "image/");
+            if (contentId != null) requireResource(contentId, "text/markdown", "text/plain");
+            if (publishing && enabled(card)) {
+                if (firstText(card, "card_title", "title") == null || firstText(card, "card_summary", "summary") == null) {
+                    throw validation("已启用 MyLab 卡片必须填写标题和摘要");
+                }
+                if (contentId == null) throw validation("已启用 MyLab 卡片必须选择 Markdown 正文资源");
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
-    private Object publicData(ContentModule module) {
-        if (!"support".equals(module.getModuleKey())) return module.getPublishedData();
-        Map<String, Object> stored = OM.convertValue(module.getPublishedData(), LinkedHashMap.class);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("visit_count", number(stored.get("visit_base")) + visits.countSessions());
-        result.put("like_count", number(stored.get("like_count")));
-        result.put("page_view_count", number(stored.get("page_view_base")) + visits.countAll());
-        return result;
-    }
-
-    private ContentModule require(String moduleKey) {
-        if (!KEYS.contains(moduleKey)) throw new NotFoundException(ErrorCode.CONTENT_MODULE_NOT_FOUND, moduleKey);
-        ContentModule module = modules.findByKey(moduleKey);
-        if (module == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_NOT_FOUND, moduleKey);
-        return module;
-    }
-
-    private void validate(String key, Object value, boolean publishing) {
-        JsonNode root = OM.valueToTree(value);
-        if (!root.isObject()) throw contentValidation("模块内容必须是 JSON 对象");
-        validateRootFields(key, root);
-        switch (key) {
-            case "skills" -> validatePercentItems("skills", requireArray(root, "items"), publishing);
-            case "projects" -> validateProjects(root.path("items"), publishing);
-            case "footprints" -> validateFootprintDetails(requireArray(root, "details"), publishing);
-            case "hobbies" -> validateHobbies(requireArray(root, "cards"), publishing);
-            case "vibe" -> validatePercentItems("vibe", requireArray(root, "tools"), publishing);
-            case "mylab" -> {
-                requireArray(root, "tags");
-                requireArray(root, "posts");
-                validateLab(root, publishing);
-            }
-            case "support" -> validateSupport(root);
-            default -> { }
-        }
-    }
-
-    private void validateRootFields(String key, JsonNode root) {
-        Set<String> allowed = switch (key) {
-            case "skills", "projects" -> Set.of("items");
-            case "footprints" -> Set.of("details");
-            case "hobbies" -> Set.of("cards");
-            case "vibe" -> Set.of("tools");
-            case "mylab" -> Set.of("tags", "posts");
-            case "support" -> Set.of("visit_base", "like_count", "page_view_base");
-            default -> Set.of();
+    private Object publicData(String moduleKey, Object raw) {
+        Map<String, Object> root = OM.convertValue(raw, LinkedHashMap.class);
+        String field = switch (moduleKey) {
+            case "skills" -> "items";
+            case "footprints" -> "details";
+            case "hobbies" -> "cards";
+            case "vibe" -> "tools";
+            case "mylab" -> "cards";
+            default -> null;
         };
-        var fields = root.fieldNames();
-        while (fields.hasNext()) {
-            String field = fields.next();
-            if (!allowed.contains(field)) throw contentValidation(key + " 不允许字段：" + field);
+        if (field == null) return root;
+        List<Map<String, Object>> source = (List<Map<String, Object>>) root.getOrDefault(field, List.of());
+        List<Map<String, Object>> visible = new ArrayList<>();
+        Map<String, String> tagNames = new LinkedHashMap<>();
+        if ("mylab".equals(moduleKey)) {
+            List<Map<String, Object>> activeTags = (List<Map<String, Object>>) root.getOrDefault("tags", List.of());
+            activeTags.forEach(tag -> tagNames.put(String.valueOf(tag.get("id")), String.valueOf(tag.get("name"))));
         }
+        for (Map<String, Object> item : source) {
+            if (Boolean.FALSE.equals(item.get("enabled"))) continue;
+            Map<String, Object> result = new LinkedHashMap<>(item);
+            if ("hobbies".equals(moduleKey)) putUrl(result, "resource_object_key", "image");
+            if ("footprints".equals(moduleKey)) {
+                List<Map<String, Object>> resources = (List<Map<String, Object>>) result.getOrDefault("resources", List.of());
+                result.put("images", resources.stream().map(resource -> url((String) resource.get("object_key"))).filter(Objects::nonNull).toList());
+            }
+            if ("mylab".equals(moduleKey)) {
+                putUrl(result, "image_object_key", "image");
+                putUrl(result, "content_object_key", "markdown_url");
+                List<?> ids = (List<?>) result.getOrDefault("tag_ids", List.of());
+                result.put("tags", ids.stream().map(String::valueOf).map(tagNames::get).filter(Objects::nonNull).toList());
+            }
+            visible.add(result);
+        }
+        root.put(field, visible);
+        return root;
+    }
+
+    private void putUrl(Map<String, Object> item, String source, String target) {
+        String key = (String) item.get(source);
+        String url = url(key);
+        if (url != null) item.put(target, url);
+    }
+
+    private String url(String objectKey) {
+        if (objectKey == null) return null;
+        return storage.configured() ? storage.publicUrl(objectKey) : objectKey;
+    }
+
+    private void validateResourceIds(JsonNode ids, String mimePrefix) {
+        if (ids == null || !ids.isArray()) return;
+        Set<UUID> unique = new HashSet<>();
+        for (JsonNode id : ids) {
+            UUID value = UUID.fromString(id.asText());
+            if (!unique.add(value)) throw validation("resource_ids 不能重复");
+            requireResource(value, mimePrefix);
+        }
+    }
+
+    private FileRecord requireResource(UUID id, String... mimeTypes) {
+        FileRecord resource = resources.findById(id);
+        if (resource == null || resource.getDeletedAt() != null) throw validation("资源不存在或已删除：" + id);
+        boolean supported = false;
+        for (String type : mimeTypes) {
+            if (type.endsWith("/") ? resource.getMimeType().startsWith(type) : type.equals(resource.getMimeType())) {
+                supported = true;
+                break;
+            }
+        }
+        if (!supported) throw validation("资源媒体类型不符合字段要求：" + id);
+        return resource;
     }
 
     private JsonNode requireArray(JsonNode root, String field) {
         JsonNode value = root.path(field);
-        if (!value.isArray()) throw contentValidation(field + " 必须是数组");
+        if (!value.isArray()) throw validation(field + " 必须是数组");
         return value;
     }
 
-    private void validatePercentItems(String moduleKey, JsonNode items, boolean publishing) {
-        Set<String> allowed = "skills".equals(moduleKey)
-                ? Set.of("id", "name", "percentage", "level", "level_text", "icon", "bar_style", "is_new", "enabled")
-                : Set.of("id", "name", "percentage", "description", "enabled");
-        Set<String> ids = new HashSet<>();
-        for (JsonNode item : items) {
-            validateItemFields(moduleKey, item, allowed);
-            String id = requireText(item, "id");
-            if (!ids.add(id)) throw contentValidation(moduleKey + " 集合项 ID 不能重复");
-            int percentage = item.path("percentage").asInt(-1);
-            if (percentage < 0 || percentage > 100) {
-                throw contentValidation("percentage 必须在 0 到 100 之间");
-            }
-            if (publishing && item.path("enabled").asBoolean(true)) {
-                requireText(item, "name");
-            }
-        }
+    private JsonNode array(JsonNode root, String preferred, String fallback) {
+        JsonNode result = root.path(preferred);
+        return result.isArray() ? result : root.path(fallback);
     }
 
-    private void validateProjects(JsonNode items, boolean publishing) {
-        if (!items.isArray()) throw contentValidation("items 必须是数组");
-        JsonNode publishedPosts = OM.createArrayNode();
-        if (publishing) {
-            ContentModule lab = require("mylab");
-            if ("offline".equals(lab.getStatus()) || lab.getPublishedData() == null) {
-                throw contentDependency("发布项目之前必须先发布 myLab");
-            }
-            publishedPosts = OM.valueToTree(lab.getPublishedData()).path("posts");
-        }
-        Set<String> ids = new HashSet<>();
-        for (JsonNode item : items) {
-            validateItemFields("projects", item, Set.of(
-                    "id", "card_title", "card_summary", "detail_title", "detail_summary", "tag", "accent",
-                    "year", "image", "image_alt", "paragraphs", "tech", "images", "lab_post_id", "enabled"));
-            String id = requireText(item, "id");
-            if (!ids.add(id)) throw contentValidation("projects 集合项 ID 不能重复");
-            if (publishing && item.path("enabled").asBoolean(true)) {
-                requireText(item, "card_title");
-                requireText(item, "detail_title");
-                String postId = item.path("lab_post_id").asText("");
-                boolean exists = false;
-                if (publishedPosts.isArray()) {
-                    for (JsonNode post : publishedPosts) {
-                        if (postId.equals(post.path("id").asText()) && post.path("enabled").asBoolean(true)) {
-                            exists = true;
-                            break;
-                        }
-                    }
-                }
-                if (!exists) throw contentDependency("已启用项目必须关联已发布的 myLab 记录");
-            }
-        }
+    private String uniqueKey(Set<String> keys, JsonNode node, String preferred, String fallback) {
+        String value = firstText(node, preferred, fallback);
+        if (value == null || value.isBlank()) throw validation(preferred + " 为必填字段");
+        if (!keys.add(value)) throw validation(preferred + " 不能重复");
+        return value;
     }
 
-    private void validateFootprintDetails(JsonNode details, boolean publishing) {
-        Set<String> ids = new HashSet<>();
-        for (JsonNode detail : details) {
-            validateItemFields("footprints", detail, Set.of(
-                    "id", "title", "summary", "paragraphs", "images", "cta_text", "cta_url"));
-            String id = requireText(detail, "id");
-            if (!ids.add(id)) throw contentValidation("城市详情 ID 不能重复");
-            if (publishing) requireText(detail, "title");
-        }
+    private void requireText(JsonNode node, String field) {
+        if (text(node, field) == null) throw validation(field + " 为必填字段");
     }
 
-    private void validateHobbies(JsonNode cards, boolean publishing) {
-        long enabled = 0;
-        Set<String> ids = new HashSet<>();
-        for (JsonNode card : cards) {
-            validateItemFields("hobbies", card, Set.of(
-                    "id", "title", "description", "image", "image_alt", "enabled"));
-            String id = requireText(card, "id");
-            if (!ids.add(id)) throw contentValidation("hobbies 集合项 ID 不能重复");
-            if (card.path("enabled").asBoolean(true)) {
-                enabled++;
-                if (publishing) requireText(card, "title");
-            }
-        }
-        if (enabled > 5) throw contentValidation("最多只能启用五张爱好卡片");
-    }
-
-    private void validateFootprintIdsUnchanged(Object currentData, Object nextData) {
-        JsonNode current = OM.valueToTree(currentData).path("details");
-        JsonNode next = OM.valueToTree(nextData).path("details");
-        if (!footprintIds(current).equals(footprintIds(next))) {
-            throw contentValidation("城市 ID 由前端固定配置，不能新增、删除或修改");
-        }
-    }
-
-    private Set<String> footprintIds(JsonNode details) {
-        Set<String> ids = new HashSet<>();
-        if (details.isArray()) details.forEach(detail -> ids.add(detail.path("id").asText("")));
-        return ids;
-    }
-
-    private void validateItemFields(String moduleKey, JsonNode item, Set<String> allowed) {
-        if (!item.isObject()) throw contentValidation(moduleKey + " 集合项必须是 JSON 对象");
-        var fields = item.fieldNames();
-        while (fields.hasNext()) {
-            String field = fields.next();
-            if (!allowed.contains(field)) throw contentValidation(moduleKey + " 集合项不允许字段：" + field);
-        }
-    }
-
-    private void validateLab(JsonNode root, boolean publishing) {
-        JsonNode posts = root.path("posts");
-        if (!posts.isArray()) return;
-        if (!publishing) return;
-        Set<String> enabledTags = new HashSet<>();
-        JsonNode tags = root.path("tags");
-        if (tags.isArray()) {
-            for (JsonNode tag : tags) {
-                if (!tag.path("enabled").asBoolean(true)) continue;
-                String name = requireText(tag, "name");
-                if (!enabledTags.add(name)) throw contentValidation("myLab 标签名称不能重复");
-            }
-        }
-        Set<String> ids = new HashSet<>();
-        for (JsonNode post : posts) {
-            if (!post.path("enabled").asBoolean(true)) continue;
-            String id = requireText(post, "id");
-            if (!ids.add(id)) throw contentValidation("myLab 记录 ID 不能重复");
-            requireText(post, "title");
-            JsonNode postTags = post.path("tags");
-            if (postTags.isArray()) {
-                for (JsonNode tag : postTags) {
-                    if (!enabledTags.contains(tag.asText())) {
-                        throw contentValidation("myLab 记录只能引用已启用标签");
-                    }
-                }
-            }
-            JsonNode sections = post.path("sections");
-            if (sections.isArray()) for (JsonNode section : sections) requireText(section, "heading");
-        }
-        validatePublishedProjectReferences(ids);
-    }
-
-    private void validatePublishedProjectReferences(Set<String> labPostIds) {
-        ContentModule projects = modules.findByKey("projects");
-        if (projects == null || "offline".equals(projects.getStatus()) || projects.getPublishedData() == null) return;
-        JsonNode items = OM.valueToTree(projects.getPublishedData()).path("items");
-        if (!items.isArray()) return;
-        for (JsonNode item : items) {
-            if (!item.path("enabled").asBoolean(true)) continue;
-            if (!labPostIds.contains(item.path("lab_post_id").asText())) {
-                throw contentDependency("该 myLab 记录正被已发布项目引用");
-            }
-        }
-    }
-
-    private void validateSupport(JsonNode root) {
-        if (root.path("like_count").asLong(-1) < 0) throw contentValidation("点赞数不能为负数");
-        if (root.path("visit_base").asLong(-1) < 0 || root.path("page_view_base").asLong(-1) < 0) {
-            throw contentValidation("访问量和浏览量基数不能为负数");
-        }
-    }
-
-    private String requireText(JsonNode node, String field) {
+    private String text(JsonNode node, String field) {
         String value = node.path(field).asText("").trim();
-        if (value.isEmpty()) throw contentValidation(field + " 为必填字段");
-        return value;
+        return value.isEmpty() ? null : value;
     }
 
-    private static ValidationException contentValidation(String detail) {
+    private String firstText(JsonNode node, String... fields) {
+        for (String field : fields) {
+            String value = text(node, field);
+            if (value != null) return value;
+        }
+        return null;
+    }
+
+    private boolean enabled(JsonNode node) {
+        return node.path("enabled").asBoolean(true);
+    }
+
+    private UUID uuid(JsonNode node, String... fields) {
+        for (String field : fields) {
+            String value = node.path(field).asText("").trim();
+            if (!value.isEmpty()) {
+                try { return UUID.fromString(value); }
+                catch (IllegalArgumentException exception) { throw validation(field + " 必须是 UUID"); }
+            }
+        }
+        return null;
+    }
+
+    private List<UUID> uuidList(JsonNode node) {
+        if (!node.isArray()) return List.of();
+        List<UUID> result = new ArrayList<>();
+        node.forEach(value -> {
+            try { result.add(UUID.fromString(value.asText())); }
+            catch (IllegalArgumentException exception) { throw validation("tag_ids 必须包含 UUID"); }
+        });
+        return result;
+    }
+
+    private static ValidationException validation(String detail) {
         return new ValidationException(ErrorCode.CONTENT_VALIDATION_FAILED, detail);
     }
 
-    private static ConflictException contentDependency(String detail) {
+    private static ConflictException conflict(String detail) {
         return new ConflictException(ErrorCode.CONTENT_DEPENDENCY_CONFLICT, detail);
-    }
-
-    private long number(Object value) {
-        return value instanceof Number number ? number.longValue() : 0L;
     }
 }

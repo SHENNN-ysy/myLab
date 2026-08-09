@@ -47,7 +47,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, SecurityConstant.PUBLIC_GET_PREFIXES.stream()
                                 .map(p -> p + "/**").toArray(String[]::new))
                         .permitAll()
-                        .requestMatchers(SecurityConstant.VISIT_TRACK).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(eh -> eh
                         .authenticationEntryPoint((req, res, x) -> {

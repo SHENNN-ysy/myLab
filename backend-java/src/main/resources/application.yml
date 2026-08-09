@@ -11,10 +11,6 @@ spring:
       minimum-idle: ${DB_MIN_IDLE:1}
       connection-timeout: 10000
       validation-timeout: 3000
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 1
   data.redis:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
@@ -63,7 +59,6 @@ app:
   oss-max-file-size-mb: ${OSS_MAX_FILE_SIZE_MB:10}
   initial-admin-username: ${INIT_ADMIN_USERNAME:admin}
   initial-admin-password: ${INIT_ADMIN_PASSWORD:Admin@123456}
-  initial-admin-email: ${INIT_ADMIN_EMAIL:admin@myblog.local}
 server.tomcat.threads:
   max: ${TOMCAT_MAX_THREADS:50}
   min-spare: ${TOMCAT_MIN_SPARE_THREADS:5}

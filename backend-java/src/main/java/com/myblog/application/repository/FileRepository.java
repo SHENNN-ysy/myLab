@@ -10,4 +10,5 @@ public interface FileRepository {
     FileRecord findById(UUID id);
     void add(FileRecord record);
     void save(FileRecord record);
+    boolean hasReferences(UUID id);
 }

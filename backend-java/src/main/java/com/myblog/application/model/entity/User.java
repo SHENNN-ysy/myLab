@@ -17,15 +17,10 @@ public class User {
     private UUID id;
 
     private String username;
-    private String email;
-    private String nickname;
     private String passwordHash;
     private String role;
     private Boolean isActive;
     private OffsetDateTime lastLoginAt;
-    private String avatarUrl;
-    private String website;
-    private String bio;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 

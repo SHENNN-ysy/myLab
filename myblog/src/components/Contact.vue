@@ -44,20 +44,6 @@
             </div>
           </div>
 
-          <div class="stats-grid">
-            <div v-if="support.visit_enabled" class="stat-card">
-              <span class="stat-value">{{ visitors }}</span>
-              <span class="stat-label">{{ support.visit_label }}</span>
-            </div>
-            <div v-if="support.like_enabled" class="stat-card">
-              <span class="stat-value">{{ likes }}</span>
-              <span class="stat-label">{{ support.like_label }}</span>
-            </div>
-            <div v-if="support.page_view_enabled" class="stat-card">
-              <span class="stat-value">{{ views }}</span>
-              <span class="stat-label">{{ support.page_view_label }}</span>
-            </div>
-          </div>
         </div>
 
         <p v-if="support.icp_enabled && support.icp_number" class="icp-note">2026 &copy; shennn的个人空间 · 备案号 {{ support.icp_number }}</p>
@@ -68,24 +54,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { usePublicContent } from '@/composables/usePublicContent'
-
-const { content } = usePublicContent()
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 const support = {
   site_started_at: '2024-04-21T00:00:00+08:00',
   github_url: 'https://github.com', github_enabled: true,
   email: '', email_enabled: true,
-  visit_count: 12847, visit_label: '访问量', visit_enabled: true,
-  like_count: 1023, like_label: '点赞数', like_enabled: true,
-  page_view_count: 68921, page_view_label: '浏览量', page_view_enabled: true,
   icp_number: 'XXXXXXX', icp_enabled: true,
   cloud_provider: '阿里云', cloud_enabled: true,
 }
-const visitors = computed(() => Number(content.value.support?.visit_count ?? 12847))
-const likes = computed(() => Number(content.value.support?.like_count ?? 1023))
-const views = computed(() => Number(content.value.support?.page_view_count ?? 68921))
-
 const days = ref(0)
 const hours = ref(0)
 const minutes = ref(0)

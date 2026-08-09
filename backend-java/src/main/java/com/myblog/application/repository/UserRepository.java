@@ -10,7 +10,7 @@ public interface UserRepository {
     User findById(UUID id);
     PageResult<User> findPage(long page, long size);
     long countAll();
-    boolean usernameOrEmailExists(String username, String email);
+    boolean usernameExists(String username);
     void add(User user);
     void save(User user);
     boolean remove(UUID id);

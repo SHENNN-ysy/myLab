@@ -103,7 +103,7 @@ const section = {
 }
 const toolItems = computed(() => {
   const tools = content.value.vibe?.tools
-  if (!Array.isArray(tools)) return fallbackTools
+  if (!Array.isArray(tools) || tools.length === 0) return fallbackTools
   return tools.filter((tool: any) => tool.enabled !== false)
 })
 

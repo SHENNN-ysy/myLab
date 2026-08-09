@@ -39,6 +39,7 @@ pnpm-debug.log*
 
 # ============== IDE / 编辑器 ==============
 .idea/
+.kimi-code/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json

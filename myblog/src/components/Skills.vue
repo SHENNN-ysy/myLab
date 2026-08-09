@@ -65,7 +65,7 @@ const section = {
 }
 const skillItems = computed(() => {
   const items = content.value.skills?.items
-  if (!Array.isArray(items)) return fallbackSkills
+  if (!Array.isArray(items) || items.length === 0) return fallbackSkills
   return items.filter((item: any) => item.enabled !== false).map((item: any) => ({
     name: item.name,
     percentage: item.percentage,
@@ -77,7 +77,7 @@ const skillItems = computed(() => {
   }))
 })
 const fallbackNewSkillNames = new Set(['JavaScript / TypeScript', 'Python', 'React / Vue'])
-const hasManagedSkills = computed(() => Array.isArray(content.value.skills?.items))
+const hasManagedSkills = computed(() => Array.isArray(content.value.skills?.items) && content.value.skills.items.length > 0)
 
 const isNewSkill = (name: string) => skillItems.value.some((skill: any) => skill.name === name && skill.isNew)
   || (!hasManagedSkills.value && fallbackNewSkillNames.has(name))

@@ -1,86 +1,66 @@
-import type { FileItem, User, VisitLog } from '@/types'
+import type { FileResource, PageResult, User, UserRole } from '@/types'
 
-export interface PageResult<T> {
-  items: T[]
-  pagination: {
-    page: number
-    page_size: number
-    total: number
-    total_pages: number
+interface BackendPageResult<T> {
+  records: T[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export const mapPageResult = <T, R>(data: BackendPageResult<T>, mapper: (item: T) => R): PageResult<R> => {
+  return {
+    records: (data?.records || []).map(mapper),
+    total: data?.total || 0,
+    page: data?.page || 1,
+    pageSize: data?.page_size || 20
   }
 }
 
-export const unwrapItems = <T>(data: T[] | PageResult<T>): T[] => {
-  if (Array.isArray(data)) return data
-  return data?.items || []
+const roleFromBackend = (role?: string): UserRole => {
+  if (role && ['superadmin', 'admin', 'editor', 'viewer'].includes(role)) {
+    return role as UserRole
+  }
+  return 'viewer'
 }
 
-const roleFromBackend = (role: string): User['role'] => {
-  if (role === 'superadmin') return 'super_admin'
-  if (role === 'editor') return 'admin'
-  if (role === 'viewer') return 'user'
-  return (role as User['role']) || 'user'
+interface BackendUser {
+  id: string
+  username: string
+  role: string
+  is_active?: boolean
+  last_login_at?: string
+  created_at?: string
+  updated_at?: string
 }
 
-const roleToBackend = (role?: User['role']) => {
-  if (role === 'super_admin') return 'superadmin'
-  if (role === 'user' || role === 'guest') return 'viewer'
-  return role || 'viewer'
-}
-
-export const mapUser = (item: any): User => ({
+export const mapUser = (item: BackendUser): User => ({
   id: String(item.id),
   username: item.username,
-  email: item.email,
-  nickname: item.nickname || '',
-  avatar: item.avatar_url || item.avatar || '',
   role: roleFromBackend(item.role),
-  status: item.is_active === false || item.status === 'disabled' ? 'disabled' : 'active',
-  lastLogin: item.last_login_at || item.lastLogin || '',
-  createdAt: item.created_at || item.createdAt || '',
-  website: item.website,
-  bio: item.bio
+  isActive: item.is_active !== false,
+  lastLoginAt: item.last_login_at,
+  createdAt: item.created_at,
+  updatedAt: item.updated_at
 })
 
-export const userCreatePayload = (user: Partial<User> & { password?: string }) => ({
-  username: user.username,
-  email: user.email,
-  nickname: user.nickname,
-  role: roleToBackend(user.role),
-  password: user.password || 'Admin@123456'
-})
+interface BackendFileResource {
+  id: string
+  object_key: string
+  bucket: string
+  original_name?: string
+  mime_type: string
+  size: number
+  created_at: string
+  url?: string
+}
 
-export const userUpdatePayload = (user: Partial<User>) => ({
-  email: user.email,
-  nickname: user.nickname,
-  role: roleToBackend(user.role),
-  is_active: user.status ? user.status === 'active' : undefined,
-  avatar_url: user.avatar,
-  website: user.website,
-  bio: user.bio
-})
-
-export const mapVisitLog = (item: any): VisitLog => ({
+export const mapFile = (item: BackendFileResource): FileResource => ({
   id: String(item.id),
-  visitorId: item.user_id || item.id,
-  ip: item.ip,
-  pageUrl: item.path || item.pageUrl || '',
-  location: item.location || '',
-  browser: item.browser || item.user_agent || '',
-  os: item.os || '',
-  referer: item.referer || '',
-  visitTime: item.visited_at || item.visitTime || ''
-})
-
-export const mapFile = (item: any): FileItem => ({
-  id: String(item.id),
-  fileName: item.object_key || item.fileName || '',
-  originalName: item.original_name || item.originalName || '',
-  fileUrl: item.url || item.fileUrl || '',
-  fileType: item.mime_type || item.fileType || '',
-  fileSize: item.size || item.fileSize || 0,
-  status: item.is_deleted ? 0 : 1,
-  uploadType: item.mime_type?.split('/')[0] || item.uploadType || '',
-  uploadTime: item.created_at || item.uploadTime || '',
-  uploader: item.uploader
+  objectKey: item.object_key || '',
+  bucket: item.bucket || '',
+  originalName: item.original_name || '',
+  mimeType: item.mime_type || '',
+  size: item.size || 0,
+  createdAt: item.created_at || '',
+  url: item.url
 })

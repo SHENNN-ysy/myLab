@@ -20,9 +20,9 @@ public interface UserMapper extends BaseMapper<User>, UserRepository {
         return PageResult.of(result.getRecords(), page, size, result.getTotal());
     }
     @Override default long countAll() { return selectCount(null); }
-    @Override default boolean usernameOrEmailExists(String username, String email) {
+    @Override default boolean usernameExists(String username) {
         return selectCount(new LambdaQueryWrapper<User>()
-                .eq(User::getUsername, username).or().eq(User::getEmail, email)) > 0;
+                .eq(User::getUsername, username)) > 0;
     }
     @Override default void add(User user) { insert(user); }
     @Override default void save(User user) { updateById(user); }

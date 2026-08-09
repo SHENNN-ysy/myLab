@@ -99,7 +99,7 @@ const section = {
 }
 const featuredGames = computed(() => {
   const cards = content.value.hobbies?.cards
-  if (Array.isArray(cards)) return cards.filter((card: any) => card.enabled !== false).slice(0, 5).map((card: any) => ({
+  if (Array.isArray(cards) && cards.length > 0) return cards.filter((card: any) => card.enabled !== false).slice(0, 5).map((card: any) => ({
     id: card.id, name: card.title, image: card.image, description: card.description
   }))
   return fallbackGames.slice(0, 5).map((game, index) => ({
@@ -125,7 +125,7 @@ type TimeKey = 'Study' | 'Music' | 'Game' | 'Coding' | 'Social'
 
 const timeChartKeys: TimeKey[] = ['Study', 'Music', 'Game', 'Coding', 'Social']
 
-/* 当前联动选中的色带 / 卡片（按顺序一一对应：卡片 index ↔ timeChartKeys[index]） */
+/* 色带仍按顺序与卡片联动，但 Time 标签名称使用独立配置。 */
 const activeTimeKey = ref<TimeKey | null>(null)
 
 const timeChartMeta: Record<TimeKey, { label: string; color: string; labelTransform: string }> = {
@@ -238,8 +238,6 @@ const timeSeries = computed(() => {
     return {
       key,
       ...timeChartMeta[key],
-      // 标签以卡片标题为准，与右侧卡片一一对应
-      label: featuredGames.value[k]?.name ?? timeChartMeta[key].label,
       path: buildAreaPath(pts)
     }
   })

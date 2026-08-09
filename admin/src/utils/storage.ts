@@ -37,12 +37,5 @@ export const storage = {
 export const STORAGE_KEYS = {
   TOKEN: 'token',
   REFRESH_TOKEN: 'refresh_token',
-  USER_INFO: 'user_info',
-  SETTINGS: 'settings',
-  OPERATION_LOGS: 'operation_logs',
-  USERS: 'users',
-  FILES: 'files',
-  VISIT_LOGS: 'visit_logs',
-  SYSTEM_STATIC: 'system_static',
-  SYSTEM_DYNAMIC: 'system_dynamic'
+  USER_INFO: 'user_info'
 } as const

@@ -1,15 +1,3 @@
-export interface Project {
-  id: string
-  title: string
-  description: string
-  tag: string
-  tagType?: 'default' | 'accent'
-  year: number
-  image: string
-  content?: string
-  tech?: string[]
-}
-
 export interface Skill {
   name: string
   percentage: number
@@ -44,70 +32,6 @@ export interface AITool {
   percentage: number
   description: string
 }
-
-export const projects: Project[] = [
-  {
-    id: 'gm1',
-    title: 'Moth and Bat',
-    description: '48 小时 GameJam 作品，关于夜色中两种生物的相会。',
-    tag: 'GameJam',
-    year: 2024,
-    image: 'https://picsum.photos/seed/gm1/600/375',
-    content: '这是一款关于夜晚相遇的解谜游戏。玩家扮演一只飞蛾，在月光下寻找答案。',
-    tech: ['Unity', 'C#', 'Aseprite']
-  },
-  {
-    id: 'gm2',
-    title: 'Naughty Cat',
-    description: '一只总想搞破坏的猫与一个不肯关机的扫地机器人。',
-    tag: 'GameJam',
-    year: 2023,
-    image: 'https://picsum.photos/seed/gm2/600/375',
-    content: '一款轻松幽默的平台跳跃游戏。',
-    tech: ['Godot', 'GDScript']
-  },
-  {
-    id: 'gm3',
-    title: 'Naughty Boy',
-    description: '规则与违抗之间的游戏化实验，关于儿童行为心理学的隐喻。',
-    tag: 'GameJam',
-    year: 2023,
-    image: 'https://picsum.photos/seed/gm3/600/375',
-    content: '探索规则边界的叙事游戏。',
-    tech: ['Phaser', 'JavaScript']
-  },
-  {
-    id: 'gm4',
-    title: 'Ring of Elysium',
-    description: '参与腾讯北极光工作室《无限法则》的玩法与系统设计。',
-    tag: '商业项目',
-    tagType: 'accent',
-    year: 2022,
-    image: 'https://picsum.photos/seed/gm4/600/375',
-    content: '作为玩法设计师参与开发的大逃杀游戏。',
-    tech: ['Unreal Engine', 'C++', 'Lua']
-  },
-  {
-    id: 'gm5',
-    title: 'Moodlog',
-    description: '一个极简的情绪记录工具，专注输入体验与一年后的回看。',
-    tag: '独立工具',
-    year: 2024,
-    image: 'https://picsum.photos/seed/gm5/600/375',
-    content: '帮助你记录情绪变化的日常工具。',
-    tech: ['React', 'TypeScript', 'Supabase']
-  },
-  {
-    id: 'gm6',
-    title: 'Beat Lab',
-    description: '浏览器内的鼓机与音序器，使用 Web Audio API 实时合成。',
-    tag: 'Web 实验',
-    year: 2023,
-    image: 'https://picsum.photos/seed/gm6/600/375',
-    content: '在线音乐创作工具。',
-    tech: ['Vue', 'Web Audio API', 'Tone.js']
-  }
-]
 
 export const skills: Skill[] = [
   { name: 'C# / .NET', percentage: 80, level: 'proficient', levelText: '熟练', icon: 'grid', barStyle: 'coral' },

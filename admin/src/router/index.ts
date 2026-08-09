@@ -26,16 +26,34 @@ const router = createRouter({
           meta: { title: '仪表盘' }
         },
         {
-          path: 'content/:moduleKey(skills|projects|footprints|hobbies|vibe|mylab|support)',
-          name: 'ContentModuleManage',
-          component: () => import('@/views/content/ContentModuleManage.vue'),
+          path: 'content/home-images',
+          name: 'HomeImagesManage',
+          component: () => import('@/views/content/HomeImagesManage.vue'),
+          meta: { title: '首页图片' }
+        },
+        {
+          path: 'content/about',
+          name: 'AboutManage',
+          component: () => import('@/views/content/AboutManage.vue'),
+          meta: { title: '关于我' }
+        },
+        {
+          path: 'content/:moduleKey(skills|footprints|hobbies|vibe)',
+          name: 'StaticContentModuleManage',
+          component: () => import('@/views/content/StaticContentModuleManage.vue'),
           props: route => ({
             moduleKey: route.params.moduleKey,
             pageTitle: ({
-              skills: '技术栈管理', projects: '项目管理', footprints: '足迹管理',
-              hobbies: '爱好管理', vibe: 'Vibe Coding 管理', mylab: 'myLab 管理', support: '支持页面管理'
+              skills: '技术栈管理', footprints: '足迹管理', hobbies: '爱好管理',
+              vibe: 'Vibe Coding 管理'
             } as Record<string, string>)[String(route.params.moduleKey)]
           }),
+          meta: { title: '内容管理' }
+        },
+        {
+          path: 'content/:moduleKey(mylab)',
+          name: 'StaticMylabManage',
+          component: () => import('@/views/content/StaticMylabManage.vue'),
           meta: { title: '内容管理' }
         },
         {
@@ -51,12 +69,6 @@ const router = createRouter({
           meta: { title: '文件管理' }
         },
         {
-          path: 'system/visits',
-          name: 'VisitLog',
-          component: () => import('@/views/system/VisitLog.vue'),
-          meta: { title: '访问日志' }
-        },
-        {
           path: 'system/info',
           name: 'SystemInfo',
           component: () => import('@/views/system/SystemInfo.vue'),
@@ -66,7 +78,7 @@ const router = createRouter({
           path: 'system/settings',
           name: 'SystemSettings',
           component: () => import('@/views/system/SystemSettings.vue'),
-          meta: { title: '系统设置' }
+          meta: { title: '账号安全', requiresAdmin: false }
         }
       ]
     },
@@ -84,11 +96,16 @@ router.beforeEach((to, from) => {
     document.title = `${to.meta.title} - MyBlog 管理后台`
   }
 
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, currentUser } = useAuth()
 
   // 需要登录
   if (to.meta.requiresAuth !== false && !isLoggedIn.value) {
     return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.requiresAuth !== false && to.meta.requiresAdmin !== false
+    && !['admin', 'superadmin'].includes(currentUser.value?.role || '')) {
+    return '/system/settings'
   }
 
   // 已登录访问登录页

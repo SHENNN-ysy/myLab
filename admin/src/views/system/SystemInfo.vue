@@ -26,7 +26,7 @@
           </div>
           <div class="version-item">
             <span class="label">运行模式</span>
-            <span class="value">开发模式 / 本地存储</span>
+            <span class="value">开发模式 / {{ staticInfo.storageStatus || '存储状态未知' }}</span>
           </div>
         </div>
       </div>
@@ -222,7 +222,7 @@
             <div class="section-body">
               <div class="info-item">
                 <span class="label">文件存储</span>
-                <a-tag :color="staticInfo.storageStatus === '正常' ? 'success' : 'error'">
+                <a-tag :color="staticInfo.storageStatus === 'OSS已配置' ? 'success' : 'default'">
                   {{ staticInfo.storageStatus }}
                 </a-tag>
               </div>
@@ -254,7 +254,6 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { message } from 'ant-design-vue'
 import {
   ReloadOutlined,
   DesktopOutlined,
@@ -308,12 +307,8 @@ const dynamicInfo = reactive<SystemDynamic>({
 })
 
 const fetchStaticInfo = async () => {
-  try {
-    const data = await getSystemStaticApi()
-    Object.assign(staticInfo, data)
-  } catch {
-    message.error('获取系统静态信息失败')
-  }
+  const data = await getSystemStaticApi()
+  Object.assign(staticInfo, data)
 }
 
 const fetchDynamicInfo = async () => {

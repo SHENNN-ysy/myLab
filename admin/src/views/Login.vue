@@ -88,7 +88,7 @@ const rules: Record<string, Rule[]> = {
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少6位', trigger: 'blur' }
+    { min: 8, max: 64, message: '密码长度为 8～64 位', trigger: 'blur' }
   ]
 }
 
@@ -106,12 +106,11 @@ const handleLogin = async () => {
 
     const redirect = (route.query.redirect as string) || '/dashboard'
     router.push(redirect)
-  } catch (error: any) {
-    if (error?.errorFields) {
+  } catch (error: unknown) {
+    if (typeof error === 'object' && error !== null && 'errorFields' in error) {
       // 表单校验失败
       return
     }
-    message.error(error?.message || '登录失败')
   } finally {
     loading.value = false
   }
