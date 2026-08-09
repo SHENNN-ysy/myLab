@@ -35,11 +35,14 @@ public class ResourceReferenceRepository implements FileRepository {
     public boolean hasReferences(UUID id) {
         Long count = jdbc.queryForObject("""
                 SELECT
-                    (SELECT COUNT(*) FROM footprint_resources WHERE resource_id = ? AND deleted_at IS NULL)
+                    (SELECT COUNT(*) FROM home_images WHERE image_resource_id = ? AND deleted_at IS NULL)
+                  + (SELECT COUNT(*) FROM about_contents WHERE avatar_resource_id = ? AND deleted_at IS NULL)
+                  + (SELECT COUNT(*) FROM skills WHERE icon_resource_id = ? AND deleted_at IS NULL)
+                  + (SELECT COUNT(*) FROM footprint_resources WHERE resource_id = ? AND deleted_at IS NULL)
                   + (SELECT COUNT(*) FROM hobby_resources WHERE resource_id = ? AND deleted_at IS NULL)
                   + (SELECT COUNT(*) FROM mylab_resources
                      WHERE (image_resource_id = ? OR content_resource_id = ?) AND deleted_at IS NULL)
-                """, Long.class, id, id, id, id);
+                """, Long.class, id, id, id, id, id, id, id);
         return count != null && count > 0;
     }
 }

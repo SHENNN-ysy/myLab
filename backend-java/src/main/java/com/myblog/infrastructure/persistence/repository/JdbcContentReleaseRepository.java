@@ -97,9 +97,11 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         JsonNode root = OM.valueToTree(data);
         deleteReleaseData(release);
         switch (release.getModuleKey()) {
+            case "home" -> writeHomeImages(release.getId(), root.path("images"));
+            case "about" -> writeAbout(release.getId(), root);
             case "skills" -> writeSkills(release.getId(), root.path("items"));
             case "footprints" -> writeFootprints(release.getId(), array(root, "details", "items"));
-            case "hobbies" -> writeHobbies(release.getId(), root.path("cards"));
+            case "hobbies" -> writeHobbies(release.getId(), root);
             case "vibe" -> writeVibeTools(release.getId(), root.path("tools"));
             case "mylab" -> writeMylabCards(release.getId(), array(root, "cards", "posts"));
             default -> throw new IllegalArgumentException("unknown module: " + release.getModuleKey());
@@ -110,9 +112,17 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
     public Object readData(ContentRelease release) {
         if (release == null) return null;
         return switch (release.getModuleKey()) {
+            case "home" -> Map.of("images", readHomeImages(release.getId()));
+            case "about" -> readAbout(release.getId());
             case "skills" -> Map.of("items", readSkills(release.getId()));
             case "footprints" -> Map.of("details", readFootprints(release.getId()));
-            case "hobbies" -> Map.of("cards", readHobbies(release.getId()));
+            case "hobbies" -> {
+                Map<String, Object> result = new LinkedHashMap<>();
+                result.put("cards", readHobbies(release.getId()));
+                result.put("time_tags", readHobbyTimeTags(release.getId()));
+                result.put("time_points", readHobbyTimePoints(release.getId()));
+                yield result;
+            }
             case "vibe" -> Map.of("tools", readVibeTools(release.getId()));
             case "mylab" -> {
                 Map<String, Object> result = new LinkedHashMap<>();
@@ -150,15 +160,63 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
     }
 
     private void deleteReleaseData(ContentRelease release) {
-        String table = switch (release.getModuleKey()) {
-            case "skills" -> "skills";
-            case "footprints" -> "footprints";
-            case "hobbies" -> "hobbies";
-            case "vibe" -> "vibe_tools";
-            case "mylab" -> "mylab_cards";
+        UUID releaseId = release.getId();
+        switch (release.getModuleKey()) {
+            case "home" -> jdbc.update("DELETE FROM home_images WHERE release_id = ?", releaseId);
+            case "about" -> jdbc.update("DELETE FROM about_contents WHERE release_id = ?", releaseId);
+            case "skills" -> jdbc.update("DELETE FROM skills WHERE release_id = ?", releaseId);
+            case "footprints" -> jdbc.update("DELETE FROM footprints WHERE release_id = ?", releaseId);
+            case "hobbies" -> {
+                jdbc.update("DELETE FROM hobby_time_points WHERE release_id = ?", releaseId);
+                jdbc.update("DELETE FROM hobby_time_tags WHERE release_id = ?", releaseId);
+                jdbc.update("DELETE FROM hobbies WHERE release_id = ?", releaseId);
+            }
+            case "vibe" -> jdbc.update("DELETE FROM vibe_tools WHERE release_id = ?", releaseId);
+            case "mylab" -> jdbc.update("DELETE FROM mylab_cards WHERE release_id = ?", releaseId);
             default -> throw new IllegalArgumentException("unknown module: " + release.getModuleKey());
-        };
-        jdbc.update("DELETE FROM " + table + " WHERE release_id = ?", release.getId());
+        }
+    }
+
+    private void writeHomeImages(UUID releaseId, JsonNode images) {
+        int order = 0;
+        for (JsonNode image : iterable(images)) {
+            jdbc.update("""
+                    INSERT INTO home_images
+                        (id, release_id, image_resource_id, alt_text, object_position, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """, uuid(image, "row_id"), releaseId, nullableUuid(image, "image_resource_id"),
+                    text(image, "alt"), Objects.requireNonNullElse(text(image, "object_position"), "50% 50%"),
+                    order++);
+        }
+    }
+
+    private void writeAbout(UUID releaseId, JsonNode root) {
+        JsonNode profile = root.path("profile");
+        JsonNode ingredients = root.path("ingredients");
+        UUID aboutId = uuid(root, "row_id");
+        jdbc.update("""
+                INSERT INTO about_contents
+                    (id, release_id, profile_title, avatar_resource_id, avatar_alt, intro, outro,
+                     ingredients_title, ingredients_description)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, aboutId, releaseId, text(profile, "title"), nullableUuid(profile, "avatar_resource_id"),
+                text(profile, "avatar_alt"), text(profile, "intro"), text(profile, "outro"),
+                text(ingredients, "title"), text(ingredients, "description"));
+        int bulletOrder = 0;
+        for (JsonNode bullet : iterable(profile.path("bullets"))) {
+            jdbc.update("INSERT INTO about_profile_bullets (id, about_content_id, contents, sort_order) VALUES (?, ?, ?, ?)",
+                    UUID.randomUUID(), aboutId, bullet.asText(), bulletOrder++);
+        }
+        int bubbleOrder = 0;
+        for (JsonNode bubble : iterable(root.path("bubbles"))) {
+            jdbc.update("""
+                    INSERT INTO about_bubbles
+                        (id, about_content_id, bubble_text, bubble_size, background_color, text_color, glow_color, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, uuid(bubble, "row_id"), aboutId, text(bubble, "text"), text(bubble, "size"),
+                    text(bubble, "background_color"), text(bubble, "text_color"), text(bubble, "glow_color"),
+                    bubbleOrder++);
+        }
     }
 
     private void writeSkills(UUID releaseId, JsonNode items) {
@@ -166,11 +224,11 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         for (JsonNode item : iterable(items)) {
             jdbc.update("""
                     INSERT INTO skills
-                        (id, release_id, skill_key, name, percentage, level_code, level_text, icon, bar_style, is_new, enabled, sort_order)
+                        (id, release_id, skill_key, name, percentage, level_code, level_text, icon_resource_id, bar_style, is_new, enabled, sort_order)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, uuid(item, "row_id"), releaseId, key(item, "skill_key", "id"), text(item, "name"),
                     integer(item, "percentage", 0), firstText(item, "level_code", "level"), text(item, "level_text"),
-                    text(item, "icon"), text(item, "bar_style"), bool(item, "is_new", false),
+                    nullableUuid(item, "icon_resource_id"), text(item, "bar_style"), bool(item, "is_new", false),
                     bool(item, "enabled", true), integer(item, "sort_order", order++));
         }
     }
@@ -195,9 +253,9 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         }
     }
 
-    private void writeHobbies(UUID releaseId, JsonNode items) {
+    private void writeHobbies(UUID releaseId, JsonNode root) {
         int order = 0;
-        for (JsonNode item : iterable(items)) {
+        for (JsonNode item : iterable(root.path("cards"))) {
             UUID id = uuid(item, "row_id");
             jdbc.update("""
                     INSERT INTO hobbies
@@ -210,6 +268,26 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
                 jdbc.update("INSERT INTO hobby_resources (id, hobby_id, resource_id) VALUES (?, ?, ?)",
                         UUID.randomUUID(), id, resourceId);
             }
+        }
+        order = 0;
+        for (JsonNode tag : iterable(root.path("time_tags"))) {
+            jdbc.update("""
+                    INSERT INTO hobby_time_tags
+                        (id, release_id, data_key, name, color, label_x, label_y, label_scale, enabled, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, uuid(tag, "row_id"), releaseId, text(tag, "data_key"), text(tag, "name"), text(tag, "color"),
+                    integer(tag, "label_x", 0), integer(tag, "label_y", 0), decimal(tag, "label_scale", 1.0),
+                    bool(tag, "enabled", true), order++);
+        }
+        for (JsonNode point : iterable(root.path("time_points"))) {
+            JsonNode values = point.path("values");
+            jdbc.update("""
+                    INSERT INTO hobby_time_points
+                        (id, release_id, age, study, music, game, coding, social)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, uuid(point, "row_id"), releaseId, integer(point, "age", -2),
+                    decimal(values, "Study", 0), decimal(values, "Music", 0), decimal(values, "Game", 0),
+                    decimal(values, "Coding", 0), decimal(values, "Social", 0));
         }
     }
 
@@ -268,15 +346,83 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         }
     }
 
+    private List<Map<String, Object>> readHomeImages(UUID releaseId) {
+        return jdbc.query("""
+                SELECT hi.id, hi.image_resource_id, hi.alt_text, hi.object_position, hi.sort_order,
+                       r.object_key AS image_object_key
+                FROM home_images hi
+                LEFT JOIN resources r ON r.id = hi.image_resource_id
+                WHERE hi.release_id = ? AND hi.deleted_at IS NULL
+                ORDER BY hi.sort_order
+                """, (rs, n) -> mapOf(
+                "row_id", rs.getObject("id"), "image_resource_id", rs.getObject("image_resource_id"),
+                "image_object_key", rs.getString("image_object_key"), "alt", rs.getString("alt_text"),
+                "object_position", rs.getString("object_position"), "sort_order", rs.getInt("sort_order")), releaseId);
+    }
+
+    private Map<String, Object> readAbout(UUID releaseId) {
+        List<Map<String, Object>> rows = jdbc.query("""
+                SELECT ac.id, ac.profile_title, ac.avatar_resource_id, avatar.object_key AS avatar_object_key,
+                       ac.avatar_alt, ac.intro, ac.outro, ac.ingredients_title, ac.ingredients_description
+                FROM about_contents ac
+                LEFT JOIN resources avatar ON avatar.id = ac.avatar_resource_id
+                WHERE ac.release_id = ? AND ac.deleted_at IS NULL
+                """, (rs, n) -> mapOf(
+                "row_id", rs.getObject("id"), "title", rs.getString("profile_title"),
+                "avatar_resource_id", rs.getObject("avatar_resource_id"),
+                "avatar_object_key", rs.getString("avatar_object_key"), "avatar_alt", rs.getString("avatar_alt"),
+                "intro", rs.getString("intro"), "outro", rs.getString("outro"),
+                "ingredients_title", rs.getString("ingredients_title"),
+                "ingredients_description", rs.getString("ingredients_description")), releaseId);
+        if (rows.isEmpty()) return Map.of("profile", Map.of("bullets", List.of()), "ingredients", Map.of(), "bubbles", List.of());
+        Map<String, Object> row = rows.getFirst();
+        UUID aboutId = (UUID) row.get("row_id");
+        Map<String, Object> profile = mapOf(
+                "title", row.get("title"), "avatar_resource_id", row.get("avatar_resource_id"),
+                "avatar_object_key", row.get("avatar_object_key"), "avatar_alt", row.get("avatar_alt"),
+                "intro", row.get("intro"), "bullets", readAboutBullets(aboutId), "outro", row.get("outro"));
+        Map<String, Object> ingredients = mapOf(
+                "title", row.get("ingredients_title"), "description", row.get("ingredients_description"));
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("row_id", aboutId);
+        result.put("profile", profile);
+        result.put("ingredients", ingredients);
+        result.put("bubbles", readAboutBubbles(aboutId));
+        return result;
+    }
+
+    private List<String> readAboutBullets(UUID aboutId) {
+        return jdbc.query("""
+                SELECT contents FROM about_profile_bullets
+                WHERE about_content_id = ? AND deleted_at IS NULL ORDER BY sort_order
+                """, (rs, n) -> rs.getString("contents"), aboutId);
+    }
+
+    private List<Map<String, Object>> readAboutBubbles(UUID aboutId) {
+        return jdbc.query("""
+                SELECT id, bubble_text, bubble_size, background_color, text_color, glow_color, sort_order
+                FROM about_bubbles WHERE about_content_id = ? AND deleted_at IS NULL ORDER BY sort_order
+                """, (rs, n) -> mapOf(
+                "row_id", rs.getObject("id"), "text", rs.getString("bubble_text"),
+                "size", rs.getString("bubble_size"), "background_color", rs.getString("background_color"),
+                "text_color", rs.getString("text_color"), "glow_color", rs.getString("glow_color"),
+                "sort_order", rs.getInt("sort_order")), aboutId);
+    }
+
     private List<Map<String, Object>> readSkills(UUID releaseId) {
         return jdbc.query("""
-                SELECT id, skill_key, name, percentage, level_code, level_text, icon, bar_style, is_new, enabled, sort_order
-                FROM skills WHERE release_id = ? AND deleted_at IS NULL ORDER BY sort_order, skill_key
+                SELECT s.id, s.skill_key, s.name, s.percentage, s.level_code, s.level_text,
+                       s.icon_resource_id, icon.object_key AS icon_object_key,
+                       s.bar_style, s.is_new, s.enabled, s.sort_order
+                FROM skills s
+                LEFT JOIN resources icon ON icon.id = s.icon_resource_id
+                WHERE s.release_id = ? AND s.deleted_at IS NULL ORDER BY s.sort_order, s.skill_key
                 """, (rs, n) -> mapOf(
                 "row_id", rs.getObject("id"), "id", rs.getString("skill_key"), "skill_key", rs.getString("skill_key"),
                 "name", rs.getString("name"), "percentage", rs.getInt("percentage"),
                 "level", rs.getString("level_code"), "level_code", rs.getString("level_code"),
-                "level_text", rs.getString("level_text"), "icon", rs.getString("icon"),
+                "level_text", rs.getString("level_text"), "icon_resource_id", rs.getObject("icon_resource_id"),
+                "icon_object_key", rs.getString("icon_object_key"),
                 "bar_style", rs.getString("bar_style"), "is_new", rs.getBoolean("is_new"),
                 "enabled", rs.getBoolean("enabled"), "sort_order", rs.getInt("sort_order")), releaseId);
     }
@@ -311,7 +457,31 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
                 "row_id", rs.getObject("id"), "id", rs.getString("hobby_key"), "hobby_key", rs.getString("hobby_key"),
                 "title", rs.getString("title"), "description", rs.getString("description"),
                 "enabled", rs.getBoolean("enabled"), "sort_order", rs.getInt("sort_order"),
-                "resource_id", rs.getObject("resource_id"), "resource_object_key", rs.getString("resource_object_key")), releaseId);
+                "image_resource_id", rs.getObject("resource_id"), "image_object_key", rs.getString("resource_object_key")), releaseId);
+    }
+
+    private List<Map<String, Object>> readHobbyTimeTags(UUID releaseId) {
+        return jdbc.query("""
+                SELECT id, data_key, name, color, label_x, label_y, label_scale, enabled, sort_order
+                FROM hobby_time_tags WHERE release_id = ? AND deleted_at IS NULL ORDER BY sort_order, data_key
+                """, (rs, n) -> mapOf(
+                "row_id", rs.getObject("id"), "data_key", rs.getString("data_key"), "name", rs.getString("name"),
+                "color", rs.getString("color"), "label_x", rs.getInt("label_x"), "label_y", rs.getInt("label_y"),
+                "label_scale", rs.getBigDecimal("label_scale"), "enabled", rs.getBoolean("enabled"),
+                "sort_order", rs.getInt("sort_order")), releaseId);
+    }
+
+    private List<Map<String, Object>> readHobbyTimePoints(UUID releaseId) {
+        return jdbc.query("""
+                SELECT id, age, study, music, game, coding, social
+                FROM hobby_time_points WHERE release_id = ? AND deleted_at IS NULL ORDER BY age
+                """, (rs, n) -> {
+            Map<String, Object> values = mapOf(
+                    "Study", rs.getBigDecimal("study"), "Music", rs.getBigDecimal("music"),
+                    "Game", rs.getBigDecimal("game"), "Coding", rs.getBigDecimal("coding"),
+                    "Social", rs.getBigDecimal("social"));
+            return mapOf("row_id", rs.getObject("id"), "age", rs.getInt("age"), "values", values);
+        }, releaseId);
     }
 
     private List<Map<String, Object>> readVibeTools(UUID releaseId) {
@@ -436,6 +606,10 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
 
     private static int integer(JsonNode node, String field, int fallback) {
         return node.has(field) && node.path(field).canConvertToInt() ? node.path(field).asInt() : fallback;
+    }
+
+    private static double decimal(JsonNode node, String field, double fallback) {
+        return node.has(field) && node.path(field).isNumber() ? node.path(field).asDouble() : fallback;
     }
 
     private static boolean bool(JsonNode node, String field, boolean fallback) {

@@ -32,7 +32,8 @@ import java.util.UUID;
 
 @Service
 public class ContentModuleServiceImpl implements ContentModuleService {
-    private static final List<String> KEYS = List.of("skills", "footprints", "hobbies", "vibe", "mylab");
+    private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab");
+    private static final Set<String> TIME_KEYS = Set.of("Study", "Music", "Game", "Coding", "Social");
     private static final ObjectMapper OM = JacksonObjectMapper.get();
 
     private final ContentReleaseRepository releases;
@@ -204,8 +205,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     private ContentDtos.ModuleView view(String moduleKey) {
         ContentRelease draft = releases.findDraft(moduleKey);
         ContentRelease current = releases.findCurrent(moduleKey);
-        Object draftData = draft == null ? (current == null ? emptyData(moduleKey) : releases.readData(current)) : releases.readData(draft);
-        Object publishedData = current == null ? null : releases.readData(current);
+        Object draftRaw = draft == null ? (current == null ? emptyData(moduleKey) : releases.readData(current)) : releases.readData(draft);
+        Object draftData = adminData(moduleKey, draftRaw);
+        Object publishedData = current == null ? null : adminData(moduleKey, releases.readData(current));
         String status = draft != null ? "draft" : current == null ? "draft" : current.getState().toLowerCase();
         return new ContentDtos.ModuleView(moduleKey, draft == null ? null : draft.getId(), current == null ? null : current.getId(),
                 draftData, publishedData, draft == null ? null : draft.getVersionNo(),
@@ -215,14 +217,19 @@ public class ContentModuleServiceImpl implements ContentModuleService {
 
     private ContentDtos.VersionView versionView(ContentRelease release) {
         return new ContentDtos.VersionView(release.getId(), release.getModuleKey(), release.getVersionNo(),
-                release.getState(), releases.readData(release), release.getSourceReleaseId(), release.getPublishedAt());
+                release.getState(), adminData(release.getModuleKey(), releases.readData(release)),
+                release.getSourceReleaseId(), release.getPublishedAt());
     }
 
     private Object emptyData(String moduleKey) {
         return switch (moduleKey) {
+            case "home" -> Map.of("images", List.of());
+            case "about" -> Map.of(
+                    "profile", Map.of("bullets", List.of()),
+                    "ingredients", Map.of(), "bubbles", List.of());
             case "skills" -> Map.of("items", List.of());
             case "footprints" -> Map.of("details", List.of());
-            case "hobbies" -> Map.of("cards", List.of());
+            case "hobbies" -> Map.of("cards", List.of(), "time_tags", List.of(), "time_points", List.of());
             case "vibe" -> Map.of("tools", List.of());
             case "mylab" -> Map.of("tags", tags.findAll(false), "cards", List.of());
             default -> Map.of();
@@ -237,36 +244,100 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         JsonNode root = OM.valueToTree(value);
         if (!root.isObject()) throw validation("模块内容必须是 JSON 对象");
         switch (moduleKey) {
+            case "home" -> validateHome(requireArray(root, "images"), publishing);
+            case "about" -> validateAbout(root, publishing);
             case "skills" -> validateSkills(requireArray(root, "items"), publishing);
             case "footprints" -> validateFootprints(array(root, "details", "items"), publishing);
-            case "hobbies" -> validateHobbies(requireArray(root, "cards"), publishing);
+            case "hobbies" -> validateHobbies(root, publishing);
             case "vibe" -> validateVibe(requireArray(root, "tools"), publishing);
             case "mylab" -> validateMylab(array(root, "cards", "posts"), publishing);
             default -> throw validation("未知内容模块");
         }
     }
 
+    private void validateHome(JsonNode images, boolean publishing) {
+        if (publishing && images.size() != 6) throw validation("首页发布时必须恰好配置六张图片");
+        Set<UUID> resourceIds = new HashSet<>();
+        for (JsonNode image : images) {
+            UUID resourceId = uuid(image, "image_resource_id");
+            if (resourceId != null) {
+                if (!resourceIds.add(resourceId)) throw validation("首页图片资源不能重复");
+                requireResource(resourceId, "image/");
+            }
+            if (publishing && resourceId == null) throw validation("首页图片必须选择图片资源");
+            if (publishing) requireText(image, "alt");
+        }
+    }
+
+    private void validateAbout(JsonNode root, boolean publishing) {
+        JsonNode profile = root.path("profile");
+        JsonNode ingredients = root.path("ingredients");
+        JsonNode bubbles = root.path("bubbles");
+        if (!profile.isObject() || !ingredients.isObject() || !bubbles.isArray()) {
+            throw validation("about 必须包含 profile、ingredients 和 bubbles");
+        }
+        JsonNode bullets = profile.path("bullets");
+        if (!bullets.isArray()) throw validation("profile.bullets 必须是数组");
+        UUID avatarId = uuid(profile, "avatar_resource_id");
+        if (avatarId != null) requireResource(avatarId, "image/");
+        if (publishing) {
+            if (avatarId == null) throw validation("关于我头像必须选择图片资源");
+            requireText(profile, "title");
+            requireText(profile, "avatar_alt");
+            requireText(profile, "intro");
+            requireText(profile, "outro");
+            requireText(ingredients, "title");
+            requireText(ingredients, "description");
+            if (bullets.size() != 3) throw validation("个人简介条目必须恰好三条");
+            for (JsonNode bullet : bullets) {
+                if (!bullet.isTextual() || bullet.asText().isBlank()) throw validation("个人简介条目不能为空");
+            }
+        }
+        for (JsonNode bubble : bubbles) {
+            if (publishing) requireText(bubble, "text");
+            String size = text(bubble, "size");
+            if (size != null && !Set.of("big", "mid").contains(size)) throw validation("气泡 size 只允许 big 或 mid");
+            validateColor(bubble, "background_color", publishing);
+            validateColor(bubble, "text_color", publishing);
+            validateColor(bubble, "glow_color", publishing);
+        }
+    }
+
     private void validateSkills(JsonNode items, boolean publishing) {
         Set<String> keys = new HashSet<>();
+        int enabledCount = 0;
         for (JsonNode item : items) {
             uniqueKey(keys, item, "skill_key", "id");
             int percentage = item.path("percentage").asInt(-1);
             if (percentage < 0 || percentage > 100) throw validation("技能 percentage 必须在 0 到 100 之间");
+            String levelCode = firstText(item, "level_code", "level");
+            if (levelCode != null && !Set.of("novice", "competent", "proficient").contains(levelCode)) {
+                throw validation("level_code 不合法");
+            }
+            UUID iconId = uuid(item, "icon_resource_id");
+            if (iconId != null) requireResource(iconId, "image/");
+            if (enabled(item)) {
+                enabledCount++;
+            }
             if (publishing && enabled(item)) {
                 requireText(item, "name");
-                if (firstText(item, "level_code", "level") == null || text(item, "level_text") == null) {
+                if (levelCode == null || text(item, "level_text") == null) {
                     throw validation("已启用技能必须填写 level_code 和 level_text");
                 }
+                if (iconId == null) throw validation("已启用技能必须选择图标资源");
             }
         }
+        if (publishing && enabledCount > 8) throw validation("最多只能启用八张技术栈卡片");
     }
 
     private void validateFootprints(JsonNode items, boolean publishing) {
         if (!items.isArray()) throw validation("details 必须是数组");
         Set<String> keys = new HashSet<>();
+        int enabledCount = 0;
         for (JsonNode item : items) {
             uniqueKey(keys, item, "city_key", "id");
             validateResourceIds(item.path("resource_ids"), "image/");
+            if (enabled(item)) enabledCount++;
             if (publishing && enabled(item)) {
                 requireText(item, "title");
                 requireText(item, "summary");
@@ -275,9 +346,11 @@ public class ContentModuleServiceImpl implements ContentModuleService {
                 }
             }
         }
+        if (publishing && enabledCount > 6) throw validation("最多只能启用六条足迹");
     }
 
-    private void validateHobbies(JsonNode items, boolean publishing) {
+    private void validateHobbies(JsonNode root, boolean publishing) {
+        JsonNode items = requireArray(root, "cards");
         Set<String> keys = new HashSet<>();
         int enabled = 0;
         for (JsonNode item : items) {
@@ -294,19 +367,64 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             }
         }
         if (publishing && enabled > 5) throw validation("最多只能启用五张爱好卡片");
+
+        JsonNode timeTags = requireArray(root, "time_tags");
+        Set<String> timeKeys = new HashSet<>();
+        int enabledTags = 0;
+        for (JsonNode tag : timeTags) {
+            String dataKey = text(tag, "data_key");
+            if (dataKey == null || !TIME_KEYS.contains(dataKey)) throw validation("Time 标签 data_key 不合法");
+            if (!timeKeys.add(dataKey)) throw validation("Time 标签 data_key 不能重复");
+            int x = tag.path("label_x").asInt(-1);
+            int y = tag.path("label_y").asInt(-1);
+            double scale = tag.path("label_scale").asDouble(-1);
+            if (x < 0 || x > 500 || y < 0 || y > 300 || scale < 0.5 || scale > 3) {
+                throw validation("Time 标签位置或缩放超出允许范围");
+            }
+            validateColor(tag, "color", publishing || enabled(tag));
+            if (enabled(tag)) {
+                enabledTags++;
+                if (publishing) requireText(tag, "name");
+            }
+        }
+        if (publishing && enabledTags > 5) throw validation("Time 标签最多只能启用五条");
+
+        JsonNode points = requireArray(root, "time_points");
+        Set<Integer> ages = new HashSet<>();
+        for (JsonNode point : points) {
+            int age = point.path("age").asInt(Integer.MIN_VALUE);
+            if (age < -1 || age > 27 || !ages.add(age)) throw validation("Time 年龄必须在 -1 到 27 且不能重复");
+            JsonNode values = point.path("values");
+            if (!values.isObject()) throw validation("Time 年龄数据 values 必须是对象");
+            double total = 0;
+            for (String key : TIME_KEYS) {
+                JsonNode value = values.path(key);
+                if (!value.isNumber() || value.asDouble() < 0 || value.asDouble() > 10) {
+                    throw validation("Time 年龄数据必须包含五项 0 到 10 的数值");
+                }
+                total += value.asDouble();
+            }
+            if (Math.abs(total - 10) > 0.001) throw validation("Time 年龄数据每行合计必须为 10");
+        }
+        if (publishing && (ages.size() != 29 || !ages.contains(-1) || !ages.contains(27))) {
+            throw validation("Time 年龄数据必须完整覆盖 -1 到 27");
+        }
     }
 
     private void validateVibe(JsonNode items, boolean publishing) {
         Set<String> keys = new HashSet<>();
+        int enabledCount = 0;
         for (JsonNode item : items) {
             uniqueKey(keys, item, "tool_key", "id");
             int percentage = item.path("percentage").asInt(-1);
             if (percentage < 0 || percentage > 100) throw validation("工具 percentage 必须在 0 到 100 之间");
+            if (enabled(item)) enabledCount++;
             if (publishing && enabled(item)) {
                 requireText(item, "name");
                 requireText(item, "description");
             }
         }
+        if (publishing && enabledCount > 6) throw validation("最多只能启用六个 Vibe Coding 工具");
     }
 
     private void validateMylab(JsonNode cards, boolean publishing) {
@@ -351,8 +469,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
 
     @SuppressWarnings("unchecked")
     private Object publicData(String moduleKey, Object raw) {
-        Map<String, Object> root = OM.convertValue(raw, LinkedHashMap.class);
+        Map<String, Object> root = (Map<String, Object>) adminData(moduleKey, raw);
         String field = switch (moduleKey) {
+            case "home" -> "images";
             case "skills" -> "items";
             case "footprints" -> "details";
             case "hobbies" -> "cards";
@@ -371,20 +490,52 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         for (Map<String, Object> item : source) {
             if (Boolean.FALSE.equals(item.get("enabled"))) continue;
             Map<String, Object> result = new LinkedHashMap<>(item);
-            if ("hobbies".equals(moduleKey)) putUrl(result, "resource_object_key", "image");
-            if ("footprints".equals(moduleKey)) {
-                List<Map<String, Object>> resources = (List<Map<String, Object>>) result.getOrDefault("resources", List.of());
-                result.put("images", resources.stream().map(resource -> url((String) resource.get("object_key"))).filter(Objects::nonNull).toList());
-            }
             if ("mylab".equals(moduleKey)) {
-                putUrl(result, "image_object_key", "image");
-                putUrl(result, "content_object_key", "markdown_url");
                 List<?> ids = (List<?>) result.getOrDefault("tag_ids", List.of());
                 result.put("tags", ids.stream().map(String::valueOf).map(tagNames::get).filter(Objects::nonNull).toList());
             }
             visible.add(result);
         }
         root.put(field, visible);
+        if ("hobbies".equals(moduleKey)) {
+            List<Map<String, Object>> timeTags = (List<Map<String, Object>>) root.getOrDefault("time_tags", List.of());
+            root.put("time_tags", timeTags.stream().filter(tag -> !Boolean.FALSE.equals(tag.get("enabled"))).toList());
+        }
+        return root;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object adminData(String moduleKey, Object raw) {
+        Object source = raw == null ? emptyData(moduleKey) : raw;
+        Map<String, Object> root = OM.convertValue(source, LinkedHashMap.class);
+        switch (moduleKey) {
+            case "home" -> ((List<Map<String, Object>>) root.getOrDefault("images", List.of()))
+                    .forEach(image -> putUrl(image, "image_object_key", "image_url"));
+            case "about" -> {
+                Map<String, Object> profile = (Map<String, Object>) root.get("profile");
+                if (profile != null) putUrl(profile, "avatar_object_key", "avatar_url");
+            }
+            case "skills" -> ((List<Map<String, Object>>) root.getOrDefault("items", List.of()))
+                    .forEach(item -> putUrl(item, "icon_object_key", "icon_url"));
+            case "footprints" -> ((List<Map<String, Object>>) root.getOrDefault("details", List.of()))
+                    .forEach(item -> {
+                        List<Map<String, Object>> linked = (List<Map<String, Object>>) item.getOrDefault("resources", List.of());
+                        linked.forEach(resource -> putUrl(resource, "object_key", "url"));
+                        item.put("resource_ids", linked.stream().map(resource -> resource.get("id")).toList());
+                        item.put("images", linked.stream().map(resource -> resource.get("url")).filter(Objects::nonNull).toList());
+                    });
+            case "hobbies" -> ((List<Map<String, Object>>) root.getOrDefault("cards", List.of()))
+                    .forEach(item -> {
+                        putUrl(item, "image_object_key", "image_url");
+                        if (item.get("image_url") != null) item.put("image", item.get("image_url"));
+                    });
+            case "mylab" -> ((List<Map<String, Object>>) root.getOrDefault("cards", List.of()))
+                    .forEach(item -> {
+                        putUrl(item, "image_object_key", "image_url");
+                        putUrl(item, "content_object_key", "markdown_url");
+                    });
+            default -> { }
+        }
         return root;
     }
 
@@ -443,6 +594,14 @@ public class ContentModuleServiceImpl implements ContentModuleService {
 
     private void requireText(JsonNode node, String field) {
         if (text(node, field) == null) throw validation(field + " 为必填字段");
+    }
+
+    private void validateColor(JsonNode node, String field, boolean required) {
+        String value = text(node, field);
+        if (required && value == null) throw validation(field + " 为必填字段");
+        if (value != null && !value.matches("^#[0-9A-Fa-f]{6}$")) {
+            throw validation(field + " 必须使用 #RRGGBB 格式");
+        }
     }
 
     private String text(JsonNode node, String field) {

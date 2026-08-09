@@ -1,6 +1,6 @@
 # MyBlog API 接口文档
 
-本文档以当前 Java 后端实现为准。接口基础前缀为 `/api/v1`，OpenAPI JSON 位于 `/v3/api-docs`，Swagger UI 位于 `/swagger-ui.html`。
+本文档是博客前台 `myblog`、博客后台 `admin` 与 Java 后端联调时共同遵守的目标契约。页面已经确定的内容字段和交互规则是本轮后端改造的依据。接口基础前缀为 `/api/v1`，OpenAPI JSON 位于 `/v3/api-docs`，Swagger UI 位于 `/swagger-ui.html`。
 
 ## 1. 通用约定
 
@@ -117,32 +117,54 @@ Authorization: Bearer <access_token>
 
 用户名长度为 3～64，登录密码和新旧密码长度为 8～64。
 
-## 3. 公开内容接口
+## 3. 内容模块总览
 
-合法 `moduleKey`：`skills`、`footprints`、`hobbies`、`vibe`、`mylab`。
+合法 `moduleKey` 共 7 个：`home`、`about`、`skills`、`footprints`、`hobbies`、`vibe`、`mylab`。
+
+| 模块 | 页面用途 | 版本化 |
+| --- | --- | --- |
+| `home` | WELCOME 区域固定六张背景图 | 是 |
+| `about` | 头像、个人简介、固定三条简介条目和成分气泡 | 是 |
+| `skills` | 技术栈卡片，最多启用 8 条 | 是 |
+| `footprints` | 足迹详情和照片墙，最多启用 6 条 | 是 |
+| `hobbies` | 爱好卡片及 Time 面板，爱好卡片和 Time 标签各最多启用 5 条 | 是 |
+| `vibe` | Vibe Coding 工具，最多启用 6 条 | 是 |
+| `mylab` | 项目与文章卡片 | 是 |
+
+MyLab 全局标签不属于版本快照，通过独立标签接口管理。
+
+## 4. 公开内容接口
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/v1/public/content` | 聚合存在 `PUBLISHED` 版本的内容模块 |
+| GET | `/api/v1/public/content` | 聚合全部存在 `PUBLISHED` 版本的模块 |
 | GET | `/api/v1/public/content/{moduleKey}` | 获取指定模块当前发布内容 |
-| GET | `/api/v1/public/mylab/{postKey}` | 获取当前发布版本中的指定 MyLab 卡片 |
+| GET | `/api/v1/public/mylab/{postKey}` | 获取当前发布版本中的指定 MyLab 卡片详情 |
 
-公开响应只保留 `enabled = true` 的内容。模块没有发布版本或已下线时，单模块接口返回 `12002`；MyLab 卡片不存在时返回 `10005`。
+聚合接口的 `data` 使用模块名作为属性；没有发布版本或已经下线的模块不出现在聚合结果中：
 
-MyLab 公开卡片包含按关联顺序解析的 `tag_ids` 和 `tags`，还可能包含：
+```json
+{
+  "home": {},
+  "about": {},
+  "skills": {},
+  "footprints": {},
+  "hobbies": {},
+  "vibe": {},
+  "mylab": {}
+}
+```
 
-- `image`：封面公开地址。
-- `markdown_url`：Markdown 正文地址。
-- `project_contents`：首页项目侧边栏正文，仅供 `PROJECT` 使用。
+公开响应只返回已启用内容，并把资源 ID 转换为可访问 URL。单模块没有发布版本或已经下线时返回 `12002`；MyLab 卡片不存在时返回 `10005`。
 
-首页项目不使用独立模块，应从 `mylab.cards` 中筛选 `card_type = PROJECT`，再按 `project_show_order` 排序。
+首页项目不使用独立模块。前台从 `mylab.cards` 筛选 `card_type = PROJECT`，再按 `project_show_order ASC` 排序。
 
-## 4. 后台内容管理
+## 5. 后台内容管理
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/v1/admin/content` | 查询五个模块的草稿和线上状态 |
-| GET | `/api/v1/admin/content/{moduleKey}` | 查询单个模块管理数据 |
+| GET | `/api/v1/admin/content` | 查询 7 个模块的草稿和线上状态 |
+| GET | `/api/v1/admin/content/{moduleKey}` | 查询单个模块的当前内容和草稿内容 |
 | PUT | `/api/v1/admin/content/{moduleKey}` | 完整保存模块草稿 |
 | POST | `/api/v1/admin/content/{moduleKey}/publish` | 校验并发布当前草稿 |
 | POST | `/api/v1/admin/content/{moduleKey}/offline` | 下线当前发布版本 |
@@ -168,57 +190,221 @@ MyLab 公开卡片包含按关联顺序解析的 `tag_ids` 和 `tags`，还可�
 }
 ```
 
-`status` 取值为 `draft`、`published`、`offline`。只要存在草稿，状态就返回 `draft`，此时仍可能同时存在 `published_release_id`。
+`status` 取值为 `draft`、`published`、`offline`。只要存在草稿，状态就返回 `draft`，此时仍可同时存在只读的 `published_data`。
 
 保存草稿请求：
 
 ```json
 {
   "expected_updated_at": "2026-08-09T10:00:00+08:00",
-  "data": {
-    "items": []
-  }
+  "data": {}
 }
 ```
 
-当前不存在草稿时 `expected_updated_at` 可以为 `null`；已存在草稿时必须传上次读取到的 `updated_at`。时间戳不匹配返回 HTTP 409、错误码 `12005`。
+当前不存在草稿时 `expected_updated_at` 可以为 `null`；已存在草稿时必须传上次读取到的 `updated_at`。时间戳不匹配返回 HTTP 409、错误码 `12005`。保存采用完整替换语义，数组顺序决定 `sort_order`。
 
-### 4.1 模块数据结构
+### 5.1 通用集合约定
 
-所有集合项通用字段为 `row_id`、`enabled`、`sort_order`。新建项可不传 `row_id`，后端生成 UUID；后台保存时按照数组顺序重写 `sort_order`。
+- 集合项使用 `row_id` 表示版本内数据库行 UUID；新建项可以省略，后端负责生成。
+- `*_key` 是跨版本稳定业务键，不使用 `row_id` 代替。
+- 管理接口同时返回资源 ID 和资源展示 URL；保存草稿只信任资源 ID，不接受任意 URL 充当资源关联。
+- 草稿可以暂时缺少发布必填项；发布时执行完整校验。
+- 已发布版本只读，继续编辑时复制为新的草稿版本。
 
-| 模块 | 根数组 | 主要字段 |
-| --- | --- | --- |
-| `skills` | `items` | `skill_key`、`name`、`percentage`、`level_code`、`level_text`、`icon`、`bar_style`、`is_new`、`enabled` |
-| `footprints` | `details` | `city_key`、`title`、`summary`、`contents`、`resource_ids`、`enabled` |
-| `hobbies` | `cards` | `hobby_key`、`title`、`description`、`resource_id`、`enabled` |
-| `vibe` | `tools` | `tool_key`、`name`、`percentage`、`description`、`enabled` |
-| `mylab` | `cards` | 见下方 MyLab 卡片结构 |
-
-发布时主要校验：
-
-- 技能和工具的 `percentage` 必须在 0～100。
-- 已启用足迹必须填写 `title`、`summary`、`contents`，图片资源必须是图片 MIME。
-- 最多启用 5 张爱好卡片；已启用爱好必须填写标题、描述并选择图片。
-- 已启用技能必须填写 `name`、`level_code`、`level_text`。
-- 已启用 Vibe 工具必须填写 `name`、`description`。
-
-### 4.2 MyLab 卡片
+### 5.2 `home`
 
 ```json
 {
-  "post_key": "database-redesign",
-  "card_title": "数据库重设计",
-  "card_summary": "关系模型与版本发布",
-  "post_date": "2026-08-09",
-  "tag_ids": ["标签 UUID"],
-  "enabled": true,
-  "sort_order": 0,
-  "card_type": "PROJECT",
-  "project_show_order": 0,
-  "project_contents": "首页项目侧边栏正文",
-  "image_resource_id": "图片资源 UUID",
-  "content_resource_id": "Markdown 或纯文本资源 UUID"
+  "images": [
+    {
+      "row_id": "uuid",
+      "image_resource_id": "uuid",
+      "image_url": "https://img.example.com/hero-1.webp",
+      "alt": "香港太平山城市远景",
+      "object_position": "50% 35%",
+      "sort_order": 0
+    }
+  ]
+}
+```
+
+发布时必须恰好包含 6 张图片；`image_resource_id` 必须引用未删除的图片资源；`alt` 必填；公开接口按 `sort_order ASC` 返回。
+
+### 5.3 `about`
+
+```json
+{
+  "profile": {
+    "title": "关于我",
+    "avatar_resource_id": "uuid",
+    "avatar_url": "https://img.example.com/avatar.png",
+    "avatar_alt": "DNSamuel",
+    "intro": "你好，我是 SHENNN……",
+    "bullets": ["条目一", "条目二", "条目三"],
+    "outro": "努力成长……"
+  },
+  "ingredients": {
+    "title": "我的成分",
+    "description": "面板说明"
+  },
+  "bubbles": [
+    {
+      "row_id": "uuid",
+      "text": "技术探索者",
+      "size": "mid",
+      "background_color": "#5BA4E6",
+      "text_color": "#81D4FA",
+      "glow_color": "#5BA4E6",
+      "sort_order": 0
+    }
+  ]
+}
+```
+
+发布时头像必须引用图片资源；简介条目必须恰好 3 条且均非空；`size` 只允许 `big`、`mid`；三种颜色统一使用 `#RRGGBB`。
+
+### 5.4 `skills`
+
+```json
+{
+  "items": [
+    {
+      "row_id": "uuid",
+      "skill_key": "java-spring-boot",
+      "name": "Java / Spring Boot",
+      "percentage": 80,
+      "level_code": "proficient",
+      "level_text": "熟练",
+      "icon_resource_id": "uuid",
+      "icon_url": "https://img.example.com/java.svg",
+      "bar_style": "coral",
+      "is_new": false,
+      "enabled": true,
+      "sort_order": 0
+    }
+  ]
+}
+```
+
+最多启用 8 条；`percentage` 为 0～100；`level_code` 只允许 `novice`、`competent`、`proficient`；已启用记录的名称、等级文字和图片类型图标资源必填。
+
+### 5.5 `footprints`
+
+```json
+{
+  "details": [
+    {
+      "row_id": "uuid",
+      "city_key": "photo",
+      "title": "胶片摄影 · 西安城墙",
+      "summary": "摘要",
+      "contents": "第一段\n\n第二段",
+      "resource_ids": ["图片资源 UUID"],
+      "resources": [{ "id": "uuid", "url": "https://img.example.com/xian.webp" }],
+      "enabled": true,
+      "sort_order": 0
+    }
+  ]
+}
+```
+
+最多启用 6 条；已启用记录的标题、摘要和正文必填；照片允许多张并按 `resource_ids` 顺序保存，资源不得重复且必须是图片。
+
+### 5.6 `hobbies`
+
+```json
+{
+  "cards": [
+    {
+      "row_id": "uuid",
+      "hobby_key": "counter-strike-2",
+      "title": "Counter-Strike 2",
+      "description": "卡片说明",
+      "image_resource_id": "uuid",
+      "image_url": "https://img.example.com/cs2.webp",
+      "enabled": true,
+      "sort_order": 0
+    }
+  ],
+  "time_tags": [
+    {
+      "row_id": "uuid",
+      "data_key": "Study",
+      "name": "Study",
+      "color": "#93C5FD",
+      "label_x": 110,
+      "label_y": 240,
+      "label_scale": 1.5,
+      "enabled": true,
+      "sort_order": 0
+    }
+  ],
+  "time_points": [
+    {
+      "age": -1,
+      "values": {
+        "Study": 0,
+        "Music": 0,
+        "Game": 0,
+        "Coding": 0,
+        "Social": 10
+      }
+    }
+  ]
+}
+```
+
+- 爱好卡片最多启用 5 条；已启用卡片的标题、描述和图片资源必填。
+- Time 标签最多启用 5 条，`data_key` 只允许 `Study`、`Music`、`Game`、`Coding`、`Social` 且不得重复。
+- 标签坐标范围为 X 0～500、Y 0～300，`label_scale` 为 0.5～3，颜色使用 `#RRGGBB`。
+- `time_points` 必须完整覆盖 -1～27 共 29 个年龄；每个 `values` 必须包含五个数据键，每项为 0～10且合计为 10。
+
+### 5.7 `vibe`
+
+```json
+{
+  "tools": [
+    {
+      "row_id": "uuid",
+      "tool_key": "codex",
+      "name": "Codex",
+      "percentage": 80,
+      "description": "工具说明",
+      "enabled": true,
+      "sort_order": 0
+    }
+  ]
+}
+```
+
+最多启用 6 条；`percentage` 为 0～100；已启用记录的名称和说明必填。
+
+### 5.8 `mylab`
+
+模块草稿只提交卡片；标签通过全局标签接口维护：
+
+```json
+{
+  "cards": [
+    {
+      "row_id": "uuid",
+      "post_key": "database-redesign",
+      "card_title": "数据库重设计",
+      "card_summary": "关系模型与版本发布",
+      "post_date": "2026-08-09",
+      "tag_ids": ["标签 UUID"],
+      "card_type": "PROJECT",
+      "project_show_order": 0,
+      "project_contents": "首页项目侧边栏正文",
+      "image_resource_id": "图片资源 UUID",
+      "content_resource_id": "Markdown 或纯文本资源 UUID",
+      "image_url": "https://img.example.com/cover.webp",
+      "markdown_url": "https://img.example.com/post.md",
+      "enabled": true,
+      "sort_order": 0
+    }
+  ],
+  "tags": []
 }
 ```
 
@@ -228,8 +414,9 @@ MyLab 公开卡片包含按关联顺序解析的 `tag_ids` 和 `tags`，还可�
 - `tag_ids` 按数组顺序保存，不允许重复，只能引用启用且未删除的全局标签。
 - 发布已启用卡片时标题、摘要和 `content_resource_id` 必填。
 - `image_resource_id` 只能引用图片；`content_resource_id` 只能引用 `text/markdown` 或 `text/plain`。
+- 公开接口在 `tags` 中返回有效标签对象，并在卡片中同时返回解析后的标签名称数组。
 
-## 5. MyLab 全局标签
+## 6. MyLab 全局标签
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -251,7 +438,7 @@ MyLab 公开卡片包含按关联顺序解析的 `tag_ids` 和 `tags`，还可�
 
 `tag_key`、`name` 必填且在未删除标签中唯一，`sort_order` 不得为负数。标签不参与内容版本管理；重命名、停用和删除会影响当前版本与历史版本的最终显示。
 
-## 6. 管理员账号
+## 7. 管理员账号
 
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
@@ -296,7 +483,7 @@ MyLab 公开卡片包含按关联顺序解析的 `tag_ids` 和 `tags`，还可�
 
 响应不会包含 `password_hash`、`deleted_at` 等内部字段。
 
-## 7. 文件资源
+## 8. 文件资源
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -320,9 +507,9 @@ MyLab 公开卡片包含按关联顺序解析的 `tag_ids` 和 `tags`，还可�
 }
 ```
 
-允许的 MIME：`image/png`、`image/jpeg`、`image/jpg`、`image/webp`、`image/gif`、`application/pdf`、`text/markdown`、`text/plain`。图片列表记录可直接包含 `url`；非图片应调用签名地址接口。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
+允许的 MIME：`image/png`、`image/jpeg`、`image/jpg`、`image/webp`、`image/gif`、`image/svg+xml`、`application/pdf`、`text/markdown`、`text/plain`。图片列表记录可直接包含 `url`；非图片应调用签名地址接口。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
 
-## 8. 系统接口
+## 9. 系统接口
 
 | 方法 | 路径 | 认证 | 说明 |
 | --- | --- | --- | --- |
@@ -332,7 +519,7 @@ MyLab 公开卡片包含按关联顺序解析的 `tag_ids` 和 `tags`，还可�
 
 系统接口的 `data` 当前由 `Map` 生成，字段使用 camelCase，例如 `serverIp`、`memoryTotal`、`hostUptime`、`dbConnCount`。
 
-## 9. 当前不提供的接口
+## 10. 当前不提供的接口
 
 当前后端没有访问日志、访问量、访客数、点赞、操作日志、站点设置、通知设置、独立 `projects` 或 `support` 接口。后台不得使用本地模拟数据伪装为服务端功能。
 

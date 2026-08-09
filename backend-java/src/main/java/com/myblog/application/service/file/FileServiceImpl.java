@@ -26,7 +26,7 @@ import java.util.UUID;
 public class FileServiceImpl implements FileService {
 
     private static final Set<String> ALLOWED_TYPES = Set.of(
-            "image/png", "image/jpeg", "image/jpg", "image/webp",
+            "image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml",
             "image/gif", "application/pdf", "text/markdown", "text/plain"
     );
 
@@ -137,6 +137,7 @@ public class FileServiceImpl implements FileService {
             case "image/png" -> "png";
             case "image/jpeg", "image/jpg" -> "jpg";
             case "image/webp" -> "webp";
+            case "image/svg+xml" -> "svg";
             case "image/gif" -> "gif";
             case "application/pdf" -> "pdf";
             case "text/markdown" -> "md";
