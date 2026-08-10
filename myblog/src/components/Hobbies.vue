@@ -81,7 +81,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { games as fallbackGames } from '@/data/projects'
-import { usePublicContent } from '@/composables/usePublicContent'
+import {
+  usePublicContent,
+  type HobbyTimeKey,
+  type PublicHobbyCard,
+  type PublicHobbyTimeTag,
+} from '@/composables/usePublicContent'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 
 const gameDescriptions: Record<string, string> = {
@@ -99,8 +104,11 @@ const section = {
 }
 const featuredGames = computed(() => {
   const cards = content.value.hobbies?.cards
-  if (Array.isArray(cards)) return cards.filter((card: any) => card.enabled !== false).slice(0, 5).map((card: any) => ({
-    id: card.id, name: card.title, image: card.image, description: card.description
+  if (Array.isArray(cards) && cards.length > 0) return cards.filter(card => card.enabled !== false).slice(0, 5).map((card: PublicHobbyCard) => ({
+    id: card.hobby_key || card.id || card.title || '',
+    name: card.title || '',
+    image: card.image_url || card.image || '',
+    description: card.description || ''
   }))
   return fallbackGames.slice(0, 5).map((game, index) => ({
     ...game,
@@ -121,20 +129,34 @@ const scaleY = (value: number) => CHART_H - (value / 10) * CHART_H
 const xTicks = [0, 5, 10, 15, 20, 25]
 const yTicks = [2, 4, 6, 8]
 
-type TimeKey = 'Study' | 'Music' | 'Game' | 'Coding' | 'Social'
+type TimeKey = HobbyTimeKey
 
 const timeChartKeys: TimeKey[] = ['Study', 'Music', 'Game', 'Coding', 'Social']
 
-/* 当前联动选中的色带 / 卡片（按顺序一一对应：卡片 index ↔ timeChartKeys[index]） */
+/* 色带仍按顺序与卡片联动，但 Time 标签名称使用独立配置。 */
 const activeTimeKey = ref<TimeKey | null>(null)
 
-const timeChartMeta: Record<TimeKey, { label: string; color: string; labelTransform: string }> = {
+const fallbackTimeChartMeta: Record<TimeKey, { label: string; color: string; labelTransform: string }> = {
   Study: { label: 'Study', color: '#93c5fd', labelTransform: 'translate(110,240) scale(1.5)' },
   Music: { label: 'Music', color: '#7dd3fc', labelTransform: 'translate(410,232) scale(1.3)' },
   Game: { label: 'Game', color: '#67e8f9', labelTransform: 'translate(195,150) scale(1.5)' },
   Coding: { label: 'Coding', color: '#5eead4', labelTransform: 'translate(340,110) scale(1.5)' },
   Social: { label: 'Social or Family', color: '#6ee7b7', labelTransform: 'translate(63,65) scale(1.5)' }
 }
+
+const timeChartMeta = computed<Record<TimeKey, { label: string; color: string; labelTransform: string }>>(() => {
+  const result = { ...fallbackTimeChartMeta }
+  const managed = content.value.hobbies?.time_tags
+  if (!Array.isArray(managed)) return result
+  managed.filter((tag: PublicHobbyTimeTag) => tag.enabled !== false).forEach((tag: PublicHobbyTimeTag) => {
+    result[tag.data_key] = {
+      label: tag.name || tag.data_key,
+      color: tag.color || fallbackTimeChartMeta[tag.data_key].color,
+      labelTransform: `translate(${tag.label_x ?? 0},${tag.label_y ?? 0}) scale(${tag.label_scale ?? 1})`
+    }
+  })
+  return result
+})
 
 // 完整覆盖 -1 ~ 27 每个年龄；原锚点之间的数据为线性插值，每行总和保持 10（即 100%）
 const fallbackTimeChartData: Array<{ index: number } & Record<TimeKey, number>> = [
@@ -169,7 +191,18 @@ const fallbackTimeChartData: Array<{ index: number } & Record<TimeKey, number>> 
   { index: 27, Study: 3, Music: 0, Game: 1, Coding: 4, Social: 2 }
 ]
 
-const timeChartData = computed<Array<{ index: number } & Record<TimeKey, number>>>(() => fallbackTimeChartData)
+const timeChartData = computed<Array<{ index: number } & Record<TimeKey, number>>>(() => {
+  const points = content.value.hobbies?.time_points
+  if (!Array.isArray(points) || points.length !== 29) return fallbackTimeChartData
+  return points.map(point => ({
+    index: point.age,
+    Study: Number(point.values.Study || 0),
+    Music: Number(point.values.Music || 0),
+    Game: Number(point.values.Game || 0),
+    Coding: Number(point.values.Coding || 0),
+    Social: Number(point.values.Social || 0)
+  }))
+})
 
 interface ChartPoint {
   x: number
@@ -237,9 +270,7 @@ const timeSeries = computed(() => {
     }))
     return {
       key,
-      ...timeChartMeta[key],
-      // 标签以卡片标题为准，与右侧卡片一一对应
-      label: featuredGames.value[k]?.name ?? timeChartMeta[key].label,
+      ...timeChartMeta.value[key],
       path: buildAreaPath(pts)
     }
   })

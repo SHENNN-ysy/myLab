@@ -8,13 +8,23 @@
       漂出左缘后回绕并由弹簧缓缓滑回右侧；
     弹簧参数与 framer-motion useSpring({ stiffness: 100, damping: 100 }) 一致。
   -->
-  <div class="scroll-sphere-layer" aria-hidden="true">
+  <div
+    class="scroll-sphere-layer"
+    :class="{ 'is-over-content': overContent }"
+    aria-hidden="true"
+  >
     <div ref="sphereRef" class="scroll-sphere" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+// MyLab 页面的蓝色页头按“球体柔光浮在面板之上”设计（页头 z-index: 0），
+// 仅在 /mylab 路由下把球体层抬到内容上方，其余页面仍沉在内容之下
+const overContent = computed(() => route.path.startsWith('/mylab'))
 
 const sphereRef = ref<HTMLElement | null>(null)
 
@@ -97,6 +107,12 @@ onBeforeUnmount(() => {
   z-index: -1;
   pointer-events: none;
   overflow: hidden;
+}
+
+/* MyLab 路由：浮到蓝色页头（z-index: 0）之上，避免月亮被页头面板遮挡；
+   仍低于导航（z-index: 60）与移动端抽屉（z-index: 70） */
+.scroll-sphere-layer.is-over-content {
+  z-index: 1;
 }
 
 .scroll-sphere {

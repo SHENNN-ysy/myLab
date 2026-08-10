@@ -23,15 +23,24 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Spring Security 配置：无状态 JWT 认证、公开接口白名单、统一 401/403 JSON 响应及 CORS。
+ */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    /**
+     * 构建安全过滤链：关闭 CSRF、启用无状态会话，放行健康检查/登录/刷新令牌/Swagger 及公开内容 GET 接口，
+     * 其余请求需认证；认证失败与越权分别返回统一结构的 401/403 JSON 响应。
+     *
+     * @return 安全过滤链
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter,
                                                   ObjectMapper objectMapper) throws Exception {
         return http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable()) // 无状态 JWT 认证、不使用 Cookie 会话，无需 CSRF 防护
                 .cors(cors -> {})
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -47,7 +56,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, SecurityConstant.PUBLIC_GET_PREFIXES.stream()
                                 .map(p -> p + "/**").toArray(String[]::new))
                         .permitAll()
-                        .requestMatchers(SecurityConstant.VISIT_TRACK).permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/public/analytics/visits",
+                                "/api/v1/public/mylab/*/views")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/public/mylab/*/likes")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/public/mylab/*/likes")
+                        .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(eh -> eh
                         .authenticationEntryPoint((req, res, x) -> {

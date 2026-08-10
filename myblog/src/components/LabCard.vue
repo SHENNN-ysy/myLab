@@ -1,6 +1,14 @@
 <template>
   <!-- myLab 记录卡片：中枢链路 / 矩阵网格两种视图共用，点击进入详情页 -->
-  <article :id="`lab-post-${post.id}`" class="lab-card" @click="router.push(`/mylab/post/${post.id}`)">
+  <article
+    :id="`lab-post-${post.id}`"
+    class="lab-card"
+    role="button"
+    tabindex="0"
+    @click="selectPost"
+    @keydown.enter.prevent="selectPost"
+    @keydown.space.prevent="selectPost"
+  >
     <!-- 头图：加载完成前 / 未配图时显示骨架占位 -->
     <div class="lab-card-media" :class="{ 'is-loaded': imageLoaded }">
       <img
@@ -33,25 +41,63 @@
       </div>
       <h3 class="lab-card-title">{{ post.title }}</h3>
       <div class="lab-card-tags">
-        <span v-for="tag in post.tags" :key="tag" class="lab-card-tag">#{{ tag }}</span>
+        <span v-for="tag in displayedTags" :key="tag" class="lab-card-tag">#{{ tag }}</span>
       </div>
       <p class="lab-card-summary">{{ post.summary }}</p>
+      <div class="lab-card-engagement" aria-label="内容统计">
+        <span title="浏览量">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          {{ formatNumber(engagement.view_count) }}
+        </span>
+        <span title="点赞数">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+          </svg>
+          {{ formatNumber(engagement.like_count) }}
+        </span>
+      </div>
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { LabPost } from '../data/labPosts'
+import { queueEngagement, useEngagement } from '../composables/useEngagement'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   post: LabPost
+  navigate?: boolean
+  tagLimit?: number
+}>(), {
+  navigate: true,
+  tagLimit: Number.POSITIVE_INFINITY,
+})
+
+const emit = defineEmits<{
+  select: [post: LabPost]
 }>()
 
 const router = useRouter()
 
 const imageLoaded = ref(false)
+const displayedTags = computed(() => props.post.tags.slice(0, props.tagLimit))
+const { engagement } = useEngagement(() => props.post.id)
+const formatNumber = (value: number) => new Intl.NumberFormat('zh-CN').format(value)
+
+watch(() => props.post.id, queueEngagement, { immediate: true })
+
+const selectPost = () => {
+  if (props.navigate) {
+    router.push(`/mylab/post/${props.post.id}`)
+    return
+  }
+  emit('select', props.post)
+}
 </script>
 
 <style scoped>
@@ -206,6 +252,20 @@ const imageLoaded = ref(false)
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.lab-card-engagement {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  margin-top: auto;
+  padding-top: 1rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.lab-card-engagement span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.lab-card-engagement svg { width: 15px; height: 15px; color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) {
   .lab-card-media::before {

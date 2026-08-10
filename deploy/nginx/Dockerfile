@@ -20,4 +20,11 @@ RUN rm /etc/nginx/conf.d/default.conf
 COPY deploy/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=blog-builder /app/dist /usr/share/nginx/blog
 COPY --from=admin-builder /app/dist /usr/share/nginx/admin
+# 初始内容资源使用站内相对 URL。后台域名也需要能够预览这些资源，
+# 因此只复制内容资源目录，不覆盖后台构建生成的 assets 文件。
+COPY --from=blog-builder /app/dist/assets/hero /usr/share/nginx/admin/assets/hero
+COPY --from=blog-builder /app/dist/assets/avatar.png /usr/share/nginx/admin/assets/avatar.png
+COPY --from=blog-builder /app/dist/assets/tech-stack-icons /usr/share/nginx/admin/assets/tech-stack-icons
+COPY --from=blog-builder /app/dist/game_posters /usr/share/nginx/admin/game_posters
+COPY --from=blog-builder /app/dist/mylab /usr/share/nginx/admin/mylab
 EXPOSE 80

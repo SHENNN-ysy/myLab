@@ -13,9 +13,9 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 /**
- * MyBatis type handler that maps a {@link UUID} to the PostgreSQL {@code uuid} column.
- * Required because every entity extends {@code BaseEntity} which declares a UUID primary key,
- * and the JDBC driver does not provide a built-in binding for {@code java.util.UUID}.
+ * MyBatis 类型处理器：将 {@link UUID} 映射到 PostgreSQL 的 {@code uuid} 列。
+ * 所有实体都继承 {@code BaseEntity}、以 UUID 为主键，而 JDBC 驱动没有内置
+ * {@code java.util.UUID} 的绑定方式，因此需要此处理器。
  */
 @MappedJdbcTypes(JdbcType.OTHER)
 @MappedTypes(UUID.class)
@@ -23,6 +23,7 @@ public class UuidTypeHandler extends BaseTypeHandler<UUID> {
 
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, UUID parameter, JdbcType jdbcType) throws SQLException {
+        // 通过 PGobject 显式声明类型为 uuid，避免驱动按未知类型绑定失败
         PGobject o = new PGobject();
         o.setType("uuid");
         o.setValue(parameter.toString());
@@ -44,6 +45,7 @@ public class UuidTypeHandler extends BaseTypeHandler<UUID> {
         return toUuid(cs.getString(columnIndex));
     }
 
+    /** 将数据库读出的字符串还原为 UUID，null 透传 */
     private static UUID toUuid(String s) {
         return s == null ? null : UUID.fromString(s);
     }

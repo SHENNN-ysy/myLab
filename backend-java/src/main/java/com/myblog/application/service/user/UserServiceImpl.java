@@ -1,6 +1,7 @@
 package com.myblog.application.service.user;
 
 import com.myblog.application.model.entity.User;
+import com.myblog.application.model.vo.UserOutVO;
 import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.exception.ValidationException;
@@ -18,6 +19,9 @@ import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * 用户管理服务实现：创建/删除限定超级管理员，密码统一经 AuthService 哈希后落库。
+ */
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -30,32 +34,37 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public PageResult<User> page(CurrentUser actor, long page, long size) {
+    /**
+     * 分页查询用户列表（仅管理员）。
+     */
+    public PageResult<UserOutVO> page(CurrentUser actor, long page, long size) {
         Authorization.requireAdmin(actor);
-        return users.findPage(page, size);
+        PageResult<User> result = users.findPage(page, size);
+        return PageResult.of(result.records().stream().map(this::toOut).toList(),
+                result.page(), result.pageSize(), result.total());
     }
 
     @Override
     @Transactional
-    public User create(CurrentUser actor, UserCommands.Create command) {
+    /**
+     * 创建用户：校验用户名/密码长度与用户名唯一性，角色缺省为 viewer（仅超级管理员）。
+     */
+    public UserOutVO create(CurrentUser actor, UserCommands.Create command) {
         Authorization.requireSuperadmin(actor);
-        if (command.username() == null || command.email() == null || command.password() == null) {
-            throw new ValidationException("username、email 和 password 为必填字段");
+        if (command.username() == null || command.password() == null) {
+            throw new ValidationException("username 和 password 为必填字段");
         }
         String username = command.username();
-        String email = command.email();
         String password = command.password();
-        if (username.length() < 3 || password.length() < 8 || !email.contains("@")) {
-            throw new ValidationException("用户名至少 3 位、密码至少 8 位且邮箱格式必须正确");
+        if (username.length() < 3 || password.length() < 8) {
+            throw new ValidationException("用户名至少 3 位且密码至少 8 位");
         }
-        if (users.usernameOrEmailExists(username, email)) {
+        if (users.usernameExists(username)) {
             throw new ConflictException(ErrorCode.USER_ALREADY_EXISTS, null);
         }
         User user = new User();
         user.setId(UUID.randomUUID());
         user.setUsername(username);
-        user.setEmail(email);
-        user.setNickname(command.nickname());
         user.setRole(Objects.requireNonNullElse(command.role(), "viewer"));
         user.setPasswordHash(auth.hash(password));
         user.setIsActive(true);
@@ -63,22 +72,19 @@ public class UserServiceImpl implements UserService {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         users.add(user);
-        return user;
+        return toOut(user);
     }
 
     @Override
     @Transactional
-    public User update(CurrentUser actor, UUID id, UserCommands.Update command) {
+    /**
+     * 更新用户：仅更新请求中显式给出的字段（角色、启用状态、密码）。
+     */
+    public UserOutVO update(CurrentUser actor, UUID id, UserCommands.Update command) {
         Authorization.requireAdmin(actor);
         User user = users.findById(id);
         if (user == null) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
-        }
-        if (command.email() != null) {
-            user.setEmail(command.email());
-        }
-        if (command.nickname() != null) {
-            user.setNickname(command.nickname());
         }
         if (command.role() != null) {
             user.setRole(command.role());
@@ -86,29 +92,29 @@ public class UserServiceImpl implements UserService {
         if (command.isActive() != null) {
             user.setIsActive(command.isActive());
         }
-        if (command.avatarUrl() != null) {
-            user.setAvatarUrl(command.avatarUrl());
-        }
-        if (command.website() != null) {
-            user.setWebsite(command.website());
-        }
-        if (command.bio() != null) {
-            user.setBio(command.bio());
-        }
         if (command.password() != null) {
             user.setPasswordHash(auth.hash(command.password()));
         }
         user.setUpdatedAt(OffsetDateTime.now());
         users.save(user);
-        return user;
+        return toOut(user);
     }
 
     @Override
     @Transactional
+    /**
+     * 删除用户，不存在时抛 NotFoundException（仅超级管理员）。
+     */
     public void delete(CurrentUser actor, UUID id) {
         Authorization.requireSuperadmin(actor);
         if (!users.remove(id)) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
+    }
+
+    /** 实体转输出视图，剥离密码哈希等敏感字段。 */
+    private UserOutVO toOut(User user) {
+        return new UserOutVO(user.getId(), user.getUsername(), user.getRole(), user.getIsActive(),
+                user.getLastLoginAt(), user.getCreatedAt(), user.getUpdatedAt());
     }
 }

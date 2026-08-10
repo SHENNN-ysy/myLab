@@ -1,5 +1,6 @@
 server:
   port: ${APP_PORT:8000}
+  forward-headers-strategy: framework
 spring:
   application.name: myblog-api
   datasource:
@@ -11,10 +12,6 @@ spring:
       minimum-idle: ${DB_MIN_IDLE:1}
       connection-timeout: 10000
       validation-timeout: 3000
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 1
   data.redis:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
@@ -51,7 +48,7 @@ app:
   jwt-secret: ${JWT_SECRET:change-this-in-production-please}
   access-expire-minutes: ${JWT_ACCESS_EXPIRE_MINUTES:30}
   refresh-expire-days: ${JWT_REFRESH_EXPIRE_DAYS:14}
-  cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:5174}
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174}
   rate-limit-per-minute: ${RATE_LIMIT_PER_MINUTE:60}
   login-rate-limit-per-minute: ${LOGIN_RATE_LIMIT_PER_MINUTE:5}
   oss-endpoint: ${OSS_ENDPOINT:}
@@ -59,11 +56,12 @@ app:
   oss-access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
   oss-bucket: ${OSS_BUCKET:}
   oss-cdn-domain: ${OSS_CDN_DOMAIN:}
-  oss-object-prefix: ${OSS_OBJECT_PREFIX:images}
+  oss-object-prefix: ${OSS_OBJECT_PREFIX:}
   oss-max-file-size-mb: ${OSS_MAX_FILE_SIZE_MB:10}
   initial-admin-username: ${INIT_ADMIN_USERNAME:admin}
   initial-admin-password: ${INIT_ADMIN_PASSWORD:Admin@123456}
-  initial-admin-email: ${INIT_ADMIN_EMAIL:admin@myblog.local}
+  engagement-hash-secret: ${ENGAGEMENT_HASH_SECRET:${JWT_SECRET:change-this-in-production-please}}
+  visitor-cookie-secure: ${VISITOR_COOKIE_SECURE:false}
 server.tomcat.threads:
   max: ${TOMCAT_MAX_THREADS:50}
   min-spare: ${TOMCAT_MIN_SPARE_THREADS:5}

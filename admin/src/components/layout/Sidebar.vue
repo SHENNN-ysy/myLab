@@ -16,23 +16,27 @@
       @click="handleSelect"
       @openChange="handleOpenChange"
     >
-      <a-menu-item key="/dashboard">
+      <a-menu-item v-if="canManage" key="/dashboard">
         <DashboardOutlined />
         <span>仪表盘</span>
       </a-menu-item>
 
-      <a-sub-menu key="/content">
+      <a-sub-menu v-if="canManage" key="/content">
         <template #title>
           <FileTextOutlined />
           <span>内容管理</span>
         </template>
+        <a-menu-item key="/content/home-images">
+          <PictureOutlined />
+          <span>首页图片</span>
+        </a-menu-item>
+        <a-menu-item key="/content/about">
+          <UserOutlined />
+          <span>关于我</span>
+        </a-menu-item>
         <a-menu-item key="/content/skills">
           <CodeOutlined />
           <span>技术栈</span>
-        </a-menu-item>
-        <a-menu-item key="/content/projects">
-          <FolderOpenOutlined />
-          <span>项目管理</span>
         </a-menu-item>
         <a-menu-item key="/content/footprints">
           <EnvironmentOutlined />
@@ -50,10 +54,6 @@
           <ExperimentOutlined />
           <span>myLab 管理</span>
         </a-menu-item>
-        <a-menu-item key="/content/support">
-          <CustomerServiceOutlined />
-          <span>支持页面</span>
-        </a-menu-item>
       </a-sub-menu>
 
       <a-sub-menu key="/system">
@@ -61,25 +61,21 @@
           <SettingOutlined />
           <span>系统管理</span>
         </template>
-        <a-menu-item key="/system/users">
+        <a-menu-item v-if="canManage" key="/system/users">
           <TeamOutlined />
           <span>用户管理</span>
         </a-menu-item>
-        <a-menu-item key="/system/files">
+        <a-menu-item v-if="canManage" key="/system/files">
           <PictureOutlined />
           <span>文件管理</span>
         </a-menu-item>
-        <a-menu-item key="/system/visits">
-          <UnorderedListOutlined />
-          <span>访问日志</span>
-        </a-menu-item>
-        <a-menu-item key="/system/info">
+        <a-menu-item v-if="canManage" key="/system/info">
           <InfoCircleOutlined />
           <span>系统信息</span>
         </a-menu-item>
         <a-menu-item key="/system/settings">
           <ToolOutlined />
-          <span>系统设置</span>
+          <span>账号安全</span>
         </a-menu-item>
       </a-sub-menu>
     </a-menu>
@@ -89,22 +85,21 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import {
   DashboardOutlined,
   FileTextOutlined,
   CodeOutlined,
-  FolderOpenOutlined,
   EnvironmentOutlined,
   SettingOutlined,
   TeamOutlined,
   PictureOutlined,
-  UnorderedListOutlined,
   InfoCircleOutlined,
   ToolOutlined,
   HeartOutlined,
   RobotOutlined,
   ExperimentOutlined,
-  CustomerServiceOutlined
+  UserOutlined
 } from '@ant-design/icons-vue'
 
 defineProps<{
@@ -113,6 +108,8 @@ defineProps<{
 
 const route = useRoute()
 const router = useRouter()
+const { currentUser } = useAuth()
+const canManage = computed(() => ['admin', 'superadmin'].includes(currentUser.value?.role || ''))
 
 const activeMenu = computed(() => route.path)
 

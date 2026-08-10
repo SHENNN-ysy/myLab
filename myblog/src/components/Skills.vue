@@ -31,7 +31,10 @@
               <span class="badge-star">✦</span>
               <span>NEW</span>
             </div>
-            <div class="skill-icon" v-html="getIcon(skill.icon)" />
+            <div class="skill-icon">
+              <img v-if="skill.iconUrl" :src="skill.iconUrl" :alt="`${skill.name} 图标`" />
+              <span v-else v-html="getIcon(skill.icon)" />
+            </div>
             <div class="skill-name">{{ skill.name }}</div>
             <div class="skill-track">
               <div 
@@ -53,7 +56,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, onMounted } from 'vue'
-import { skills as fallbackSkills } from '@/data/projects'
+import { skills as fallbackSkills, type Skill } from '@/data/projects'
 import { usePublicContent } from '@/composables/usePublicContent'
 import RevealOnScroll from './ui/RevealOnScroll.vue'
 
@@ -63,23 +66,31 @@ const section = {
   title: '技术', highlight: '栈',
   description: '从前端界面设计到后端服务构建再到AI基础应用，正在努力让我的技能覆盖软件开发的全栈领域。'
 }
-const skillItems = computed(() => {
+type ManagedSkill = Skill & { iconUrl?: string; isNew?: boolean }
+type SkillBarStyle = 'coral' | 'teal' | 'gray-white'
+type PresentedSkill = ManagedSkill & { levelText: string; barStyle: SkillBarStyle }
+const skillLevelPresentation: Record<Skill['level'], { levelText: string; barStyle: SkillBarStyle }> = {
+  proficient: { levelText: '熟练', barStyle: 'coral' },
+  competent: { levelText: '掌握', barStyle: 'teal' },
+  novice: { levelText: '入门', barStyle: 'gray-white' }
+}
+const presentSkill = (skill: ManagedSkill): PresentedSkill => ({ ...skill, ...skillLevelPresentation[skill.level] })
+const skillItems = computed<PresentedSkill[]>(() => {
   const items = content.value.skills?.items
-  if (!Array.isArray(items)) return fallbackSkills
-  return items.filter((item: any) => item.enabled !== false).map((item: any) => ({
-    name: item.name,
-    percentage: item.percentage,
-    level: item.level,
-    levelText: item.level_text,
-    icon: item.icon,
-    barStyle: item.bar_style,
+  if (!Array.isArray(items) || items.length === 0) return fallbackSkills.map(presentSkill)
+  return items.filter(item => item.enabled !== false).map(item => presentSkill({
+    name: item.name || '',
+    percentage: item.percentage || 0,
+    level: item.level_code || item.level || 'novice',
+    icon: 'code',
+    iconUrl: item.icon_url,
     isNew: item.is_new,
   }))
 })
 const fallbackNewSkillNames = new Set(['JavaScript / TypeScript', 'Python', 'React / Vue'])
-const hasManagedSkills = computed(() => Array.isArray(content.value.skills?.items))
+const hasManagedSkills = computed(() => Array.isArray(content.value.skills?.items) && content.value.skills.items.length > 0)
 
-const isNewSkill = (name: string) => skillItems.value.some((skill: any) => skill.name === name && skill.isNew)
+const isNewSkill = (name: string) => skillItems.value.some(skill => skill.name === name && skill.isNew)
   || (!hasManagedSkills.value && fallbackNewSkillNames.has(name))
 
 const showSkillLinks = (skill: string) => {
@@ -320,6 +331,10 @@ onMounted(() => {
   background: linear-gradient(90deg, #5BA4E6, #2EC4B6) !important;
 }
 
+.has-gray-white-bar .skill-fill {
+  background: linear-gradient(90deg, rgba(216, 222, 230, 0.55), #f4f0eb) !important;
+}
+
 .skill-icon {
   width: 28px;
   height: 28px;
@@ -338,6 +353,14 @@ onMounted(() => {
   stroke-width: 1.4;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.skill-icon img,
+.skill-icon span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .skill-name {
@@ -399,6 +422,16 @@ onMounted(() => {
   color: #f0a090;
   padding: 0.15rem 0.5rem;
   border: 1px solid rgba(240, 160, 144, 0.5);
+}
+
+.has-teal-bar .skill-level {
+  color: #2EC4B6;
+  border-color: rgba(46, 196, 182, 0.5);
+}
+
+.has-gray-white-bar .skill-level {
+  color: #d8dee6;
+  border-color: rgba(216, 222, 230, 0.5);
 }
 
 @keyframes badgeShine {

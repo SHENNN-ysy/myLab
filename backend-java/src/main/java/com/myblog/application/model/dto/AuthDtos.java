@@ -4,6 +4,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * 认证相关的请求 DTO 集合，覆盖登录、刷新令牌与修改密码场景。
+ * <p>
+ * 各字段的校验规则与文档说明见字段上的注解。
+ */
 public final class AuthDtos {
 
     private AuthDtos() {

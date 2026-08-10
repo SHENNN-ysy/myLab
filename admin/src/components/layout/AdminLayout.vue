@@ -38,13 +38,9 @@
             </span>
             <template #overlay>
               <a-menu @click="handleCommand">
-                <a-menu-item key="profile">
-                  <UserOutlined />
-                  个人中心
-                </a-menu-item>
-                <a-menu-item key="settings">
+                <a-menu-item key="security">
                   <SettingOutlined />
-                  设置
+                  账号安全
                 </a-menu-item>
                 <a-menu-divider />
                 <a-menu-item key="logout">
@@ -76,7 +72,6 @@ import { Modal } from 'ant-design-vue'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  UserOutlined,
   SettingOutlined,
   LogoutOutlined,
   DownOutlined
@@ -109,10 +104,7 @@ const toggleSidebar = () => {
 
 const handleCommand = async ({ key }: { key: string }) => {
   switch (key) {
-    case 'profile':
-      router.push('/profile')
-      break
-    case 'settings':
+    case 'security':
       router.push('/system/settings')
       break
     case 'logout':

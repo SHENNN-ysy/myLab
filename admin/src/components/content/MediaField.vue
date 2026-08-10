@@ -13,9 +13,9 @@
       </a-upload>
       <a-spin :spinning="loading">
         <div class="media-grid">
-          <button v-for="file in files" :key="file.id" type="button" class="media-item" @click="select(file.fileUrl)">
-            <img :src="file.fileUrl" :alt="file.originalName" />
-            <span>{{ file.originalName || file.fileName }}</span>
+          <button v-for="file in files" :key="file.id" type="button" class="media-item" @click="selectFile(file)">
+            <img v-if="file.url" :src="file.url" :alt="file.originalName" />
+            <span>{{ file.originalName || file.objectKey }}</span>
           </button>
         </div>
       </a-spin>
@@ -26,22 +26,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
-import type { FileItem } from '@/types'
-import { getFileListApi, uploadFileApi } from '@/api/file'
+import type { FileResource, ResourceDirectory } from '@/types'
+import { getAllFilesApi, getFileAccessUrlApi, uploadFileApi } from '@/api/file'
 
-defineProps<{ modelValue: string }>()
+const props = withDefaults(defineProps<{ modelValue: string, directory?: ResourceDirectory }>(), {
+  directory: 'hero'
+})
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
 const visible = ref(false)
 const loading = ref(false)
 const uploading = ref(false)
-const files = ref<FileItem[]>([])
+const files = ref<FileResource[]>([])
 
 const openPicker = async () => {
   visible.value = true
   loading.value = true
   try {
-    files.value = (await getFileListApi()).filter(file => file.fileType.startsWith('image/'))
+    files.value = (await getAllFilesApi(props.directory)).filter(file => file.mimeType.startsWith('image/'))
   } finally {
     loading.value = false
   }
@@ -52,12 +54,16 @@ const select = (url: string) => {
   visible.value = false
 }
 
+const selectFile = async (file: FileResource) => {
+  select(file.url || await getFileAccessUrlApi(file.id))
+}
+
 const upload = async (file: File) => {
   uploading.value = true
   try {
-    const result = await uploadFileApi(file)
+    const result = await uploadFileApi(file, props.directory)
     files.value.unshift(result)
-    select(result.fileUrl)
+    await selectFile(result)
     message.success('上传成功')
   } finally {
     uploading.value = false
@@ -74,4 +80,3 @@ const upload = async (file: File) => {
 .media-item img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 5px; }
 .media-item span { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 </style>
-

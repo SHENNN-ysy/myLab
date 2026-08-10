@@ -1,108 +1,313 @@
--- 初始化内容模块基础记录。除 support 外，其余模块将在下方填充集合数据后统一发布。
-INSERT INTO content_modules (module_key, draft_data)
-VALUES
-    ('skills', '{"items":[]}'::jsonb),
-    ('projects', '{"items":[]}'::jsonb),
-    ('footprints', '{"details":[]}'::jsonb),
-    ('hobbies', '{"cards":[]}'::jsonb),
-    ('vibe', '{"tools":[]}'::jsonb),
-    ('mylab', '{"tags":[],"posts":[]}'::jsonb)
-ON CONFLICT (module_key) DO NOTHING;
+-- 开发环境初始数据以当前 myblog/admin 已确定内容为准。
+-- UUID 使用 uuid_generate_v5 生成，重复执行时保持稳定。
 
-INSERT INTO content_modules (
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+INSERT INTO users (id, username, password_hash, role)
+VALUES (
+    uuid_generate_v5(uuid_ns_url(), 'myblog:user:admin'),
+    'admin',
+    crypt('Admin@123456', gen_salt('bf', 10)),
+    'superadmin'
+)
+ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO resources (id, object_key, bucket, original_name, mime_type, size)
+VALUES
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hero-1'), 'hero/hero-1.webp', 'ysy-myblog', 'hero-1.webp', 'image/webp', 600970),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hero-2'), 'hero/hero-2.webp', 'ysy-myblog', 'hero-2.webp', 'image/webp', 123308),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hero-3'), 'hero/hero-3.webp', 'ysy-myblog', 'hero-3.webp', 'image/webp', 678026),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hero-4'), 'hero/hero-4.webp', 'ysy-myblog', 'hero-4.webp', 'image/webp', 435332),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hero-5'), 'hero/hero-5.webp', 'ysy-myblog', 'hero-5.webp', 'image/webp', 232300),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hero-6'), 'hero/hero-6.webp', 'ysy-myblog', 'hero-6.webp', 'image/webp', 703994),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:footstep-1'), 'footstep/footstep-1.webp', 'ysy-myblog', 'footstep-1.webp', 'image/webp', 600970),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:footstep-2'), 'footstep/footstep-2.webp', 'ysy-myblog', 'footstep-2.webp', 'image/webp', 123308),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:footstep-3'), 'footstep/footstep-3.webp', 'ysy-myblog', 'footstep-3.webp', 'image/webp', 678026),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:footstep-4'), 'footstep/footstep-4.webp', 'ysy-myblog', 'footstep-4.webp', 'image/webp', 435332),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:footstep-5'), 'footstep/footstep-5.webp', 'ysy-myblog', 'footstep-5.webp', 'image/webp', 232300),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:footstep-6'), 'footstep/footstep-6.webp', 'ysy-myblog', 'footstep-6.webp', 'image/webp', 703994),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-post-1'), 'mylab-post/project-cover-1.webp', 'ysy-myblog', 'project-cover-1.webp', 'image/webp', 600970),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-post-2'), 'mylab-post/project-cover-2.webp', 'ysy-myblog', 'project-cover-2.webp', 'image/webp', 123308),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-post-3'), 'mylab-post/project-cover-3.webp', 'ysy-myblog', 'project-cover-3.webp', 'image/webp', 678026),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-post-4'), 'mylab-post/project-cover-4.webp', 'ysy-myblog', 'project-cover-4.webp', 'image/webp', 435332),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-post-5'), 'mylab-post/project-cover-5.webp', 'ysy-myblog', 'project-cover-5.webp', 'image/webp', 232300),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-post-6'), 'mylab-post/project-cover-6.webp', 'ysy-myblog', 'project-cover-6.webp', 'image/webp', 703994),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:avatar'), 'icon/avatar.png', 'ysy-myblog', 'avatar.png', 'image/png', 31793),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:skill-csharp-dotnet'), 'icon/csharp-dotnet.png', 'ysy-myblog', 'csharp-dotnet.png', 'image/png', 536302),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:skill-java-spring-boot'), 'icon/java-spring-boot.png', 'ysy-myblog', 'java-spring-boot.png', 'image/png', 317103),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:skill-docker'), 'icon/docker.png', 'ysy-myblog', 'docker.png', 'image/png', 307425),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:skill-sql'), 'icon/sql.png', 'ysy-myblog', 'sql.png', 'image/png', 425596),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:skill-javascript-typescript'), 'icon/javascript-typescript.png', 'ysy-myblog', 'javascript-typescript.png', 'image/png', 401596),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:skill-react-vue'), 'icon/react-vue.png', 'ysy-myblog', 'react-vue.png', 'image/png', 478440),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:skill-python'), 'icon/python.png', 'ysy-myblog', 'python.png', 'image/png', 390178),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hobby-counter-strike-2'), 'hobbies/cs2.jpg', 'ysy-myblog', 'cs2.jpg', 'image/jpeg', 727214),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hobby-apex'), 'hobbies/apex.jpg', 'ysy-myblog', 'apex.jpg', 'image/jpeg', 986834),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hobby-delta-force'), 'hobbies/delta-force.jpg', 'ysy-myblog', 'delta-force.jpg', 'image/jpeg', 576688),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hobby-valorant'), 'hobbies/the-finals.jpg', 'ysy-myblog', 'the-finals.jpg', 'image/jpeg', 308002),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hobby-overwatch-2'), 'hobbies/overwatch2.jpeg', 'ysy-myblog', 'overwatch2.jpeg', 'image/jpeg', 75442),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-project-gm1'), 'mylab/project-gm1.md', 'ysy-myblog', 'project-gm1.md', 'text/markdown', 197),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-project-gm2'), 'mylab/project-gm2.md', 'ysy-myblog', 'project-gm2.md', 'text/markdown', 215),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-project-gm3'), 'mylab/project-gm3.md', 'ysy-myblog', 'project-gm3.md', 'text/markdown', 206),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-project-gm4'), 'mylab/project-gm4.md', 'ysy-myblog', 'project-gm4.md', 'text/markdown', 219),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-project-gm5'), 'mylab/project-gm5.md', 'ysy-myblog', 'project-gm5.md', 'text/markdown', 196),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-project-gm6'), 'mylab/project-gm6.md', 'ysy-myblog', 'project-gm6.md', 'text/markdown', 201),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-blog-docker-deploy'), 'mylab/blog-docker-deploy.md', 'ysy-myblog', 'blog-docker-deploy.md', 'text/markdown', 698),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-vue-gsap-hero'), 'mylab/vue-gsap-hero.md', 'ysy-myblog', 'vue-gsap-hero.md', 'text/markdown', 531),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-leetcode-binary-search'), 'mylab/leetcode-binary-search.md', 'ysy-myblog', 'leetcode-binary-search.md', 'text/markdown', 557),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-tailwind-migration'), 'mylab/tailwind-migration.md', 'ysy-myblog', 'tailwind-migration.md', 'text/markdown', 360),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-raspberry-pi-nas'), 'mylab/raspberry-pi-nas.md', 'ysy-myblog', 'raspberry-pi-nas.md', 'text/markdown', 411),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-vue-composable-mouse-tilt'), 'mylab/vue-composable-mouse-tilt.md', 'ysy-myblog', 'vue-composable-mouse-tilt.md', 'text/markdown', 398),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-leetcode-dp-notes'), 'mylab/leetcode-dp-notes.md', 'ysy-myblog', 'leetcode-dp-notes.md', 'text/markdown', 562),
+    (uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-first-post'), 'mylab/first-post.md', 'ysy-myblog', 'first-post.md', 'text/markdown', 434)
+ON CONFLICT (object_key) DO NOTHING;
+
+INSERT INTO content_releases (id, module_key, version_no, state, published_by, published_at)
+SELECT
+    uuid_generate_v5(uuid_ns_url(), 'myblog:release:' || module_key || ':1'),
     module_key,
-    draft_data,
-    published_data,
-    published_version,
-    status,
-    published_at
+    1,
+    'PUBLISHED',
+    uuid_generate_v5(uuid_ns_url(), 'myblog:user:admin'),
+    NOW()
+FROM (VALUES ('home'), ('about'), ('skills'), ('footprints'), ('hobbies'), ('vibe'), ('mylab')) AS modules(module_key)
+ON CONFLICT (module_key, version_no) DO NOTHING;
+
+INSERT INTO home_images (id, release_id, image_resource_id, alt_text, object_position, sort_order)
+SELECT
+    uuid_generate_v5(uuid_ns_url(), 'myblog:home-image:' || item.key),
+    uuid_generate_v5(uuid_ns_url(), 'myblog:release:home:1'),
+    uuid_generate_v5(uuid_ns_url(), 'myblog:resource:' || item.key),
+    item.alt_text,
+    item.object_position,
+    item.sort_order
+FROM (VALUES
+    ('hero-1', '香港太平山城市远景', '50% 35%', 0),
+    ('hero-2', '蓝天下飞翔的海鸥', '50% 42%', 1),
+    ('hero-3', '海面与云层', '50% 50%', 2),
+    ('hero-4', '夜色城市灯光', '50% 45%', 3),
+    ('hero-5', '落日晚霞山景', '50% 50%', 4),
+    ('hero-6', '海边公路与云', '50% 50%', 5)
+) AS item(key, alt_text, object_position, sort_order)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO about_contents (
+    id, release_id, profile_title, avatar_resource_id, avatar_alt, intro, outro,
+    ingredients_title, ingredients_description
 )
 VALUES (
-    'support',
-    '{"visit_base":12847,"like_count":1023,"page_view_base":68921}'::jsonb,
-    '{"visit_base":12847,"like_count":1023,"page_view_base":68921}'::jsonb,
-    1,
-    'published',
-    NOW()
+    uuid_generate_v5(uuid_ns_url(), 'myblog:about-content:1'),
+    uuid_generate_v5(uuid_ns_url(), 'myblog:release:about:1'),
+    '关于我',
+    uuid_generate_v5(uuid_ns_url(), 'myblog:resource:avatar'),
+    'DNSamuel',
+    '你好，我是 SHENNN，目前专注于全栈开发、AI agent学习实践中...',
+    '努力成长，希望成为一名AI超级个人，通过AI让生活变得更美好。',
+    '我的成分',
+    '之前有人想查我的成分，我认真的思考了一下，我的成分应该是这样，不过随时有可能会变就是啦'
 )
-ON CONFLICT (module_key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
--- 填充当前博客前台需要远程维护的集合数据。
+INSERT INTO about_profile_bullets (id, about_content_id, contents, sort_order)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:about-bullet:' || sort_order),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:about-content:1'), contents, sort_order
+FROM (VALUES
+    ('上位机开发：C#/.NET，负责为实验室内若干智能装备进行上位机软件开发与维护', 0),
+    ('web开发：Java/SpringBoot服务端，TypeScript/React前端，做些个人兴趣项目', 1),
+    ('爱好自然观光、city walk，喜欢探索这个世界的美', 2)
+) AS item(contents, sort_order)
+ON CONFLICT DO NOTHING;
 
-UPDATE content_modules
-SET draft_data = $content$
-{"items":[{"id":"skill-1","name":"C# / .NET","percentage":80,"level":"proficient","level_text":"熟练","icon":"grid","bar_style":"coral","is_new":false,"enabled":true},{"id":"skill-2","name":"Java / Spring Boot","percentage":80,"level":"proficient","level_text":"熟练","icon":"server","bar_style":"coral","is_new":false,"enabled":true},{"id":"skill-3","name":"Docker","percentage":70,"level":"competent","level_text":"熟练","icon":"box","bar_style":"teal","is_new":false,"enabled":true},{"id":"skill-4","name":"SQL","percentage":70,"level":"competent","level_text":"熟练","icon":"shield","bar_style":"teal","is_new":false,"enabled":true},{"id":"skill-5","name":"JavaScript / TypeScript","percentage":30,"level":"novice","level_text":"入门","icon":"terminal","bar_style":"teal","is_new":false,"enabled":true},{"id":"skill-6","name":"React / Vue","percentage":30,"level":"novice","level_text":"入门","icon":"smartphone","bar_style":"teal","is_new":false,"enabled":true},{"id":"skill-7","name":"Python","percentage":30,"level":"novice","level_text":"入门","icon":"pen","bar_style":"teal","is_new":false,"enabled":true}]}
-$content$::jsonb, updated_at = NOW()
-WHERE module_key = 'skills'
-  AND jsonb_typeof(draft_data->'items') = 'array'
-  AND jsonb_array_length(draft_data->'items') = 0;
+INSERT INTO about_bubbles (
+    id, about_content_id, bubble_text, bubble_size, background_color, text_color, glow_color, sort_order
+)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:about-bubble:' || sort_order),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:about-content:1'), bubble_text, bubble_size,
+       background_color, text_color, glow_color, sort_order
+FROM (VALUES
+    ('FPS牢玩家', 'big', '#FF6B6B', '#FF8A80', '#FF6B6B', 0),
+    ('健身旅行者', 'big', '#2EC4B6', '#64FFDA', '#2EC4B6', 1),
+    ('动物保护旅行者', 'big', '#66BB6A', '#81C784', '#66BB6A', 2),
+    ('养老二次元', 'big', '#DB7093', '#F48FB1', '#DB7093', 3),
+    ('游戏旅行者', 'big', '#FF8A65', '#FFAB91', '#FF8A65', 4),
+    ('美食探索旅行者', 'mid', '#FF8A65', '#FFCCBC', '#FF8A65', 5),
+    ('自然风光旅行者', 'mid', '#4CAF50', '#A5D6A7', '#4CAF50', 6),
+    ('技术探索者', 'mid', '#5BA4E6', '#81D4FA', '#5BA4E6', 7),
+    ('摄影旅行者', 'mid', '#FFB347', '#FFE082', '#FFB347', 8),
+    ('city walk', 'mid', '#64B5F6', '#90CAF9', '#64B5F6', 9),
+    ('电动版骑行爱好者', 'mid', '#66BB6A', '#A5D6A7', '#66BB6A', 10),
+    ('吃瓜旅行者', 'mid', '#AB47BC', '#CE93D8', '#AB47BC', 11),
+    ('代码强迫症', 'mid', '#26A69A', '#80CBC4', '#26A69A', 12),
+    ('AI大人的爱徒', 'mid', '#00BCD4', '#4DD0E1', '#00BCD4', 13)
+) AS item(bubble_text, bubble_size, background_color, text_color, glow_color, sort_order)
+ON CONFLICT DO NOTHING;
 
-UPDATE content_modules
-SET draft_data = $content$
-{"items":[{"id":"gm1","card_title":"Moth and Bat","card_summary":"48 小时 GameJam 作品，关于夜色中两种生物的相会。","detail_title":"Moth and Bat","detail_summary":"48 小时 GameJam 作品，关于夜色中两种生物的相会。","tag":"GameJam","accent":false,"year":2024,"image":"https://picsum.photos/seed/gm1/600/375","image_alt":"Moth and Bat","paragraphs":["这是一款关于夜晚相遇的解谜游戏。玩家扮演一只飞蛾，在月光下寻找答案。"],"tech":["Unity","C#","Aseprite"],"images":[],"lab_post_id":"project-gm1","enabled":true},{"id":"gm2","card_title":"Naughty Cat","card_summary":"一只总想搞破坏的猫与一个不肯关机的扫地机器人。","detail_title":"Naughty Cat","detail_summary":"一只总想搞破坏的猫与一个不肯关机的扫地机器人。","tag":"GameJam","accent":false,"year":2023,"image":"https://picsum.photos/seed/gm2/600/375","image_alt":"Naughty Cat","paragraphs":["一款轻松幽默的平台跳跃游戏。"],"tech":["Godot","GDScript"],"images":[],"lab_post_id":"project-gm2","enabled":true},{"id":"gm3","card_title":"Naughty Boy","card_summary":"规则与违抗之间的游戏化实验，关于儿童行为心理学的隐喻。","detail_title":"Naughty Boy","detail_summary":"规则与违抗之间的游戏化实验，关于儿童行为心理学的隐喻。","tag":"GameJam","accent":false,"year":2023,"image":"https://picsum.photos/seed/gm3/600/375","image_alt":"Naughty Boy","paragraphs":["探索规则边界的叙事游戏。"],"tech":["Phaser","JavaScript"],"images":[],"lab_post_id":"project-gm3","enabled":true},{"id":"gm4","card_title":"Ring of Elysium","card_summary":"参与腾讯北极光工作室《无限法则》的玩法与系统设计。","detail_title":"Ring of Elysium","detail_summary":"参与腾讯北极光工作室《无限法则》的玩法与系统设计。","tag":"商业项目","accent":true,"year":2022,"image":"https://picsum.photos/seed/gm4/600/375","image_alt":"Ring of Elysium","paragraphs":["作为玩法设计师参与开发的大逃杀游戏。"],"tech":["Unreal Engine","C++","Lua"],"images":[],"lab_post_id":"project-gm4","enabled":true},{"id":"gm5","card_title":"Moodlog","card_summary":"一个极简的情绪记录工具，专注输入体验与一年后的回看。","detail_title":"Moodlog","detail_summary":"一个极简的情绪记录工具，专注输入体验与一年后的回看。","tag":"独立工具","accent":false,"year":2024,"image":"https://picsum.photos/seed/gm5/600/375","image_alt":"Moodlog","paragraphs":["帮助你记录情绪变化的日常工具。"],"tech":["React","TypeScript","Supabase"],"images":[],"lab_post_id":"project-gm5","enabled":true},{"id":"gm6","card_title":"Beat Lab","card_summary":"浏览器内的鼓机与音序器，使用 Web Audio API 实时合成。","detail_title":"Beat Lab","detail_summary":"浏览器内的鼓机与音序器，使用 Web Audio API 实时合成。","tag":"Web 实验","accent":false,"year":2023,"image":"https://picsum.photos/seed/gm6/600/375","image_alt":"Beat Lab","paragraphs":["在线音乐创作工具。"],"tech":["Vue","Web Audio API","Tone.js"],"images":[],"lab_post_id":"project-gm6","enabled":true}]}
-$content$::jsonb, updated_at = NOW()
-WHERE module_key = 'projects'
-  AND jsonb_typeof(draft_data->'items') = 'array'
-  AND jsonb_array_length(draft_data->'items') = 0;
+INSERT INTO skills (
+    id, release_id, skill_key, name, percentage, level_code, level_text,
+    icon_resource_id, bar_style, is_new, enabled, sort_order
+)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:skill:' || skill_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:release:skills:1'),
+       skill_key, name, percentage, level_code, level_text,
+       uuid_generate_v5(uuid_ns_url(), 'myblog:resource:skill-' || skill_key),
+       bar_style, is_new, TRUE, sort_order
+FROM (VALUES
+    ('csharp-dotnet', 'C# / .NET', 80, 'proficient', '熟练', 'coral', FALSE, 0),
+    ('java-spring-boot', 'Java / Spring Boot', 80, 'proficient', '熟练', 'coral', FALSE, 1),
+    ('docker', 'Docker', 70, 'competent', '熟练', 'teal', FALSE, 2),
+    ('sql', 'SQL', 70, 'competent', '熟练', 'teal', FALSE, 3),
+    ('javascript-typescript', 'JavaScript / TypeScript', 30, 'novice', '入门', 'coral', TRUE, 4),
+    ('react-vue', 'React / Vue', 30, 'novice', '入门', 'coral', TRUE, 5),
+    ('python', 'Python', 30, 'novice', '入门', 'coral', TRUE, 6)
+) AS item(skill_key, name, percentage, level_code, level_text, bar_style, is_new, sort_order)
+ON CONFLICT DO NOTHING;
 
-UPDATE content_modules
-SET draft_data = $content$
-{"details":[{"id":"photo","title":"西安 · 城市足迹","summary":"34.34°N · 108.94°E · 古城墙 · 钟楼 · 园林","paragraphs":["这里记录我在西安的一次认真抵达。","沿途关注的场景包括：古城墙 · 钟楼 · 园林。"],"images":[],"cta_text":"查看更多","cta_url":""},{"id":"hike","title":"昆明 · 城市足迹","summary":"24.88°N · 102.83°E · 我的家乡 · 滇池 · 翠湖","paragraphs":["这里记录我在昆明的一次认真抵达。","沿途关注的场景包括：我的家乡 · 滇池 · 翠湖。"],"images":[],"cta_text":"查看更多","cta_url":""},{"id":"coffee","title":"上海 · 城市足迹","summary":"31.21°N · 121.47°E · 外滩 · city walk","paragraphs":["这里记录我在上海的一次认真抵达。","沿途关注的场景包括：外滩 · city walk。"],"images":[],"cta_text":"查看更多","cta_url":""},{"id":"travel","title":"广州 · 城市足迹","summary":"23.13°N · 113.26°E · 美食 · 人文","paragraphs":["这里记录我在广州的一次认真抵达。","沿途关注的场景包括：美食 · 人文。"],"images":[],"cta_text":"查看更多","cta_url":""},{"id":"music","title":"深圳 · 城市足迹","summary":"22.54°N · 114.06°E · 深圳湾 · city walk","paragraphs":["这里记录我在深圳的一次认真抵达。","沿途关注的场景包括：深圳湾 · city walk。"],"images":[],"cta_text":"查看更多","cta_url":""},{"id":"read","title":"北京 · 城市足迹","summary":"39.91°N · 116.39°E · 文化 · 历史 · city walk","paragraphs":["这里记录我在北京的一次认真抵达。","沿途关注的场景包括：文化 · 历史 · city walk。"],"images":[],"cta_text":"查看更多","cta_url":""}]}
-$content$::jsonb, updated_at = NOW()
-WHERE module_key = 'footprints'
-  AND jsonb_typeof(draft_data->'details') = 'array'
-  AND jsonb_array_length(draft_data->'details') = 0;
+INSERT INTO footprints (id, release_id, city_key, title, summary, contents, enabled, sort_order)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:footprint:' || city_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:release:footprints:1'),
+       city_key, title, summary, contents, TRUE, sort_order
+FROM (VALUES
+    ('photo', '胶片摄影 · 西安城墙', '一台 Nikon FM2，几卷 Portra 400，和一段厚重的古城墙。', E'西安是我拍胶片最密集的城市。古城墙是天然的引导线，傍晚时分，金色的光沿着砖缝流下来。\n\n我喜欢在钟楼附近反复行走，让人流、车流和老建筑在取景框里形成自己的节奏。\n\n胶片摄影对我来说不是怀旧，而是一种慢下来的观察方式。', 0),
+    ('hike', '徒步 · 昆明 · 高海拔', '用脚步丈量高原，不是征服，是学会在稀薄空气里找到自己的节奏。', E'昆明周边的山路让我重新理解了“距离”这件事：地图上的短线，走起来常常是完整的一天。\n\n我喜欢徒步里那种简单的判断：补水、节奏、天气、脚下的路，每一件都真实具体。\n\n最美的风景往往不在终点，而在“再坚持一下”之后的转角。', 1),
+    ('coffee', '精品咖啡 · 上海武康路', '从豆子到杯子，一杯咖啡是一段小型的时间旅行。', E'武康路是我在上海很喜欢的一段路。梧桐树影把阳光切成碎片，几家小店藏在老房子里。\n\n咖啡对我来说是一种准时开始工作的仪式，不是醒神，而是给一天一个锚点。\n\n我更在意一杯咖啡背后的风味描述、产地故事，以及它被认真对待的方式。', 2),
+    ('travel', '城市漫游 · 广州西关', '不急着去景点，只在陌生城市的街区里游荡几个小时。', E'西关是广州老城里很迷人的一片：骑楼街、麻石巷、满洲窗，还有街坊聊天的声音。\n\n我喜欢在这样的地方慢慢走，听街边的生活声，闻别人家的饭菜香。\n\n城市漫游训练我对偶然的开放度：走错路，才更容易遇到没有被攻略写过的惊喜。', 3),
+    ('music', '黑胶与合成器 · 深圳 OCT', '一种回放时间，一种创造时间，它们都让我暂时离开屏幕。', E'深圳的创意园区里有几家独立唱片店，是我固定会去的地方。\n\n合成器是近几年新开的坑。把一个 pad 音色调出层次，本身就是一次小创作。\n\n音乐对我而言是不被语言打扰的时间。项目做累了，切到 DAW 里乱按二十分钟，也是一种恢复。', 4),
+    ('read', '独立书店 · 北京', '认识一座城市，最慢也最可靠的方式，是在它的书店里坐一个下午。', E'北京有几条书店密度很高的街区，我喜欢把它们当作城市里的临时工作台。\n\n我常常在独立书店里不急着买东西，只是翻完一本诗集，再翻完一本地理散文。\n\n比起连锁书店，独立书店更像私人策展，选品本身就是一种表达。', 5)
+) AS item(city_key, title, summary, contents, sort_order)
+ON CONFLICT DO NOTHING;
 
-UPDATE content_modules
-SET draft_data = $content$
-{"cards":[{"id":"Study","title":"Counter-Strike 2","description":"最喜欢它纯粹又残酷的博弈感，每一颗道具、每一次 peek 都要为团队节奏负责。","image":"./game_posters/cs2.jpg","image_alt":"Counter-Strike 2","enabled":true},{"id":"Music","title":"Apex 英雄","description":"机动性和临场决策很迷人，打赢一波混战时有很强的节奏感。","image":"./game_posters/apex.jpg","image_alt":"Apex 英雄","enabled":true},{"id":"Game","title":"三角洲行动","description":"偏战术、偏压迫的枪线体验，适合认真研究路线、信息和团队配合。","image":"./game_posters/delta-force.jpg","image_alt":"三角洲行动","enabled":true},{"id":"Coding","title":"无畏契约","description":"技能和枪法互相牵制，回合制的紧张感很足。","image":"./game_posters/the-finals.jpg","image_alt":"无畏契约","enabled":true},{"id":"Social","title":"守望先锋 2","description":"英雄机制和团战节奏变化很快，重点是团队位置和技能交换。","image":"./game_posters/overwatch2.jpeg","image_alt":"守望先锋 2","enabled":true}]}
-$content$::jsonb, updated_at = NOW()
-WHERE module_key = 'hobbies'
-  AND jsonb_typeof(draft_data->'cards') = 'array'
-  AND jsonb_array_length(draft_data->'cards') = 0;
+INSERT INTO hobbies (id, release_id, hobby_key, title, description, enabled, sort_order)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:hobby:' || hobby_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:release:hobbies:1'),
+       hobby_key, title, description, TRUE, sort_order
+FROM (VALUES
+    ('counter-strike-2', 'Counter-Strike 2', '最喜欢它纯粹又残酷的博弈感，每一颗道具、每一次peek都要为团队节奏负责。', 0),
+    ('apex', 'Apex 英雄', '机动性和临场决策很迷人，打赢一波混战时会有非常强的爽感和节奏感。', 1),
+    ('delta-force', '三角洲行动', '偏战术、偏压迫的枪线体验，适合认真研究路线、信息和团队配合。', 2),
+    ('valorant', '无畏契约', '技能和枪法互相牵制，回合制的紧张感很足，残局尤其容易让人上头。', 3),
+    ('overwatch-2', '守望先锋 2', '英雄机制和团战节奏变化很快，最吸引我的是团队位置和技能交换。', 4)
+) AS item(hobby_key, title, description, sort_order)
+ON CONFLICT DO NOTHING;
 
-UPDATE content_modules
-SET draft_data = $content$
-{"tools":[{"id":"tool-1","name":"Cursor","percentage":80,"description":"代码编写主力，执行明确任务，性价比高","enabled":true},{"id":"tool-2","name":"Codex","percentage":80,"description":"代码编写主力，用户意图理解力强，执行需求模糊的任务","enabled":true},{"id":"tool-3","name":"Claude Code","percentage":60,"description":"代码编写辅助，生成代码质量高，执行复杂任务","enabled":true},{"id":"tool-4","name":"Kimi","percentage":60,"description":"我最初使用的AI工具，目前作为日常辅助问答以及API调用","enabled":true},{"id":"tool-5","name":"DeepSeek","percentage":40,"description":"有时疑似被Kimi拉黑，作为国产模型探索以及kimi的替代","enabled":true},{"id":"tool-6","name":"ChatGPT","percentage":20,"description":"图片素材生成，以及日常辅助问答(暗黑版)","enabled":true}]}
-$content$::jsonb, updated_at = NOW()
-WHERE module_key = 'vibe'
-  AND jsonb_typeof(draft_data->'tools') = 'array'
-  AND jsonb_array_length(draft_data->'tools') = 0;
+INSERT INTO hobby_resources (id, hobby_id, resource_id)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:hobby-resource:' || hobby_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:hobby:' || hobby_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:resource:hobby-' || hobby_key)
+FROM (VALUES ('counter-strike-2'), ('apex'), ('delta-force'), ('valorant'), ('overwatch-2')) AS item(hobby_key)
+ON CONFLICT DO NOTHING;
 
-UPDATE content_modules
-SET draft_data = $content$
-{"tags":[{"id":"tag-1","name":"GameJam","enabled":true},{"id":"tag-2","name":"Unity","enabled":true},{"id":"tag-3","name":"C#","enabled":true},{"id":"tag-4","name":"Aseprite","enabled":true},{"id":"tag-5","name":"Godot","enabled":true},{"id":"tag-6","name":"GDScript","enabled":true},{"id":"tag-7","name":"Phaser","enabled":true},{"id":"tag-8","name":"JavaScript","enabled":true},{"id":"tag-9","name":"商业项目","enabled":true},{"id":"tag-10","name":"Unreal Engine","enabled":true},{"id":"tag-11","name":"C++","enabled":true},{"id":"tag-12","name":"Lua","enabled":true},{"id":"tag-13","name":"独立工具","enabled":true},{"id":"tag-14","name":"React","enabled":true},{"id":"tag-15","name":"TypeScript","enabled":true},{"id":"tag-16","name":"Supabase","enabled":true},{"id":"tag-17","name":"Web 实验","enabled":true},{"id":"tag-18","name":"Vue","enabled":true},{"id":"tag-19","name":"Web Audio API","enabled":true},{"id":"tag-20","name":"Tone.js","enabled":true},{"id":"tag-21","name":"Docker","enabled":true},{"id":"tag-22","name":"Nginx","enabled":true},{"id":"tag-23","name":"运维","enabled":true},{"id":"tag-24","name":"GSAP","enabled":true},{"id":"tag-25","name":"前端","enabled":true},{"id":"tag-26","name":"Leetcode","enabled":true},{"id":"tag-27","name":"算法","enabled":true},{"id":"tag-28","name":"Tailwind","enabled":true},{"id":"tag-29","name":"工程化","enabled":true},{"id":"tag-30","name":"树莓派","enabled":true},{"id":"tag-31","name":"硬件","enabled":true},{"id":"tag-32","name":"DP","enabled":true},{"id":"tag-33","name":"随笔","enabled":true}],"posts":[{"id":"project-gm1","date":"2024-01-01","title":"Moth and Bat 项目记录","tags":["GameJam","Unity","C#","Aseprite"],"summary":"48 小时 GameJam 作品，关于夜色中两种生物的相会。","image":"https://picsum.photos/seed/gm1/600/375","image_alt":"Moth and Bat","sections":[{"heading":"项目概述","paragraphs":["这是一款关于夜晚相遇的解谜游戏。玩家扮演一只飞蛾，在月光下寻找答案。","主要技术：Unity、C#、Aseprite"]}],"enabled":true},{"id":"project-gm2","date":"2023-01-01","title":"Naughty Cat 项目记录","tags":["GameJam","Godot","GDScript"],"summary":"一只总想搞破坏的猫与一个不肯关机的扫地机器人。","image":"https://picsum.photos/seed/gm2/600/375","image_alt":"Naughty Cat","sections":[{"heading":"项目概述","paragraphs":["一款轻松幽默的平台跳跃游戏。","主要技术：Godot、GDScript"]}],"enabled":true},{"id":"project-gm3","date":"2023-01-01","title":"Naughty Boy 项目记录","tags":["GameJam","Phaser","JavaScript"],"summary":"规则与违抗之间的游戏化实验，关于儿童行为心理学的隐喻。","image":"https://picsum.photos/seed/gm3/600/375","image_alt":"Naughty Boy","sections":[{"heading":"项目概述","paragraphs":["探索规则边界的叙事游戏。","主要技术：Phaser、JavaScript"]}],"enabled":true},{"id":"project-gm4","date":"2022-01-01","title":"Ring of Elysium 项目记录","tags":["商业项目","Unreal Engine","C++","Lua"],"summary":"参与腾讯北极光工作室《无限法则》的玩法与系统设计。","image":"https://picsum.photos/seed/gm4/600/375","image_alt":"Ring of Elysium","sections":[{"heading":"项目概述","paragraphs":["作为玩法设计师参与开发的大逃杀游戏。","主要技术：Unreal Engine、C++、Lua"]}],"enabled":true},{"id":"project-gm5","date":"2024-01-01","title":"Moodlog 项目记录","tags":["独立工具","React","TypeScript","Supabase"],"summary":"一个极简的情绪记录工具，专注输入体验与一年后的回看。","image":"https://picsum.photos/seed/gm5/600/375","image_alt":"Moodlog","sections":[{"heading":"项目概述","paragraphs":["帮助你记录情绪变化的日常工具。","主要技术：React、TypeScript、Supabase"]}],"enabled":true},{"id":"project-gm6","date":"2023-01-01","title":"Beat Lab 项目记录","tags":["Web 实验","Vue","Web Audio API","Tone.js"],"summary":"浏览器内的鼓机与音序器，使用 Web Audio API 实时合成。","image":"https://picsum.photos/seed/gm6/600/375","image_alt":"Beat Lab","sections":[{"heading":"项目概述","paragraphs":["在线音乐创作工具。","主要技术：Vue、Web Audio API、Tone.js"]}],"enabled":true},{"id":"blog-docker-deploy","date":"2026-07-28","title":"个人博客 Docker + Nginx 部署全流程记录","tags":["Docker","Nginx","运维"],"summary":"从 Dockerfile 多阶段构建到 nginx SPA 回退与 gzip 配置，把博客塞进容器的完整折腾过程。","image":"https://picsum.photos/seed/gm5/600/375","sections":[{"heading":"多阶段构建","paragraphs":["构建阶段用 node 镜像安装依赖并执行 vite build，产物只有 dist 一个目录；运行阶段直接换成 nginx:alpine，把 dist 拷进去即可，最终镜像不到 30MB。","需要注意的是 .dockerignore 别忘了排除 node_modules 和本地 dist，否则构建上下文会非常大，CI 上每次都要多传几百 MB。"]},{"heading":"Nginx 配置要点","paragraphs":["SPA 最关键的是 try_files $uri $uri/ /index.html，否则刷新非根路由直接 404。静态资源带 hash 的文件可以放心加一年的强缓存。","gzip 开启后对文本类资源收益明显，同时建议把 /assets 下的 immutable 缓存和 index.html 的 no-cache 分开配置，避免发版后用户拿到旧页面。"]},{"heading":"部署与回滚","paragraphs":["镜像打上时间戳 tag 再推 latest，出问题时 docker run 指回上一个 tag 就能秒级回滚，比重新构建靠谱得多。"]}],"image_alt":"个人博客 Docker + Nginx 部署全流程记录","enabled":true},{"id":"vue-gsap-hero","date":"2026-07-15","title":"用 GSAP 给首页 Hero 做电影感动效","tags":["Vue","GSAP","前端"],"summary":"ScrollTrigger 驱动的滚动叙事：分镜、视差与滚动提示文字的入场编排。","image":"https://picsum.photos/seed/gm6/600/375","sections":[{"heading":"分镜思路","paragraphs":["先把 Hero 拆成几个“镜头”：开场定格、文字入场、视差拉开、提示滚动。每个镜头对应 timeline 上的一段，而不是一堆零散的 tween。","这样做的好处是节奏可调——改一个镜头的时长不会影响其他镜头的编排，整体叙事结构始终清晰。"]},{"heading":"ScrollTrigger 实践","paragraphs":["scrub 模式让动画进度和滚动位置绑定，配合 pin 把 Hero 钉在视口内，用户滚动时实际上是在“播放”这段分镜。","在 Vue 里要注意在 onBeforeUnmount 中清理 ScrollTrigger 实例，否则路由切换后残留的触发器会造成奇怪的滚动偏移。"]},{"heading":"性能与降级","paragraphs":["所有动画只操作 transform 和 opacity，配合 will-change 交给合成层；prefers-reduced-motion 用户直接呈现最终态，不播放过程动画。"]}],"image_alt":"用 GSAP 给首页 Hero 做电影感动效","enabled":true},{"id":"leetcode-binary-search","date":"2026-06-30","title":"二分查找的几种边界写法整理","tags":["Leetcode","算法"],"summary":"闭区间 / 左闭右开两种模板的循环不变量对比，附几道经典题的应用。","sections":[{"heading":"两种区间定义","paragraphs":["闭区间 [left, right] 写法里循环条件是 left <= right，收缩时 right = mid - 1；左闭右开 [left, right) 则是 left < right，收缩时 right = mid。","两种写法本质等价，但混用是几乎所有 bug 的来源——选定一种区间定义后，循环条件、中点收缩和返回值必须自洽。"]},{"heading":"循环不变量","paragraphs":["写二分最关键的是时刻维护“答案一定在当前区间内”这个不变量。每次收缩区间时都要问自己：被丢掉的那一半里有没有可能存在答案？","找左边界和右边界是对称的两套模板，建议背一套然后镜像推导，比硬记两套不容易混。"]},{"heading":"经典题应用","paragraphs":["搜索旋转排序数组的关键是判断哪一半有序；寻找峰值利用“往高处走必有峰”的性质；而“答案单调可判定”的题目（如爱吃香蕉的珂珂）则是二分答案的典型套路。"]}],"image":"","image_alt":"二分查找的几种边界写法整理","enabled":true},{"id":"tailwind-migration","date":"2026-06-12","title":"项目迁移 Tailwind CSS v4 的坑","tags":["Tailwind","前端","工程化"],"summary":"v4 改为 CSS-first 配置后，postcss 插件与 @theme 写法的迁移笔记。","image":"https://picsum.photos/seed/gm3/600/375","sections":[{"heading":"配置方式的变化","paragraphs":["v4 最大的变化是配置从 tailwind.config.js 迁到了 CSS 里：@import \"tailwindcss\" 加上 @theme 块定义设计变量，JS 配置文件不再是必需品。","PostCSS 插件也独立成了 @tailwindcss/postcss，老项目里直接升级包名不改配置的话，构建会直接报插件找不到。"]},{"heading":"迁移中踩到的坑","paragraphs":["自定义色板要改成 @theme 里的 --color-* 变量才能继续用 bg-* 类名；部分默认工具类的命名有调整，升级后建议全量过一遍页面。","另外 v4 的内容扫描变成了自动探测，monorepo 里如果有不在默认规则下的目录，需要用 @source 显式声明。"]}],"image_alt":"项目迁移 Tailwind CSS v4 的坑","enabled":true},{"id":"raspberry-pi-nas","date":"2026-05-20","title":"树莓派搭家用 NAS：Samba 与硬盘休眠","tags":["树莓派","运维","硬件"],"summary":"Samba 共享配置、挂载点权限，以及 hdparm 让闲置硬盘自动休眠省电。","sections":[{"heading":"Samba 共享配置","paragraphs":["安装 samba 后在 smb.conf 里声明共享目录，重点是 valid users 和 create mask 的组合——新建文件的权限不对，Windows 侧就会出现能看不能写。","挂载点建议用 systemd 的 .mount 单元管理，配合 nofail 选项，避免硬盘没插好时系统启动卡住。"]},{"heading":"硬盘休眠","paragraphs":["机械盘 7x24 转着既费电又伤盘，hdparm -S 设置闲置超时后就能自动停转。注意有些 USB 硬盘盒的桥接芯片不支持直通休眠指令，需要换 hdparm 的 -S 参数或用 hd-idle 兜底。","验证方式很简单：hdparm -C 查看状态，standby 即表示已经睡着了。"]}],"image":"","image_alt":"树莓派搭家用 NAS：Samba 与硬盘休眠","enabled":true},{"id":"vue-composable-mouse-tilt","date":"2026-05-06","title":"封装一个 useMouseTilt 组合式函数","tags":["Vue","前端"],"summary":"用 requestAnimationFrame 节流鼠标事件，给卡片做跟随视角的 3D 倾斜。","sections":[{"heading":"为什么需要节流","paragraphs":["mousemove 的触发频率远高于屏幕刷新率，直接在回调里改样式会造成大量无效计算。用 rAF 把事件攒到下一帧统一处理，一帧最多执行一次。","进一步还可以对目标角度做 lerp 平滑，卡片跟随鼠标时会有弹簧般的质感，而不是生硬地瞬移。"]},{"heading":"封装思路","paragraphs":["组合式函数接收一个模板引用和倾斜角度上限，返回当前的 rotateX / rotateY；内部用 useEventListener 托管监听，组件卸载时自动清理。","注意透视要加在父容器上（perspective），倾斜元素自身只做 rotate，这样多个卡片并排时视觉焦点才统一。"]}],"image":"","image_alt":"封装一个 useMouseTilt 组合式函数","enabled":true},{"id":"leetcode-dp-notes","date":"2026-04-18","title":"动态规划刷题小结：从背包到区间 DP","tags":["Leetcode","算法","DP"],"summary":"状态定义优先还是转移优先？整理了自己刷 DP 题时的思考 checklist。","sections":[{"heading":"状态定义优先","paragraphs":["我的经验是先想清楚 dp[i] 到底代表什么——“以 i 结尾”还是“前 i 个”——这两种定义决定了初始化和答案的位置，想不清楚就先拿小样例手推。","背包问题的核心是遍历顺序：01 背包倒序、完全背包正序，理解了“每个物品能用几次”就不会再背错。"]},{"heading":"区间 DP 的套路","paragraphs":["区间 DP 的标志是 dp[l][r] 表示区间 [l, r] 上的最优解，枚举顺序必须按区间长度从小到大，保证转移时子区间已经算完。","石子合并、戳气球这类题都有一个共同的“最后一次操作”视角：枚举最后合并/戳破的位置 k，把区间拆成两段独立子问题。"]},{"heading":"我的 checklist","paragraphs":["一看数据范围猜复杂度，二定状态含义，三写转移方程，四推初始值，五定遍历顺序。五步走不通就回头重新定义状态，而不是硬调转移。"]}],"image":"","image_alt":"动态规划刷题小结：从背包到区间 DP","enabled":true},{"id":"first-post","date":"2026-04-01","title":"MyLab 开张：为什么单独开一个实验记录页","tags":["随笔"],"summary":"项目展示放在首页，零散的学习与折腾记录集中收在这里，方便检索与回顾。","sections":[{"heading":"为什么单独开一页","paragraphs":["首页的项目展示区适合放完整、成体系的作品，但日常学习中大量零散的记录——一次部署踩坑、一个算法模板、一个小工具的封装——没有合适的地方放。","MyLab 就是给这些内容准备的：不打分、不追求完美，只要求未来的自己能检索到、看得懂。"]},{"heading":"记录的原则","paragraphs":["每条记录都带标签和日期，方便按主题聚合；正文尽量写清“当时为什么这么做”，因为半年后再看，决策的理由比操作步骤更值钱。"]}],"image":"","image_alt":"MyLab 开张：为什么单独开一个实验记录页","enabled":true}]}
-$content$::jsonb, updated_at = NOW()
-WHERE module_key = 'mylab'
-  AND jsonb_typeof(draft_data->'posts') = 'array'
-  AND jsonb_array_length(draft_data->'posts') = 0;
+INSERT INTO hobby_time_tags (id, release_id, data_key, name, color, label_x, label_y, label_scale, enabled, sort_order)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:hobby-time-tag:' || data_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:release:hobbies:1'),
+       data_key, name, color, label_x, label_y, label_scale, TRUE, sort_order
+FROM (VALUES
+    ('Study', 'Study', '#93C5FD', 110, 240, 1.5, 0),
+    ('Music', 'Music', '#7DD3FC', 410, 232, 1.3, 1),
+    ('Game', 'Game', '#67E8F9', 195, 150, 1.5, 2),
+    ('Coding', 'Coding', '#5EEAD4', 340, 110, 1.5, 3),
+    ('Social', 'Social or Family', '#6EE7B7', 63, 65, 1.5, 4)
+) AS item(data_key, name, color, label_x, label_y, label_scale, sort_order)
+ON CONFLICT DO NOTHING;
 
--- 发布本次写入的六个集合模块；support 已在插入时发布。
-UPDATE content_modules
-SET published_data = draft_data,
-    published_version = 1,
-    status = 'published',
-    published_at = COALESCE(published_at, NOW()),
-    updated_at = NOW()
-WHERE published_data IS NULL
-  AND published_version = 0
-  AND status = 'draft'
-  AND (
-      (module_key = 'skills' AND draft_data->'items'->0->>'id' = 'skill-1')
-      OR (module_key = 'projects' AND draft_data->'items'->0->>'id' = 'gm1')
-      OR (module_key = 'footprints' AND draft_data->'details'->0->>'id' = 'photo')
-      OR (module_key = 'hobbies' AND draft_data->'cards'->0->>'id' = 'Study')
-      OR (module_key = 'vibe' AND draft_data->'tools'->0->>'id' = 'tool-1')
-      OR (module_key = 'mylab' AND draft_data->'posts'->0->>'id' = 'project-gm1')
-  );
+INSERT INTO hobby_time_points (id, release_id, age, study, music, game, coding, social)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:hobby-time-point:' || age),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:release:hobbies:1'),
+       age, study, music, game, coding, social
+FROM (VALUES
+    (-1,0,0,0,0,10),(0,0,0,0,0,10),(1,1,0,0,0,9),(2,2,0,0,0,8),(3,3,0,0,0,7),
+    (4,4,0,0,0,6),(5,5,0,0,0,5),(6,6,0,0,0,4),(7,5.3,0,1,0,3.7),(8,4.7,0,2,0,3.3),
+    (9,4,0,3,0,3),(10,3.9,0,2.9,0.3,2.9),(11,3.8,0,2.8,0.7,2.7),(12,3.7,0,2.7,1,2.6),
+    (13,3.6,0,2.6,1.3,2.5),(14,3.4,0,2.4,1.7,2.5),(15,3.3,0,2.3,2,2.4),(16,3.2,0,2.2,2.3,2.3),
+    (17,3.1,0,2.1,2.7,2.1),(18,3,0,2,3,2),(19,2.8,0.2,2,3,2),(20,2.6,0.4,2,3,2),
+    (21,2.4,0.6,2,3,2),(22,2.2,0.8,2,3,2),(23,2,1,2,3,2),(24,2,1,2,3,2),(25,2,1,2,3,2),
+    (26,2.5,0.5,1.5,3.5,2),(27,3,0,1,4,2)
+) AS item(age, study, music, game, coding, social)
+ON CONFLICT DO NOTHING;
 
--- 保存所有初始发布快照，确保后台可以从版本 1 开始回滚。
-INSERT INTO content_publications (module_key, version, data, published_at)
-SELECT module_key,
-       published_version,
-       published_data,
-       COALESCE(published_at, NOW())
-FROM content_modules
-WHERE published_data IS NOT NULL
-  AND published_version > 0
-ON CONFLICT (module_key, version) DO NOTHING;
+INSERT INTO vibe_tools (id, release_id, tool_key, name, percentage, description, enabled, sort_order)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:vibe:' || tool_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:release:vibe:1'),
+       tool_key, name, percentage, description, TRUE, sort_order
+FROM (VALUES
+    ('cursor', 'Cursor', 80, '代码编写主力，执行明确任务，性价比高', 0),
+    ('codex', 'Codex', 80, '代码编写主力，用户意图理解力强，执行需求模糊的任务', 1),
+    ('claude-code', 'Claude Code', 60, '代码编写辅助，生成代码质量高，执行复杂任务', 2),
+    ('kimi', 'Kimi', 60, '我最初使用的AI工具，目前作为日常辅助问答以及API调用', 3),
+    ('deepseek', 'DeepSeek', 40, '有时疑似被Kimi拉黑，作为国产模型探索以及kimi的替代', 4),
+    ('chatgpt', 'ChatGPT', 20, '图片素材生成，以及日常辅助问答(暗黑版)', 5)
+) AS item(tool_key, name, percentage, description, sort_order)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO mylab_tags (id, tag_key, name, enabled, sort_order)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:mylab-tag:' || tag_key), tag_key, name, TRUE, sort_order
+FROM (VALUES
+    ('gamejam','GameJam',0),('unity','Unity',1),('csharp','C#',2),('aseprite','Aseprite',3),
+    ('godot','Godot',4),('gdscript','GDScript',5),('phaser','Phaser',6),('javascript','JavaScript',7),
+    ('commercial-project','商业项目',8),('unreal-engine','Unreal Engine',9),('cpp','C++',10),('lua','Lua',11),
+    ('indie-tool','独立工具',12),('react','React',13),('typescript','TypeScript',14),('supabase','Supabase',15),
+    ('web-lab','Web 实验',16),('vue','Vue',17),('web-audio-api','Web Audio API',18),('tone-js','Tone.js',19),
+    ('docker','Docker',20),('nginx','Nginx',21),('ops','运维',22),('gsap','GSAP',23),('frontend','前端',24),
+    ('leetcode','Leetcode',25),('algorithm','算法',26),('tailwind','Tailwind',27),('engineering','工程化',28),
+    ('raspberry-pi','树莓派',29),('hardware','硬件',30),('dp','DP',31),('essay','随笔',32)
+) AS item(tag_key, name, sort_order)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO mylab_cards (
+    id, release_id, post_key, card_title, card_summary, post_date, enabled, sort_order,
+    card_type, project_show_order, project_contents
+)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:mylab-card:' || post_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:release:mylab:1'),
+       post_key, card_title, card_summary, post_date::date, TRUE, sort_order,
+       card_type, project_show_order, project_contents
+FROM (VALUES
+    ('project-gm1','Moth and Bat：项目研究记录','48 小时 GameJam 作品，关于夜色中两种生物的相会。','2024-01-01','PROJECT',0,E'这是一款关于夜晚相遇的解谜游戏。\n\nUnity、C#、Aseprite',0),
+    ('project-gm2','Naughty Cat：项目研究记录','一只总想搞破坏的猫与一个不肯关机的扫地机器人。','2023-01-01','PROJECT',1,E'一款轻松幽默的平台跳跃游戏。\n\nGodot、GDScript',1),
+    ('project-gm3','Naughty Boy：项目研究记录','规则与违抗之间的游戏化实验，关于儿童行为心理学的隐喻。','2023-01-01','PROJECT',2,E'探索规则边界的叙事游戏。\n\nPhaser、JavaScript',2),
+    ('project-gm4','Ring of Elysium：项目研究记录','参与腾讯北极光工作室《无限法则》的玩法与系统设计。','2022-01-01','PROJECT',3,E'作为玩法设计师参与开发的大逃杀游戏。\n\nUnreal Engine、C++、Lua',3),
+    ('project-gm5','Moodlog：项目研究记录','一个极简的情绪记录工具，专注输入体验与一年后的回看。','2024-01-01','PROJECT',4,E'帮助你记录情绪变化的日常工具。\n\nReact、TypeScript、Supabase',4),
+    ('project-gm6','Beat Lab：项目研究记录','浏览器内的鼓机与音序器，使用 Web Audio API 实时合成。','2023-01-01','PROJECT',5,E'在线音乐创作工具。\n\nVue、Web Audio API、Tone.js',5),
+    ('blog-docker-deploy','个人博客 Docker + Nginx 部署全流程记录','从 Dockerfile 多阶段构建到 nginx SPA 回退与 gzip 配置，把博客塞进容器的完整折腾过程。','2026-07-28','ARTICLE',NULL,NULL,6),
+    ('vue-gsap-hero','用 GSAP 给首页 Hero 做电影感动效','ScrollTrigger 驱动的滚动叙事：分镜、视差与滚动提示文字的入场编排。','2026-07-15','ARTICLE',NULL,NULL,7),
+    ('leetcode-binary-search','二分查找的几种边界写法整理','闭区间 / 左闭右开两种模板的循环不变量对比，附几道经典题的应用。','2026-06-30','ARTICLE',NULL,NULL,8),
+    ('tailwind-migration','项目迁移 Tailwind CSS v4 的坑','v4 改为 CSS-first 配置后，postcss 插件与 @theme 写法的迁移笔记。','2026-06-12','ARTICLE',NULL,NULL,9),
+    ('raspberry-pi-nas','树莓派搭家用 NAS：Samba 与硬盘休眠','Samba 共享配置、挂载点权限，以及 hdparm 让闲置硬盘自动休眠省电。','2026-05-20','ARTICLE',NULL,NULL,10),
+    ('vue-composable-mouse-tilt','封装一个 useMouseTilt 组合式函数','用 requestAnimationFrame 节流鼠标事件，给卡片做跟随视角的 3D 倾斜。','2026-05-06','ARTICLE',NULL,NULL,11),
+    ('leetcode-dp-notes','动态规划刷题小结：从背包到区间 DP','状态定义优先还是转移优先？整理了自己刷 DP 题时的思考 checklist。','2026-04-18','ARTICLE',NULL,NULL,12),
+    ('first-post','MyLab 开张：为什么单独开一个实验记录页','项目展示放在首页，零散的学习与折腾记录集中收在这里，方便检索与回顾。','2026-04-01','ARTICLE',NULL,NULL,13)
+) AS item(post_key, card_title, card_summary, post_date, card_type, project_show_order, project_contents, sort_order)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO mylab_card_tags (id, card_id, tag_id, sort_order)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:mylab-card-tag:' || post_key || ':' || tag_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:mylab-card:' || post_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:mylab-tag:' || tag_key),
+       sort_order
+FROM (VALUES
+    ('project-gm1','gamejam',0),('project-gm1','unity',1),('project-gm1','csharp',2),('project-gm1','aseprite',3),
+    ('project-gm2','gamejam',0),('project-gm2','godot',1),('project-gm2','gdscript',2),
+    ('project-gm3','gamejam',0),('project-gm3','phaser',1),('project-gm3','javascript',2),
+    ('project-gm4','commercial-project',0),('project-gm4','unreal-engine',1),('project-gm4','cpp',2),('project-gm4','lua',3),
+    ('project-gm5','indie-tool',0),('project-gm5','react',1),('project-gm5','typescript',2),('project-gm5','supabase',3),
+    ('project-gm6','web-lab',0),('project-gm6','vue',1),('project-gm6','web-audio-api',2),('project-gm6','tone-js',3),
+    ('blog-docker-deploy','docker',0),('blog-docker-deploy','nginx',1),('blog-docker-deploy','ops',2),
+    ('vue-gsap-hero','vue',0),('vue-gsap-hero','gsap',1),('vue-gsap-hero','frontend',2),
+    ('leetcode-binary-search','leetcode',0),('leetcode-binary-search','algorithm',1),
+    ('tailwind-migration','tailwind',0),('tailwind-migration','frontend',1),('tailwind-migration','engineering',2),
+    ('raspberry-pi-nas','raspberry-pi',0),('raspberry-pi-nas','ops',1),('raspberry-pi-nas','hardware',2),
+    ('vue-composable-mouse-tilt','vue',0),('vue-composable-mouse-tilt','frontend',1),
+    ('leetcode-dp-notes','leetcode',0),('leetcode-dp-notes','algorithm',1),('leetcode-dp-notes','dp',2),
+    ('first-post','essay',0)
+) AS item(post_key, tag_key, sort_order)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO mylab_resources (id, card_id, image_resource_id, content_resource_id)
+SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:mylab-resource:' || post_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:mylab-card:' || post_key),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-post-' || ((sort_order % 6) + 1)),
+       uuid_generate_v5(uuid_ns_url(), 'myblog:resource:mylab-' || post_key)
+FROM (VALUES
+    ('project-gm1',0),('project-gm2',1),('project-gm3',2),('project-gm4',3),('project-gm5',4),('project-gm6',5),
+    ('blog-docker-deploy',6),('vue-gsap-hero',7),('leetcode-binary-search',8),('tailwind-migration',9),
+    ('raspberry-pi-nas',10),('vue-composable-mouse-tilt',11),('leetcode-dp-notes',12),('first-post',13)
+) AS item(post_key, sort_order)
+ON CONFLICT DO NOTHING;

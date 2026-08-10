@@ -14,14 +14,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * MyBatis type handler that serialises an arbitrary POJO to PostgreSQL {@code jsonb}.
- * Lives next to the entities that reference it.
+ * MyBatis 类型处理器：将任意 POJO 序列化为 PostgreSQL 的 {@code jsonb} 列。
+ * 与引用它的实体放在同一持久化包下。
  */
 @MappedJdbcTypes(JdbcType.OTHER)
 @MappedTypes(Object.class)
 public class JsonbTypeHandler extends BaseTypeHandler<Object> {
 
-    private static final ObjectMapper OM = JacksonObjectMapper.get();
+    private static final ObjectMapper OM = JacksonObjectMapper.get(); // 全局共享的 Jackson 实例
 
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, Object parameter, JdbcType jdbcType) throws SQLException {
@@ -50,6 +50,7 @@ public class JsonbTypeHandler extends BaseTypeHandler<Object> {
         return read(cs.getString(columnIndex));
     }
 
+    /** 将 jsonb 文本反序列化为 Java 对象，null 透传；解析失败包装为 SQLException */
     private Object read(String s) throws SQLException {
         if (s == null) {
             return null;

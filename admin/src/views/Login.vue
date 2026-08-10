@@ -53,10 +53,6 @@
           </a-button>
         </a-form-item>
       </a-form>
-
-      <div class="login-footer">
-        <p class="demo-hint">演示账号: <strong>admin</strong> / <strong>Admin@123456</strong></p>
-      </div>
     </div>
   </div>
 </template>
@@ -88,7 +84,7 @@ const rules: Record<string, Rule[]> = {
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少6位', trigger: 'blur' }
+    { min: 8, max: 64, message: '密码长度为 8～64 位', trigger: 'blur' }
   ]
 }
 
@@ -106,12 +102,11 @@ const handleLogin = async () => {
 
     const redirect = (route.query.redirect as string) || '/dashboard'
     router.push(redirect)
-  } catch (error: any) {
-    if (error?.errorFields) {
+  } catch (error: unknown) {
+    if (typeof error === 'object' && error !== null && 'errorFields' in error) {
       // 表单校验失败
       return
     }
-    message.error(error?.message || '登录失败')
   } finally {
     loading.value = false
   }
@@ -166,17 +161,4 @@ const handleLogin = async () => {
   }
 }
 
-.login-footer {
-  text-align: center;
-  margin-top: 24px;
-}
-
-.demo-hint {
-  font-size: 13px;
-  color: #8c8c8c;
-
-  strong {
-    color: var(--ant-primary-color);
-  }
-}
 </style>

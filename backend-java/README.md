@@ -1,77 +1,27 @@
 # MyBlog Java 后端
 
-MyBlog 后端已合并为一个 Java 21 / Spring Boot 单体工程。项目只有一个 `pom.xml`、一套 `src` 和一个可部署 JAR，不再拆分 `myblog-common`、`myblog-pojo`、`myblog-server`。
+Java 21 / Spring Boot 单体服务，使用 PostgreSQL、Redis、MyBatis-Plus、JWT 与 OSS。
 
-## 目录结构
-
-```text
-backend-java/
-├── src/main/java/com/myblog/
-│   ├── application/              # 应用层：业务模型、用例、仓储与外部能力端口
-│   │   ├── model/
-│   │   ├── port/
-│   │   ├── repository/
-│   │   └── service/              # auth/user/content/file/visit/system 等应用服务
-│   ├── common/                   # 公共层：异常、响应、安全身份、公共配置
-│   ├── controller/               # 接口层：HTTP入口与全局异常处理
-│   ├── infrastructure/           # 基础设施层：PostgreSQL、Redis、JWT、OSS
-│   ├── starter/                  # 启动配置层：过滤器、Spring配置、初始化装配
-│   └── ApplicationLoader.java    # 唯一应用入口
-├── src/main/resources/           # application.yml与Flyway脚本
-├── src/test/java/                # 单元测试与ArchUnit架构测试
-├── Dockerfile
-└── pom.xml
-```
-
-`controller` 与其他层平级，不属于 `starter`。应用服务按用户看到的具体功能拆分，例如项目接口、项目服务和项目命令分别位于 `controller/ProjectController`、`service/project` 和 `command/project`。详细依赖规则见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
-
-## 本地构建
-
-在 `backend-java` 目录执行：
+## 构建与运行
 
 ```powershell
-mvn test
-mvn package
-```
-
-在仓库根目录执行：
-
-```powershell
-mvn -f backend-java/pom.xml test
+mvn -f backend-java/pom.xml clean test
 docker compose up -d --build api
 ```
 
-构建产物为：
-
-```text
-backend-java/target/myblog-backend-1.0.0.jar
-```
+构建产物为 `backend-java/target/myblog-backend-1.0.0.jar`。
 
 ## 内容发布模型
 
-页面内容统一保存在 `content_modules`，发布快照保存在 `content_publications`。每个模块分别维护草稿版本和线上版本，因此管理员保存草稿不会改变访客看到的内容；发布、下线和回滚都由服务端完成并校验数据约束。
+七个模块 `home`、`about`、`skills`、`footprints`、`hobbies`、`vibe`、`mylab` 使用关系表保存完整版本。`content_releases` 维护 `DRAFT/PUBLISHED/ARCHIVED/OFFLINE` 状态；发布内容只读，继续编辑或恢复历史会创建更高版本号的新草稿。
 
-- 公共读取：`GET /api/v1/public/content`、`GET /api/v1/public/content/{moduleKey}`。
-- 后台草稿：`GET/PUT /api/v1/admin/content/{moduleKey}`。
-- 发布控制：`POST /api/v1/admin/content/{moduleKey}/publish|offline|rollback/{version}`。
-- 历史版本：`GET /api/v1/admin/content/{moduleKey}/versions`。
+MyLab 卡片使用 `PROJECT/ARTICLE` 类型统一承载首页项目与文章。全局标签位于 `mylab_tags`，不参与版本；`mylab_card_tags` 使用外键和排序字段保存卡片标签，接口仍以有序 `tag_ids` 数组交互。图片及 Markdown 正文均通过 `resources` 和三个资源关联表管理。
 
-模块键仅为 `skills`、`projects`、`footprints`、`hobbies`、`vibe`、`mylab`、`support`。页面标题、描述、关于我、Time 曲线、足迹地图配置、Vibe Coding 左侧主视觉和支持页非统计信息不进入内容模型；支持页面统计使用独立访问会话数、浏览记录总数和后台手动维护的点赞数。
+数据库最终结构共 19 张业务表。V1 直接创建完整表结构，V2 创建七个初始发布版本、全局标签及对应资源元数据。项目不启用 Flyway；Docker 只在 PostgreSQL 空数据卷首次初始化时执行 V1/V2。当前不包含访问量、访客数、点赞数、`support` 或独立 `projects` 模块。
 
-V1 仅建立 `users`、`files`、`visit_logs`、`content_modules`、`content_publications` 五张表；V2 初始化七个模块和七条 v1 发布快照。项目发布依赖已发布的 myLab 记录；删除或停用被线上项目引用的 myLab 记录也会被服务端拒绝。
+接口和表结构详见：
 
-## API 文档与 Swagger
-
+- [API 接口文档](../docs/API接口文档.md)
+- [数据库表结构](../docs/数据库表结构重设计.md)
 - Swagger UI：`/swagger-ui.html`
-- OpenAPI 3.0 JSON：`/v3/api-docs`
-- OpenAPI 3.0 YAML：`/v3/api-docs.yaml`
-- 完整接口清单：[../docs/API接口文档.md](../docs/API接口文档.md)
-- 错误码规范：[../docs/错误码文档.md](../docs/错误码文档.md)
-
-Swagger UI 支持使用 JWT Bearer access token 在线调试受保护接口。生产环境如不希望公开文档，可通过 `SPRINGDOC_API_DOCS_ENABLED=false` 和 `SPRINGDOC_SWAGGER_UI_ENABLED=false` 关闭。
-
-## OSS/CDN
-
-媒体应用服务只依赖 `ObjectStorage` 端口，阿里云 OSS SDK 位于 `infrastructure/storage/oss`。生产环境需配置 `OSS_ENDPOINT`、`OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`、`OSS_BUCKET` 与 `OSS_CDN_DOMAIN`。
-
-建议 ECS 使用同地域 OSS 内网 Endpoint 上传，公开图片通过 CDN 域名返回；数据库仅保存对象键和文件元数据，不保存图片二进制。
+- OpenAPI：`/v3/api-docs`

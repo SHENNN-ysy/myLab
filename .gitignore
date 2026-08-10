@@ -36,9 +36,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.tsbuildinfo
 
 # ============== IDE / 编辑器 ==============
 .idea/
+.kimi-code/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json

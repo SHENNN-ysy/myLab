@@ -14,17 +14,26 @@ import java.util.Date;
 import java.util.UUID;
 
 /**
- * Pure JWT signing / parsing utility. Does not depend on Redis or user lookup.
+ * 纯 JWT 签名/解析工具类：不依赖 Redis，也不做用户查询，
+ * 黑名单等有状态校验由 {@link JwtService} 负责。
  */
 public final class JwtUtil {
 
     private JwtUtil() {
     }
 
+    /** 由配置中的密钥构建 HMAC-SHA 签名密钥 */
     private static SecretKey key(AppProperties props) {
         return Keys.hmacShaKeyFor(props.jwtSecret().getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * 签发 JWT。
+     *
+     * @param subject 令牌主体（用户 id）
+     * @param type    令牌类型（access / refresh），解析时会校验
+     * @param ttl     有效期
+     */
     public static String issue(AppProperties props, String subject, String role,
                                String type, Duration ttl) {
         Instant now = Instant.now();
@@ -39,6 +48,12 @@ public final class JwtUtil {
                 .compact();
     }
 
+    /**
+     * 验签并解析 JWT 负载。
+     *
+     * @throws ExpiredJwtException 令牌已过期
+     * @throws io.jsonwebtoken.JwtException 签名非法或格式错误
+     */
     public static Claims parse(AppProperties props, String token) {
         return Jwts.parser()
                 .verifyWith(key(props))
@@ -47,7 +62,7 @@ public final class JwtUtil {
                 .getPayload();
     }
 
-    /** Returns true if the token is expired. Used by callers that want to translate exceptions. */
+    /** 判断异常是否由令牌过期引起，供调用方转换为业务异常 */
     public static boolean isExpired(Throwable error) {
         return error instanceof ExpiredJwtException;
     }

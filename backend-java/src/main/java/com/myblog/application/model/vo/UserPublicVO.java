@@ -1,15 +1,6 @@
 package com.myblog.application.model.vo;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.UUID;
 
-/** Public-facing user projection returned by auth and self endpoints. */
-public record UserPublicVO(
-        UUID id,
-        String username,
-        String email,
-        String nickname,
-        String role,
-        @JsonProperty("avatar_url") String avatarUrl) {
-}
+/** 用户的公开信息视图，只保留可对外暴露的最小字段集。 */
+public record UserPublicVO(UUID id, String username, String role) { }

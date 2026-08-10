@@ -45,6 +45,8 @@ public enum ErrorCode {
     FILE_NOT_FOUND(13004, HttpStatus.NOT_FOUND, "文件不存在"),
     STORAGE_UNAVAILABLE(13005, HttpStatus.SERVICE_UNAVAILABLE, "文件存储服务不可用"),
 
+    ENGAGEMENT_UNAVAILABLE(14001, HttpStatus.SERVICE_UNAVAILABLE, "互动统计服务暂不可用"),
+
     INTERNAL_ERROR(20001, HttpStatus.INTERNAL_SERVER_ERROR, "服务器内部错误"),
     DATABASE_ERROR(20002, HttpStatus.INTERNAL_SERVER_ERROR, "数据库操作失败");
 
@@ -70,6 +72,11 @@ public enum ErrorCode {
         return message;
     }
 
+    /**
+     * 按数字错误码反查枚举。
+     *
+     * @throws IllegalArgumentException 错误码不存在时抛出
+     */
     public static ErrorCode fromCode(int code) {
         return Arrays.stream(values())
                 .filter(item -> item.code == code)

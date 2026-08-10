@@ -1,16 +1,13 @@
-// User - 用户
+export type UserRole = 'superadmin' | 'admin' | 'editor' | 'viewer'
+
 export interface User {
   id: string
   username: string
-  email: string
-  nickname?: string
-  avatar?: string
-  role: 'super_admin' | 'admin' | 'user' | 'guest'
-  status: 'active' | 'disabled'
-  website?: string
-  bio?: string
-  lastLogin?: string
+  role: UserRole
+  isActive: boolean
+  lastLoginAt?: string
   createdAt?: string
+  updatedAt?: string
 }
 
 // Login form
@@ -19,32 +16,21 @@ export interface LoginForm {
   password: string
 }
 
-// System Settings
-export interface SystemSettings {
-  siteName: string
-  siteDescription: string
-  siteSlogan: string
-  email: string
-  github?: string
-  weibo?: string
-  themeColor: string
-}
-
-// API Response
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T> {
   code: number
-  data: T
   message: string
+  data: T | null
+  error?: string
 }
 
-// Operation Log
-export interface OperationLog {
-  id: string
-  action: string
-  target: string
-  time: string
-  status: 'success' | 'failed'
+export interface PageResult<T> {
+  records: T[]
+  total: number
+  page: number
+  pageSize: number
 }
+
+export type ResourceDirectory = 'footstep' | 'hero' | 'hobbies' | 'icon' | 'mylab' | 'mylab-post'
 
 // Menu item
 export interface MenuItem {
@@ -54,38 +40,16 @@ export interface MenuItem {
   children?: MenuItem[]
 }
 
-// Visit Trend - 访问趋势
-export interface VisitTrend {
-  date: string       // 日期，如 "7/8"
-  views: number      // 浏览量
-  visits: number     // 访问数
-}
-
-// Visit Log - 访问日志
-export interface VisitLog {
+export interface FileResource {
   id: string
-  visitorId: string
-  ip: string
-  pageUrl: string
-  location: string
-  browser: string
-  os: string
-  referer: string
-  visitTime: string
-}
-
-// File - 文件
-export interface FileItem {
-  id: string
-  fileName: string
+  objectKey: string
+  directory?: ResourceDirectory
+  bucket: string
   originalName: string
-  fileUrl: string
-  fileType: string
-  fileSize: number
-  status: number      // 1: 使用中, 0: 未使用
-  uploadType: string
-  uploadTime: string
-  uploader?: string
+  mimeType: string
+  size: number
+  createdAt: string
+  url?: string
 }
 
 // System Static Info - 系统静态信息
@@ -122,5 +86,14 @@ export interface SystemDynamic {
   dbStatus: string
   dbSize: number
   dbConnCount: number
+}
+
+export interface HealthStatus {
+  status: 'healthy' | 'degraded'
+  components: {
+    database: 'up' | 'down'
+    redis: 'up' | 'down'
+    oss: 'configured' | 'not_configured'
+  }
 }
 

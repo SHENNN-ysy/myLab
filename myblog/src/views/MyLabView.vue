@@ -163,23 +163,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import LabCard from '../components/LabCard.vue'
-import { labPosts as fallbackLabPosts, type LabPost } from '../data/labPosts'
-import { usePublicContent } from '../composables/usePublicContent'
+import { useLabPosts } from '../composables/useLabPosts'
 
-const { content } = usePublicContent()
-const labPosts = computed<LabPost[]>(() => {
-  const posts = content.value.mylab?.posts
-  if (!Array.isArray(posts)) return fallbackLabPosts
-  return posts.filter((post: any) => post.enabled !== false).map((post: any) => ({
-    id: post.id,
-    date: post.date,
-    title: post.title,
-    tags: post.tags || [],
-    summary: post.summary || '',
-    image: post.image || undefined,
-    sections: post.sections || [],
-  }))
-})
+const { content, labPosts } = useLabPosts()
 
 /* ============ 筛选状态 ============ */
 const keyword = ref('')
@@ -195,10 +181,10 @@ const tagSummary = computed(() => {
     }
   }
   const managedTags = content.value.mylab?.tags
-  if (Array.isArray(managedTags)) {
+  if (Array.isArray(managedTags) && managedTags.length > 0 && (content.value.mylab?.cards?.length ?? 0) > 0) {
     return managedTags
-      .filter((tag: any) => tag.enabled !== false)
-      .map((tag: any) => ({ tag: tag.name, count: counts.get(tag.name) ?? 0 }))
+      .filter(tag => tag.enabled !== false && Boolean(tag.name))
+      .map(tag => ({ tag: tag.name as string, count: counts.get(tag.name as string) ?? 0 }))
   }
   return [...counts.entries()]
     .map(([tag, count]) => ({ tag, count }))
