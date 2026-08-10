@@ -73,8 +73,8 @@
                 <a-col :span="24"><a-form-item label="标题"><a-input v-model:value="card.title" /></a-form-item></a-col>
                 <a-col :span="24"><a-form-item label="摘要"><a-textarea v-model:value="card.summary" :rows="3" /></a-form-item></a-col>
                 <a-col :xs="24" :md="12"><a-form-item label="标签"><a-select v-model:value="card.tagIds" mode="multiple" :options="tagOptions" placeholder="从标签管理列表中选择" /></a-form-item></a-col>
-                <a-col :xs="24" :md="12"><a-form-item label="OSS 封面资源"><OssImageResourcePicker v-model="card.imageResource" /></a-form-item></a-col>
-                <a-col :span="24"><a-form-item label="MyLab 详情 Markdown 正文"><OssDocumentResourcePicker v-model="card.contentResource" /></a-form-item></a-col>
+                <a-col :xs="24" :md="12"><a-form-item label="OSS 封面资源"><OssImageResourcePicker v-model="card.imageResource" directory="mylab-post" /></a-form-item></a-col>
+                <a-col :span="24"><a-form-item label="MyLab 详情 Markdown 正文"><OssDocumentResourcePicker v-model="card.contentResource" directory="mylab" /></a-form-item></a-col>
                 <template v-if="card.cardType === 'PROJECT'">
                   <a-col :xs="24" :md="6"><a-form-item label="首页项目排序"><a-input-number v-model:value="card.projectShowOrder" :min="0" /></a-form-item></a-col>
                   <a-col :xs="24" :md="18"><a-form-item label="首页项目侧边栏正文"><a-textarea v-model:value="card.projectContents" :rows="5" /></a-form-item></a-col>

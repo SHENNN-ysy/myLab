@@ -2,9 +2,7 @@ export interface Skill {
   name: string
   percentage: number
   level: 'proficient' | 'competent' | 'novice'
-  levelText: string
   icon: string
-  barStyle?: 'coral' | 'teal'
 }
 
 export interface Hobby {
@@ -34,13 +32,13 @@ export interface AITool {
 }
 
 export const skills: Skill[] = [
-  { name: 'C# / .NET', percentage: 80, level: 'proficient', levelText: '熟练', icon: 'grid', barStyle: 'coral' },
-  { name: 'Java / Spring Boot', percentage: 80, level: 'proficient', levelText: '熟练', icon: 'server', barStyle: 'coral' },
-  { name: 'Docker', percentage: 70, level: 'competent', levelText: '熟练', icon: 'box', barStyle: 'teal' },
-  { name: 'SQL', percentage: 70, level: 'competent', levelText: '熟练', icon: 'shield', barStyle: 'teal' },
-  { name: 'JavaScript / TypeScript', percentage: 30, level: 'novice', levelText: '入门', icon: 'terminal' },
-  { name: 'React / Vue', percentage: 30, level: 'novice', levelText: '入门', icon: 'smartphone' },
-  { name: 'Python', percentage: 30, level: 'novice', levelText: '入门', icon: 'pen' }
+  { name: 'C# / .NET', percentage: 80, level: 'proficient', icon: 'grid' },
+  { name: 'Java / Spring Boot', percentage: 80, level: 'proficient', icon: 'server' },
+  { name: 'Docker', percentage: 70, level: 'competent', icon: 'box' },
+  { name: 'SQL', percentage: 70, level: 'competent', icon: 'shield' },
+  { name: 'JavaScript / TypeScript', percentage: 30, level: 'novice', icon: 'terminal' },
+  { name: 'React / Vue', percentage: 30, level: 'novice', icon: 'smartphone' },
+  { name: 'Python', percentage: 30, level: 'novice', icon: 'pen' }
 ]
 
 export const hobbies: Hobby[] = [

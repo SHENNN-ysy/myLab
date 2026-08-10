@@ -18,12 +18,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.Duration;
 
+/**
+ * 基于 Redis 的 IP 限流过滤器：全局请求与登录接口按分钟窗口分别计数，超限返回 429。
+ * Redis 不可用时放行（best-effort），执行优先级仅次于 {@link WebFilters}。
+ */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private final StringRedisTemplate redis;
-    private final AppProperties props;
+    private final StringRedisTemplate redis; // 限流计数存储
+    private final AppProperties props;       // 限流阈值等应用配置
     private final ObjectMapper om = JacksonObjectMapper.get();
 
     public RateLimitFilter(StringRedisTemplate redis, AppProperties props) {
@@ -31,6 +35,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         this.props = props;
     }
 
+    /**
+     * 判断当前请求是否跳过限流：Swagger 文档与健康检查接口不参与限流。
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
@@ -40,6 +47,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 || path.startsWith("/actuator/health");
     }
 
+    /**
+     * 对请求来源 IP 按分钟窗口计数：登录接口使用独立（通常更严格的）阈值，超限直接返回 429。
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {

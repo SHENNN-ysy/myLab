@@ -19,9 +19,8 @@
           <a-table v-if="moduleKey === 'skills'" :data-source="current.skills" :pagination="false" row-key="id" size="small">
             <a-table-column title="名称" data-index="name" />
             <a-table-column title="百分比" data-index="percentage"><template #default="{ text }">{{ text }}%</template></a-table-column>
-            <a-table-column title="等级" data-index="levelText" />
+            <a-table-column title="等级"><template #default="{ record }"><a-tag :color="skillLevelMeta(record.levelCode).tagColor">{{ skillLevelMeta(record.levelCode).label }}</a-tag></template></a-table-column>
             <a-table-column title="图标资源"><template #default="{ record }"><a-space><img v-if="record.iconResource?.url" class="skill-icon" :src="record.iconResource.url" :alt="record.name" /><a-tag v-else>前台内置图标：{{ record.frontendIcon }}</a-tag></a-space></template></a-table-column>
-            <a-table-column title="进度条样式"><template #default="{ record }">{{ record.barStyle === 'coral' ? '珊瑚色' : '青绿色' }}</template></a-table-column>
           </a-table>
 
           <template v-else-if="moduleKey === 'footprints'">
@@ -84,13 +83,11 @@
 
           <template v-if="moduleKey === 'skills'">
             <CollectionHeader :title="`技术栈列表（已启用 ${enabledCount(draft.skills)}/${MAX_SKILLS}，共 ${draft.skills.length} 条）`" @add="addSkill" />
-            <a-table :data-source="draft.skills" :pagination="false" row-key="id" size="small" :scroll="{ x: 920 }">
+            <a-table :data-source="draft.skills" :pagination="false" row-key="id" size="small" :scroll="{ x: 1020 }">
               <a-table-column title="名称" width="190"><template #default="{ record }"><a-input v-model:value="record.name" /></template></a-table-column>
               <a-table-column title="百分比" width="110"><template #default="{ record }"><a-input-number v-model:value="record.percentage" :min="0" :max="100" /></template></a-table-column>
               <a-table-column title="等级" width="130"><template #default="{ record }"><a-select v-model:value="record.levelCode" :options="levelOptions" /></template></a-table-column>
-              <a-table-column title="显示文字" width="130"><template #default="{ record }"><a-input v-model:value="record.levelText" /></template></a-table-column>
-              <a-table-column title="OSS 图标资源" width="330"><template #default="{ record }"><OssImageResourcePicker v-model="record.iconResource" /></template></a-table-column>
-              <a-table-column title="样式" width="130"><template #default="{ record }"><a-select v-model:value="record.barStyle" :options="barStyleOptions" /></template></a-table-column>
+              <a-table-column title="OSS 图标资源" width="330"><template #default="{ record }"><OssImageResourcePicker v-model="record.iconResource" directory="icon" /></template></a-table-column>
               <a-table-column title="启用" width="70"><template #default="{ record }"><a-switch v-model:checked="record.enabled" @change="onEnabledChange(draft.skills, record, Boolean($event), MAX_SKILLS, '技术栈卡片')" /></template></a-table-column>
               <a-table-column title="操作" width="190" fixed="right"><template #default="{ record, index }"><ListActions :index="Number(index)" :length="draft.skills.length" @move="move(draft.skills, Number(index), $event)" @remove="remove(draft.skills, record.id)" /></template></a-table-column>
             </a-table>
@@ -110,7 +107,7 @@
                     <a-form-item label="照片墙图片（支持多张）">
                       <div class="photo-editor-list">
                         <div v-for="(photo, photoIndex) in item.photos" :key="photo.id" class="photo-editor-item">
-                          <OssImageResourcePicker v-model="photo.resource" />
+                          <OssImageResourcePicker v-model="photo.resource" directory="footstep" />
                           <a-space size="small">
                             <a-button size="small" :disabled="photoIndex === 0" @click="movePhoto(item, photoIndex, -1)">上移</a-button>
                             <a-button size="small" :disabled="photoIndex === item.photos.length - 1" @click="movePhoto(item, photoIndex, 1)">下移</a-button>
@@ -134,7 +131,7 @@
                 <template #extra><ListActions :index="Number(index)" :length="draft.hobbies.length" @move="move(draft.hobbies, Number(index), $event)" @remove="remove(draft.hobbies, item.id)" /></template>
                 <a-form-item label="标题"><a-input v-model:value="item.title" /></a-form-item>
                 <a-form-item label="描述"><a-textarea v-model:value="item.description" :rows="3" /></a-form-item>
-                <a-form-item label="OSS 图片资源"><OssImageResourcePicker v-model="item.imageResource" /></a-form-item>
+                <a-form-item label="OSS 图片资源"><OssImageResourcePicker v-model="item.imageResource" directory="hobbies" /></a-form-item>
                 <img v-if="item.image" class="draft-image" :src="item.image" :alt="item.title" />
                 <a-switch v-model:checked="item.enabled" @change="onEnabledChange(draft.hobbies, item, Boolean($event), MAX_HOBBIES, '爱好卡片')" /> 启用
               </a-card>
@@ -258,7 +255,17 @@ const levelOptions = [
   { value: 'competent', label: '掌握' },
   { value: 'novice', label: '入门' }
 ]
-const barStyleOptions = [{ value: 'coral', label: '珊瑚色' }, { value: 'teal', label: '青绿色' }]
+type SkillLevelPresentation = {
+  label: string
+  barStyle: SkillsContentData['items'][number]['bar_style']
+  tagColor?: string
+}
+const skillLevelPresentation: Record<SkillItem['levelCode'], SkillLevelPresentation> = {
+  proficient: { label: '熟练', barStyle: 'coral', tagColor: 'volcano' },
+  competent: { label: '掌握', barStyle: 'teal', tagColor: 'cyan' },
+  novice: { label: '入门', barStyle: 'gray-white' }
+}
+const skillLevelMeta = (levelCode: SkillItem['levelCode']) => skillLevelPresentation[levelCode]
 const timeKeys: HobbyTimeKey[] = ['Study', 'Music', 'Game', 'Coding', 'Social']
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 const replaceArray = <T>(target: T[], source: T[]) => target.splice(0, target.length, ...source)
@@ -269,10 +276,8 @@ const mapSkills = (data?: SkillsContentData): SkillItem[] => (data?.items || [])
   name: item.name || '',
   percentage: Number(item.percentage || 0),
   levelCode: item.level_code || 'novice',
-  levelText: item.level_text || '',
   frontendIcon: '',
   iconResource: item.icon_resource_id ? { id: item.icon_resource_id, name: `${item.name || '技术栈'}图标`, url: item.icon_url || '' } : null,
-  barStyle: item.bar_style || 'teal',
   enabled: item.enabled !== false
 }))
 
@@ -383,7 +388,7 @@ const onEnabledChange = <T extends { enabled: boolean }>(items: T[], item: T, ch
   message.warning(`${label}最多只能启用 ${limit} 条`)
 }
 
-const addSkill = () => draft.skills.push({ id: makeId('skill'), name: '', percentage: 50, levelCode: 'competent', levelText: '掌握', frontendIcon: '', iconResource: null, barStyle: 'teal', enabled: canEnable(draft.skills, MAX_SKILLS) })
+const addSkill = () => draft.skills.push({ id: makeId('skill'), name: '', percentage: 50, levelCode: 'competent', frontendIcon: '', iconResource: null, enabled: canEnable(draft.skills, MAX_SKILLS) })
 const addFootprint = () => draft.footprints.push({ id: makeId('city'), city: '', title: '', summary: '', contents: '', photos: [], enabled: canEnable(draft.footprints, MAX_FOOTPRINTS) })
 const addPhoto = (item: FootprintItem) => item.photos.push({ id: makeId('photo'), resource: null })
 const movePhoto = (item: FootprintItem, index: number, delta: number) => move(item.photos, index, delta)
@@ -429,9 +434,9 @@ const payload = (): SupportedContentData => {
       name: item.name.trim(),
       percentage: item.percentage,
       level_code: item.levelCode,
-      level_text: item.levelText.trim(),
+      level_text: skillLevelMeta(item.levelCode).label,
       icon_resource_id: item.iconResource?.id,
-      bar_style: item.barStyle,
+      bar_style: skillLevelMeta(item.levelCode).barStyle,
       is_new: false,
       enabled: item.enabled,
       sort_order: index

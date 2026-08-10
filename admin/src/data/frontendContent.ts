@@ -6,10 +6,8 @@ export interface SkillItem {
   name: string
   percentage: number
   levelCode: 'proficient' | 'competent' | 'novice'
-  levelText: string
   frontendIcon: string
   iconResource: { id: string; name: string; url: string } | null
-  barStyle: 'coral' | 'teal'
   enabled: boolean
 }
 
@@ -81,13 +79,13 @@ const blogOrigin = (import.meta.env.VITE_BLOG_ORIGIN || 'http://localhost:5173')
 
 export const frontendContent: StaticContentMap = {
   skills: [
-    { id: 'csharp-dotnet', name: 'C# / .NET', percentage: 80, levelCode: 'proficient', levelText: '熟练', frontendIcon: 'grid', iconResource: null, barStyle: 'coral', enabled: true },
-    { id: 'java-spring-boot', name: 'Java / Spring Boot', percentage: 80, levelCode: 'proficient', levelText: '熟练', frontendIcon: 'server', iconResource: null, barStyle: 'coral', enabled: true },
-    { id: 'docker', name: 'Docker', percentage: 70, levelCode: 'competent', levelText: '熟练', frontendIcon: 'box', iconResource: null, barStyle: 'teal', enabled: true },
-    { id: 'sql', name: 'SQL', percentage: 70, levelCode: 'competent', levelText: '熟练', frontendIcon: 'shield', iconResource: null, barStyle: 'teal', enabled: true },
-    { id: 'javascript-typescript', name: 'JavaScript / TypeScript', percentage: 30, levelCode: 'novice', levelText: '入门', frontendIcon: 'terminal', iconResource: null, barStyle: 'coral', enabled: true },
-    { id: 'react-vue', name: 'React / Vue', percentage: 30, levelCode: 'novice', levelText: '入门', frontendIcon: 'smartphone', iconResource: null, barStyle: 'coral', enabled: true },
-    { id: 'python', name: 'Python', percentage: 30, levelCode: 'novice', levelText: '入门', frontendIcon: 'pen', iconResource: null, barStyle: 'coral', enabled: true }
+    { id: 'csharp-dotnet', name: 'C# / .NET', percentage: 80, levelCode: 'proficient', frontendIcon: 'grid', iconResource: null, enabled: true },
+    { id: 'java-spring-boot', name: 'Java / Spring Boot', percentage: 80, levelCode: 'proficient', frontendIcon: 'server', iconResource: null, enabled: true },
+    { id: 'docker', name: 'Docker', percentage: 70, levelCode: 'competent', frontendIcon: 'box', iconResource: null, enabled: true },
+    { id: 'sql', name: 'SQL', percentage: 70, levelCode: 'competent', frontendIcon: 'shield', iconResource: null, enabled: true },
+    { id: 'javascript-typescript', name: 'JavaScript / TypeScript', percentage: 30, levelCode: 'novice', frontendIcon: 'terminal', iconResource: null, enabled: true },
+    { id: 'react-vue', name: 'React / Vue', percentage: 30, levelCode: 'novice', frontendIcon: 'smartphone', iconResource: null, enabled: true },
+    { id: 'python', name: 'Python', percentage: 30, levelCode: 'novice', frontendIcon: 'pen', iconResource: null, enabled: true }
   ],
   footprints: [
     {

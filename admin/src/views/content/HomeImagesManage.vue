@@ -62,7 +62,7 @@
                 </a-space>
               </div>
 
-              <OssImageResourcePicker v-model="item.resource" />
+              <OssImageResourcePicker v-model="item.resource" directory="hero" />
               <a-form-item label="图片说明" class="alt-field">
                 <a-input v-model:value="item.alt" :maxlength="100" placeholder="用于图片替代文本" />
               </a-form-item>

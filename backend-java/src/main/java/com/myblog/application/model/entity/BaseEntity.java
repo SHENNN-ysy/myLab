@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
- * Base fields shared by every soft-deletable entity.
+ * 所有支持逻辑删除的实体共享的基础字段（主键与审计时间）。
  */
 @Data
 public abstract class BaseEntity {
@@ -21,6 +21,7 @@ public abstract class BaseEntity {
 
     private OffsetDateTime updatedAt;
 
+    // 逻辑删除标记：未删除为 NULL，删除时写入当前时间
     @TableLogic(value = "NULL", delval = "now()")
     private OffsetDateTime deletedAt;
 }

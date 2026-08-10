@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /**
- * Shared ObjectMapper with snake_case + non-null conventions matching the Python contract.
+ * 共享 ObjectMapper：蛇形命名 + 忽略 null 字段，序列化约定与原 Python 后端契约保持一致。
  */
 public final class JacksonObjectMapper {
 
@@ -19,6 +19,7 @@ public final class JacksonObjectMapper {
     private JacksonObjectMapper() {
     }
 
+    /** 获取全局共享的 ObjectMapper 实例（线程安全）。 */
     public static ObjectMapper get() {
         return INSTANCE;
     }

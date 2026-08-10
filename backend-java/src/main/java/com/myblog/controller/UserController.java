@@ -22,18 +22,26 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
+/**
+ * 管理员账号管理接口：账号的分页查询、创建、更新与删除。
+ * 创建和删除仅 superadmin 可执行，业务逻辑委托给 {@link UserService}。
+ */
 @RestController
 @RequestMapping("/api/v1/users")
 @Tag(name = "管理员")
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
+    // 管理员账号应用服务
     private final UserService users;
 
     public UserController(UserService users) {
         this.users = users;
     }
 
+    /**
+     * 分页查询管理员账号列表。
+     */
     @GetMapping
     @Operation(summary = "分页查询管理员账号")
     public Result<PageResult<UserOutVO>> list(@AuthenticationPrincipal CurrentUser actor,
@@ -42,6 +50,9 @@ public class UserController {
         return Result.ok(users.page(actor, page, size));
     }
 
+    /**
+     * 创建管理员账号，仅 superadmin 可执行。
+     */
     @PostMapping
     @Operation(summary = "创建管理员账号", description = "仅 superadmin 可执行。")
     public Result<UserOutVO> create(@AuthenticationPrincipal CurrentUser actor,
@@ -49,6 +60,9 @@ public class UserController {
         return Result.ok(users.create(actor, command));
     }
 
+    /**
+     * 更新指定管理员账号。
+     */
     @PutMapping("/{id}")
     @Operation(summary = "更新管理员账号")
     public Result<UserOutVO> update(@AuthenticationPrincipal CurrentUser actor,
@@ -57,6 +71,9 @@ public class UserController {
         return Result.ok(users.update(actor, id, command));
     }
 
+    /**
+     * 删除指定管理员账号，仅 superadmin 可执行。
+     */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除管理员账号", description = "仅 superadmin 可执行。")
     public Result<?> delete(@AuthenticationPrincipal CurrentUser actor, @PathVariable UUID id) {

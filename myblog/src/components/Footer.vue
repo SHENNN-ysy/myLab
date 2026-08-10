@@ -1,7 +1,7 @@
 <template>
   <footer>
     <span class="copy">&copy; 2026 旅行者 · shennn</span>
-    <span class="back-top" @click="scrollToTop">↑ 回到顶部</span>
+    <button type="button" class="back-top" @click="scrollToTop">↑ 回到顶部</button>
   </footer>
 </template>
 
@@ -17,10 +17,12 @@ footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1.5rem;
   border-top: 1px solid var(--border);
 }
 
-.copy {
+.copy,
+.back-top {
   font-family: var(--font-mono);
   font-size: 0.65rem;
   letter-spacing: 0.08em;
@@ -28,16 +30,18 @@ footer {
 }
 
 .back-top {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
   text-transform: uppercase;
-  color: var(--ink-muted);
   cursor: pointer;
   transition: color 0.2s;
 }
 
-.back-top:hover {
-  color: var(--accent);
+.back-top:hover { color: var(--accent); }
+
+@media (max-width: 720px) {
+  footer { padding: 1.3rem 1.25rem; align-items: flex-start; }
 }
 </style>

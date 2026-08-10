@@ -13,6 +13,20 @@
               <a-select-option value="pdf">PDF</a-select-option>
               <a-select-option value="text">Markdown / 文本</a-select-option>
             </a-select>
+            <a-select
+              v-model:value="filterDirectory"
+              placeholder="筛选 OSS 目录"
+              allow-clear
+              style="width: 150px"
+              :options="resourceDirectoryOptions"
+              @change="onDirectoryFilterChange"
+            />
+            <a-select
+              v-model:value="uploadDirectory"
+              style="width: 150px"
+              :options="resourceDirectoryOptions"
+              aria-label="上传目标目录"
+            />
             <a-button type="primary" @click="triggerUpload">
               <template #icon><UploadOutlined /></template>
               上传文件
@@ -76,6 +90,9 @@
               {{ getFileTypeLabel(record.mimeType) }}
             </a-tag>
           </template>
+          <template v-else-if="column.key === 'directory'">
+            <a-tag>{{ directoryLabel(record.directory) }}</a-tag>
+          </template>
           <template v-else-if="column.key === 'size'">{{ formatFileSize(record.size) }}</template>
           <template v-else-if="column.key === 'createdAt'">{{ formatTime(record.createdAt) }}</template>
           <template v-else-if="column.key === 'actions'">
@@ -104,18 +121,31 @@ import {
   SearchOutlined,
   UploadOutlined
 } from '@ant-design/icons-vue'
-import type { FileResource } from '@/types'
+import type { FileResource, ResourceDirectory } from '@/types'
 import { deleteFileApi, getFileAccessUrlApi, getFileListApi, uploadFileApi } from '@/api/file'
 
-const acceptedTypes = 'image/png,image/jpeg,image/webp,image/gif,application/pdf,text/markdown,text/plain,.md,.txt'
+const imageTypes = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml'
 const files = ref<FileResource[]>([])
 const loading = ref(false)
 const searchKeyword = ref('')
 const filterType = ref<string>()
+const filterDirectory = ref<ResourceDirectory>()
+const uploadDirectory = ref<ResourceDirectory>('hero')
 const fileInputRef = ref<HTMLInputElement>()
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const resourceDirectoryOptions: Array<{ value: ResourceDirectory, label: string }> = [
+  { value: 'hero', label: '首页图片 hero' },
+  { value: 'icon', label: '图标 icon' },
+  { value: 'hobbies', label: '爱好 hobbies' },
+  { value: 'footstep', label: '足迹 footstep' },
+  { value: 'mylab-post', label: 'MyLab 封面' },
+  { value: 'mylab', label: 'MyLab 正文' }
+]
+const acceptedTypes = computed(() => uploadDirectory.value === 'mylab'
+  ? `${imageTypes},application/pdf,text/markdown,text/plain,.md,.txt`
+  : imageTypes)
 
 const currentPageSizeText = computed(() => formatFileSize(files.value.reduce((sum, file) => sum + file.size, 0)))
 const pagination = computed<TablePaginationConfig>(() => ({
@@ -139,6 +169,7 @@ const columns = [
   { title: '预览', key: 'preview', width: 80, align: 'center' as const },
   { title: '文件', key: 'name', minWidth: 260 },
   { title: 'MIME', key: 'mimeType', width: 150, align: 'center' as const },
+  { title: '目录', key: 'directory', width: 130, align: 'center' as const },
   { title: '大小', key: 'size', width: 110, align: 'right' as const },
   { title: '存储桶', dataIndex: 'bucket', key: 'bucket', width: 130 },
   { title: '上传时间', key: 'createdAt', width: 180 },
@@ -148,7 +179,7 @@ const columns = [
 const loadData = async () => {
   loading.value = true
   try {
-    const result = await getFileListApi(page.value, pageSize.value)
+    const result = await getFileListApi(page.value, pageSize.value, filterDirectory.value)
     files.value = result.records
     total.value = result.total
   } finally {
@@ -159,6 +190,11 @@ const loadData = async () => {
 const handleTableChange = (value: TablePaginationConfig) => {
   page.value = value.current || 1
   pageSize.value = value.pageSize || 20
+  loadData()
+}
+
+const onDirectoryFilterChange = () => {
+  page.value = 1
   loadData()
 }
 
@@ -178,6 +214,7 @@ const formatFileSize = (size: number) => {
   return `${(size / 1024 ** 3).toFixed(2)} GB`
 }
 const formatTime = (value: string) => value ? new Date(value).toLocaleString('zh-CN') : '-'
+const directoryLabel = (directory?: ResourceDirectory) => resourceDirectoryOptions.find(item => item.value === directory)?.label || '旧本地资源'
 
 const triggerUpload = () => fileInputRef.value?.click()
 const handleUpload = async (event: Event) => {
@@ -185,7 +222,7 @@ const handleUpload = async (event: Event) => {
   if (!selected?.length) return
   loading.value = true
   try {
-    await Promise.all(Array.from(selected).map(file => uploadFileApi(file)))
+    await Promise.all(Array.from(selected).map(file => uploadFileApi(file, uploadDirectory.value)))
     message.success(`已上传 ${selected.length} 个文件`)
     page.value = 1
     await loadData()

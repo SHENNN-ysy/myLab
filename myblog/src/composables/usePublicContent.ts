@@ -43,7 +43,7 @@ export interface PublicSkill {
   level?: 'proficient' | 'competent' | 'novice'
   level_text?: string
   icon_url?: string
-  bar_style?: 'coral' | 'teal'
+  bar_style?: 'coral' | 'teal' | 'gray-white'
   is_new?: boolean
   enabled?: boolean
 }

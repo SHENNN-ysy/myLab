@@ -30,6 +30,8 @@ export interface PageResult<T> {
   pageSize: number
 }
 
+export type ResourceDirectory = 'footstep' | 'hero' | 'hobbies' | 'icon' | 'mylab' | 'mylab-post'
+
 // Menu item
 export interface MenuItem {
   index: string
@@ -41,6 +43,7 @@ export interface MenuItem {
 export interface FileResource {
   id: string
   objectKey: string
+  directory?: ResourceDirectory
   bucket: string
   originalName: string
   mimeType: string

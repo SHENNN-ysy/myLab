@@ -10,17 +10,24 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+/**
+ * 健康检查接口：公开端点，供部署探活与监控使用。
+ */
 @RestController
 @RequestMapping("/api/v1/health")
 @Tag(name = "健康检查")
 public class HealthController {
 
+    // 复用系统信息应用服务获取健康状态
     private final SystemService system;
 
     public HealthController(SystemService system) {
         this.system = system;
     }
 
+    /**
+     * 查询应用健康状态（应用、数据库、缓存等基础信息）。
+     */
     @GetMapping
     @Operation(summary = "查询应用健康状态", description = "公开接口，返回应用、数据库和缓存等基础健康信息。")
     public Result<Map<String, Object>> health() {

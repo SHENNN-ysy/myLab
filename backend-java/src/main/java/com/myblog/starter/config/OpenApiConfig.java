@@ -51,10 +51,21 @@ import java.util.Map;
         bearerFormat = "JWT",
         description = "登录后填写 access_token"
 )
+/**
+ * OpenAPI/Swagger 配置：声明 API 元信息、JWT Bearer 安全方案与各前台模块内容 Schema，
+ * 并通过全局 OperationCustomizer 为所有接口补充标准错误响应文档。
+ */
 public class OpenApiConfig {
+    /** Swagger 中 JWT 认证方案的名称，接口通过 @SecurityRequirement 引用 */
     public static final String BEARER_AUTH = "bearerAuth";
+    /** 统一错误响应在 components/schemas 中的名称 */
     private static final String ERROR_SCHEMA = "ApiErrorResponse";
 
+    /**
+     * 注册全局 OpenAPI Bean：定义统一错误响应及各前台模块（技能、足迹、爱好、vibe、MyLab）的内容 Schema。
+     *
+     * @return 包含全局组件 Schema 的 OpenAPI 对象
+     */
     @Bean
     public OpenAPI myBlogOpenApi() {
         Schema<?> errorSchema = new ObjectSchema()
@@ -84,16 +95,24 @@ public class OpenApiConfig {
         return new OpenAPI().components(components);
     }
 
+    /** 构造 "{集合字段: [item...]}" 结构的内容 Schema */
     private Schema<?> collectionSchema(String field, String... itemFields) {
         return new ObjectSchema().addProperty(field, new ArraySchema().items(itemSchema(itemFields)));
     }
 
+    /** 按字段名列表构造对象 item Schema（字段类型从简，文档中仅展示字段名） */
     private ObjectSchema itemSchema(String... fields) {
         ObjectSchema item = new ObjectSchema();
         for (String field : fields) item.addProperty(field, new Schema<>().description(field));
         return item;
     }
 
+    /**
+     * 全局 OperationCustomizer：为每个未显式声明的操作补充标准 HTTP 错误状态码响应，
+     * 示例体与全局异常处理返回的统一 Result 结构保持一致。
+     *
+     * @return 操作定制器 Bean
+     */
     @Bean
     public OperationCustomizer standardErrorResponses() {
         Map<String, ErrorExample> definitions = new LinkedHashMap<>();
@@ -117,6 +136,7 @@ public class OpenApiConfig {
         };
     }
 
+    /** 生成引用统一错误 Schema、带示例值的 ApiResponse */
     private ApiResponse errorResponse(ErrorExample definition) {
         io.swagger.v3.oas.models.media.MediaType mediaType = new io.swagger.v3.oas.models.media.MediaType()
                 .schema(new Schema<>().$ref("#/components/schemas/" + ERROR_SCHEMA))
@@ -125,6 +145,7 @@ public class OpenApiConfig {
                 .content(new io.swagger.v3.oas.models.media.Content().addMediaType("application/json", mediaType));
     }
 
+    /** 构造示例 JSON 体（LinkedHashMap 保证字段顺序稳定） */
     private Map<String, Object> example(ErrorExample definition) {
         Map<String, Object> value = new LinkedHashMap<>();
         value.put("code", definition.code());
@@ -133,6 +154,7 @@ public class OpenApiConfig {
         return value;
     }
 
+    /** 错误响应示例数据：业务错误码、错误说明与可选的错误细节 */
     private record ErrorExample(int code, String message, String detail) {
     }
 }

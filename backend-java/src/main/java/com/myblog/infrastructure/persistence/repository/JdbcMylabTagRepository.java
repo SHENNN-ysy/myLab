@@ -13,21 +13,31 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * 实验室（mylab）标签仓储：基于 {@link JdbcTemplate} 实现应用层 {@link MylabTagRepository} 端口，
+ * 负责 mylab_tags 表的查询与维护，删除采用软删除（写 deleted_at）。
+ */
 @Repository
 public class JdbcMylabTagRepository implements MylabTagRepository {
-    private static final RowMapper<MylabTag> MAPPER = JdbcMylabTagRepository::map;
+    private static final RowMapper<MylabTag> MAPPER = JdbcMylabTagRepository::map; // 结果集 → 实体
     private final JdbcTemplate jdbc;
 
     public JdbcMylabTagRepository(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
+    /**
+     * 查询全部未删除标签。
+     *
+     * @param includeDisabled 为 true 时包含已禁用标签，否则只返回启用中的
+     */
     @Override
     public List<MylabTag> findAll(boolean includeDisabled) {
         String filter = includeDisabled ? "" : " AND enabled = TRUE";
         return jdbc.query("SELECT * FROM mylab_tags WHERE deleted_at IS NULL" + filter + " ORDER BY sort_order, tag_key", MAPPER);
     }
 
+    /** 按 id 批量查询启用中的标签，入参为空时直接返回空列表 */
     @Override
     public List<MylabTag> findActiveByIds(Collection<UUID> ids) {
         if (ids.isEmpty()) return List.of();
@@ -42,6 +52,11 @@ public class JdbcMylabTagRepository implements MylabTagRepository {
         return rows.isEmpty() ? null : rows.getFirst();
     }
 
+    /**
+     * 校验 tag_key 或 name 是否已被占用（新增/编辑前的唯一性校验）。
+     *
+     * @param excludedId 编辑场景下需排除的自身 id，新增时传 null
+     */
     @Override
     public boolean keyOrNameExists(String key, String name, UUID excludedId) {
         Long count = jdbc.queryForObject("""
@@ -66,6 +81,7 @@ public class JdbcMylabTagRepository implements MylabTagRepository {
                 tag.getTagKey(), tag.getName(), tag.getEnabled(), tag.getSortOrder(), tag.getUpdatedAt(), tag.getId());
     }
 
+    /** 软删除标签；仅当记录存在且未删除时返回 true */
     @Override
     public boolean remove(UUID id) {
         return jdbc.update("UPDATE mylab_tags SET deleted_at = NOW(), updated_at = NOW() WHERE id = ? AND deleted_at IS NULL", id) == 1;

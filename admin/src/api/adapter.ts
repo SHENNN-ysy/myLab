@@ -1,4 +1,4 @@
-import type { FileResource, PageResult, User, UserRole } from '@/types'
+import type { FileResource, PageResult, ResourceDirectory, User, UserRole } from '@/types'
 
 interface BackendPageResult<T> {
   records: T[]
@@ -46,6 +46,7 @@ export const mapUser = (item: BackendUser): User => ({
 interface BackendFileResource {
   id: string
   object_key: string
+  directory?: ResourceDirectory
   bucket: string
   original_name?: string
   mime_type: string
@@ -57,6 +58,7 @@ interface BackendFileResource {
 export const mapFile = (item: BackendFileResource): FileResource => ({
   id: String(item.id),
   objectKey: item.object_key || '',
+  directory: item.directory,
   bucket: item.bucket || '',
   originalName: item.original_name || '',
   mimeType: item.mime_type || '',

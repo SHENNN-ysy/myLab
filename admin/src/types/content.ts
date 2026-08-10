@@ -55,7 +55,7 @@ export interface SkillData {
   level_text: string
   icon_resource_id?: string
   icon_url?: string
-  bar_style: 'coral' | 'teal'
+  bar_style: 'coral' | 'teal' | 'gray-white'
   is_new: boolean
   enabled: boolean
   sort_order: number

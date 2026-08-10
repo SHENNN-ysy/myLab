@@ -29,7 +29,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
-import type { FileResource } from '@/types'
+import type { FileResource, ResourceDirectory } from '@/types'
 import { getAllFilesApi, getFileAccessUrlApi, uploadFileApi } from '@/api/file'
 
 export interface OssImageResourceValue {
@@ -38,7 +38,7 @@ export interface OssImageResourceValue {
   url: string
 }
 
-defineProps<{ modelValue: OssImageResourceValue | null }>()
+const props = defineProps<{ modelValue: OssImageResourceValue | null, directory: ResourceDirectory }>()
 const emit = defineEmits<{ 'update:modelValue': [value: OssImageResourceValue | null] }>()
 const visible = ref(false)
 const loading = ref(false)
@@ -49,7 +49,7 @@ const openPicker = async () => {
   visible.value = true
   loading.value = true
   try {
-    files.value = (await getAllFilesApi()).filter(file => file.mimeType.startsWith('image/'))
+    files.value = (await getAllFilesApi(props.directory)).filter(file => file.mimeType.startsWith('image/'))
   } finally {
     loading.value = false
   }
@@ -68,7 +68,7 @@ const uploadImage = async (file: File) => {
   }
   uploading.value = true
   try {
-    const uploaded = await uploadFileApi(file)
+    const uploaded = await uploadFileApi(file, props.directory)
     files.value.unshift(uploaded)
     await selectFile(uploaded)
     message.success('图片已上传到 OSS')

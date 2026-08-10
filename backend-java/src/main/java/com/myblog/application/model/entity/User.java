@@ -9,6 +9,9 @@ import lombok.Data;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * 管理员用户实体，对应 users 表，承载后台账号体系与登录状态。
+ */
 @Data
 @TableName("users")
 public class User {
@@ -17,6 +20,7 @@ public class User {
     private UUID id;
 
     private String username;
+    // 密码哈希，任何出参都不得携带该字段
     private String passwordHash;
     private String role;
     private Boolean isActive;
@@ -24,6 +28,7 @@ public class User {
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
+    // 逻辑删除标记：未删除为 NULL，删除时写入当前时间
     @TableLogic(value = "NULL", delval = "now()")
     private OffsetDateTime deletedAt;
 }

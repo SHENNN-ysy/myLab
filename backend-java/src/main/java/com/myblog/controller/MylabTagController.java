@@ -20,28 +20,42 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * MyLab 标签管理接口（管理端）：标签的查询、创建、更新与删除。
+ * 业务逻辑委托给 {@link MylabTagService}。
+ */
 @RestController
 @RequestMapping("/api/v1/admin/mylab/tags")
 @Tag(name = "MyLab 标签")
 @SecurityRequirement(name = "bearerAuth")
 public class MylabTagController {
+    // MyLab 标签应用服务
     private final MylabTagService tags;
 
     public MylabTagController(MylabTagService tags) {
         this.tags = tags;
     }
 
+    /**
+     * 查询全部 MyLab 标签。
+     */
     @GetMapping
     public Result<List<MylabTag>> list(@AuthenticationPrincipal CurrentUser actor) {
         return Result.ok(tags.list(actor));
     }
 
+    /**
+     * 创建 MyLab 标签。
+     */
     @PostMapping
     public Result<MylabTag> create(@AuthenticationPrincipal CurrentUser actor,
                                    @RequestBody ContentDtos.TagWrite command) {
         return Result.ok(tags.create(actor, command), "标签已创建");
     }
 
+    /**
+     * 更新指定 MyLab 标签。
+     */
     @PutMapping("/{id}")
     public Result<MylabTag> update(@AuthenticationPrincipal CurrentUser actor,
                                    @PathVariable UUID id,
@@ -49,6 +63,9 @@ public class MylabTagController {
         return Result.ok(tags.update(actor, id, command), "标签已更新");
     }
 
+    /**
+     * 删除指定 MyLab 标签。
+     */
     @DeleteMapping("/{id}")
     public Result<?> delete(@AuthenticationPrincipal CurrentUser actor, @PathVariable UUID id) {
         tags.delete(actor, id);

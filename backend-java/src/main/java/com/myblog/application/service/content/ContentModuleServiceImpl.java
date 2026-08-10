@@ -31,10 +31,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 内容模块服务实现：版本化内容系统的核心。
+ * 每个模块同一时刻至多一个草稿（DRAFT）和一个线上版本（PUBLISHED），发布即生成不可变历史版本；
+ * 模块内容以 JSON 存储，保存/发布前按模块分别做结构校验，读取时把对象存储 key 转成可访问 URL。
+ */
 @Service
 public class ContentModuleServiceImpl implements ContentModuleService {
-    private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab");
-    private static final Set<String> TIME_KEYS = Set.of("Study", "Music", "Game", "Coding", "Social");
+    private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab"); // 支持的内容模块清单
+    private static final Set<String> TIME_KEYS = Set.of("Study", "Music", "Game", "Coding", "Social"); // hobbies 时间分布图的五个维度
     private static final ObjectMapper OM = JacksonObjectMapper.get();
 
     private final ContentReleaseRepository releases;
@@ -50,6 +55,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         this.storage = storage;
     }
 
+    /**
+     * 汇总所有模块的已发布内容；跳过未发布模块，输出经公开化处理（过滤停用项、补 URL）的数据。
+     */
     @Override
     public Map<String, Object> publicContent() {
         Map<String, Object> result = new LinkedHashMap<>();
@@ -60,6 +68,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return result;
     }
 
+    /**
+     * 读取单个模块的已发布内容；模块不存在或从未发布/已下线时抛异常。
+     */
     @Override
     public Object publicModule(String moduleKey) {
         requireKey(moduleKey);
@@ -68,6 +79,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return publicData(moduleKey, releases.readData(release));
     }
 
+    /**
+     * 从已发布的 mylab 模块中按 post_key 取单张卡片的公开详情。
+     */
     @Override
     @SuppressWarnings("unchecked")
     public Object publicMylabDetail(String postKey) {
@@ -77,12 +91,18 @@ public class ContentModuleServiceImpl implements ContentModuleService {
                 .findFirst().orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, postKey));
     }
 
+    /**
+     * 列出全部模块的管理视图（仅管理员）。
+     */
     @Override
     public List<ContentDtos.ModuleView> list(CurrentUser actor) {
         Authorization.requireAdmin(actor);
         return KEYS.stream().map(this::view).toList();
     }
 
+    /**
+     * 获取单个模块的管理视图（仅管理员）。
+     */
     @Override
     public ContentDtos.ModuleView get(CurrentUser actor, String moduleKey) {
         Authorization.requireAdmin(actor);
@@ -90,6 +110,10 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return view(moduleKey);
     }
 
+    /**
+     * 保存草稿：先按草稿态校验数据，再对模块加行锁串行化写操作。
+     * 无草稿时新建一版草稿（数据剥离 row_id）；已有草稿时用 expected_updated_at 做乐观并发校验，防止覆盖他人修改。
+     */
     @Override
     @Transactional
     public ContentDtos.ModuleView saveDraft(CurrentUser actor, String moduleKey, ContentDtos.SaveDraft command) {
@@ -116,6 +140,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             draftData = withoutRowIds(draftData);
         } else {
             if (command.expectedUpdatedAt() == null) throw conflict("缺少 expected_updated_at，无法确认草稿版本");
+            // touchDraft 以 expected_updated_at 为条件做 CAS 式更新，失败说明草稿已被并发修改
             if (!releases.touchDraft(draft.getId(), command.expectedUpdatedAt(), now)) {
                 throw conflict("草稿已被其他操作修改，请刷新后重试");
             }
@@ -125,6 +150,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return view(moduleKey);
     }
 
+    /**
+     * 发布：要求存在草稿，按发布态做更严格的完整校验后，将草稿转为新版本并替换线上版本。
+     */
     @Override
     @Transactional
     public ContentDtos.ModuleView publish(CurrentUser actor, String moduleKey) {
@@ -139,6 +167,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return view(moduleKey);
     }
 
+    /**
+     * 下线当前已发布版本；没有线上版本时抛冲突异常。
+     */
     @Override
     @Transactional
     public ContentDtos.ModuleView offline(CurrentUser actor, String moduleKey) {
@@ -151,6 +182,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return view(moduleKey);
     }
 
+    /**
+     * 列出模块全部历史版本（仅管理员）。
+     */
     @Override
     public List<ContentDtos.VersionView> versions(CurrentUser actor, String moduleKey) {
         Authorization.requireAdmin(actor);
@@ -158,6 +192,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return releases.findVersions(moduleKey).stream().map(this::versionView).toList();
     }
 
+    /**
+     * 查看指定版本号的历史版本；草稿态版本不对外可见。
+     */
     @Override
     public ContentDtos.VersionView version(CurrentUser actor, String moduleKey, int versionNo) {
         Authorization.requireAdmin(actor);
@@ -169,6 +206,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return versionView(release);
     }
 
+    /**
+     * 回滚：以指定历史版本的内容为底新建草稿；存在未处理草稿时要求先保存或放弃。
+     */
     @Override
     @Transactional
     public ContentDtos.ModuleView restore(CurrentUser actor, String moduleKey, int versionNo) {
@@ -195,6 +235,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return view(moduleKey);
     }
 
+    /**
+     * 删除当前草稿；没有草稿时抛 NotFoundException。
+     */
     @Override
     @Transactional
     public void deleteDraft(CurrentUser actor, String moduleKey) {
@@ -205,12 +248,16 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         releases.deleteDraft(draft);
     }
 
+    /**
+     * 组装模块管理视图：草稿优先，无草稿时草稿侧回退展示线上内容，并推导整体状态。
+     */
     private ContentDtos.ModuleView view(String moduleKey) {
         ContentRelease draft = releases.findDraft(moduleKey);
         ContentRelease current = releases.findCurrent(moduleKey);
         Object draftRaw = draft == null ? (current == null ? emptyData(moduleKey) : releases.readData(current)) : releases.readData(draft);
         Object draftData = adminData(moduleKey, draftRaw);
         Object publishedData = current == null ? null : adminData(moduleKey, releases.readData(current));
+        // 有草稿一律视为 draft；无草稿且无线上版本也视为 draft，否则取线上版本状态
         String status = draft != null ? "draft" : current == null ? "draft" : current.getState().toLowerCase();
         return new ContentDtos.ModuleView(moduleKey, draft == null ? null : draft.getId(), current == null ? null : current.getId(),
                 draftData, publishedData, draft == null ? null : draft.getVersionNo(),
@@ -218,12 +265,18 @@ public class ContentModuleServiceImpl implements ContentModuleService {
                 draft == null ? null : draft.getUpdatedAt(), current == null ? null : current.getPublishedAt());
     }
 
+    /**
+     * 组装历史版本视图。
+     */
     private ContentDtos.VersionView versionView(ContentRelease release) {
         return new ContentDtos.VersionView(release.getId(), release.getModuleKey(), release.getVersionNo(),
                 release.getState(), adminData(release.getModuleKey(), releases.readData(release)),
                 release.getSourceReleaseId(), release.getPublishedAt());
     }
 
+    /**
+     * 各模块无任何版本时的初始空数据结构，保证前端总能拿到固定字段。
+     */
     private Object emptyData(String moduleKey) {
         return switch (moduleKey) {
             case "home" -> Map.of("images", List.of());
@@ -239,10 +292,16 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         };
     }
 
+    /**
+     * 校验模块 key 合法，非法时抛 NotFoundException。
+     */
     private void requireKey(String moduleKey) {
         if (!KEYS.contains(moduleKey)) throw new NotFoundException(ErrorCode.CONTENT_MODULE_NOT_FOUND, moduleKey);
     }
 
+    /**
+     * 按模块分发结构校验；publishing 为 true 时套用发布态的严格规则（必填、数量上限等）。
+     */
     private void validate(String moduleKey, Object value, boolean publishing) {
         JsonNode root = OM.valueToTree(value);
         if (!root.isObject()) throw validation("模块内容必须是 JSON 对象");
@@ -436,6 +495,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         Set<Integer> projectOrders = new HashSet<>();
         for (JsonNode card : cards) {
             String key = uniqueKey(keys, card, "post_key", "id");
+            // 未显式声明 card_type 时按 post_key 前缀推断：project- 开头视为 PROJECT，其余为 ARTICLE
             String type = Objects.requireNonNullElse(firstText(card, "card_type"),
                     key.startsWith("project-") ? "PROJECT" : "ARTICLE").toUpperCase();
             if (!Set.of("PROJECT", "ARTICLE").contains(type)) throw validation("card_type 只允许 PROJECT 或 ARTICLE");
@@ -470,6 +530,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         }
     }
 
+    /**
+     * 公开化数据：在管理视图数据基础上过滤 enabled=false 的条目，mylab 卡片额外把 tag_ids 展开为标签名。
+     */
     @SuppressWarnings("unchecked")
     private Object publicData(String moduleKey, Object raw) {
         Map<String, Object> root = (Map<String, Object>) adminData(moduleKey, raw);
@@ -507,6 +570,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return root;
     }
 
+    /**
+     * 管理侧数据加工：把各模块引用到的对象存储 key 转换为可访问 URL 字段。
+     */
     @SuppressWarnings("unchecked")
     private Object adminData(String moduleKey, Object raw) {
         Object source = raw == null ? emptyData(moduleKey) : raw;
@@ -548,6 +614,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         if (url != null) item.put(target, url);
     }
 
+    /**
+     * 对象 key 转 URL：已是站内路径或完整 URL 时原样返回，否则走对象存储的公开地址；未配置存储时返回 key 本身。
+     */
     private String url(String objectKey) {
         if (objectKey == null) return null;
         if (objectKey.startsWith("/") || objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
@@ -556,6 +625,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return storage.configured() ? storage.publicUrl(objectKey) : objectKey;
     }
 
+    /**
+     * 递归剥离前端带来的 row_id 字段，避免行级标识随草稿/回滚数据落库。
+     */
     private Object withoutRowIds(Object value) {
         JsonNode root = OM.valueToTree(value);
         removeRowIds(root);
@@ -581,6 +653,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         }
     }
 
+    /**
+     * 校验引用的文件资源存在且未删除，且媒体类型符合字段要求（mime 前缀如 "image/" 表示按前缀匹配）。
+     */
     private FileRecord requireResource(UUID id, String... mimeTypes) {
         FileRecord resource = resources.findById(id);
         if (resource == null || resource.getDeletedAt() != null) throw validation("资源不存在或已删除：" + id);
@@ -606,6 +681,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return result.isArray() ? result : root.path(fallback);
     }
 
+    /**
+     * 取条目的唯一标识（优先 preferred 字段，回退 fallback），并校验非空、不重复。
+     */
     private String uniqueKey(Set<String> keys, JsonNode node, String preferred, String fallback) {
         String value = firstText(node, preferred, fallback);
         if (value == null || value.isBlank()) throw validation(preferred + " 为必填字段");

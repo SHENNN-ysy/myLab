@@ -14,13 +14,16 @@ import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * 系统监控服务：汇总数据库、缓存、对象存储的健康状态，以及服务器的静态/动态运行指标。
+ */
 @Service
 public class SystemService {
 
     private final DatabaseDiagnostics database;
     private final CacheDiagnostics cache;
     private final ObjectStorage storage;
-    private final long startedAt = System.currentTimeMillis();
+    private final long startedAt = System.currentTimeMillis(); // 应用启动时间，用于估算运行时长
 
     public SystemService(DatabaseDiagnostics database, CacheDiagnostics cache, ObjectStorage storage) {
         this.database = database;
@@ -28,6 +31,9 @@ public class SystemService {
         this.storage = storage;
     }
 
+    /**
+     * 健康检查：数据库不可用时整体状态降级为 degraded。
+     */
     public Map<String, Object> health() {
         Map<String, String> components = new LinkedHashMap<>();
         components.put("database", database.available() ? "up" : "down");
@@ -40,6 +46,9 @@ public class SystemService {
         return result;
     }
 
+    /**
+     * 服务器静态信息：主机、操作系统、CPU、内存、磁盘、数据库类型与表数量等（仅管理员）。
+     */
     public Map<String, Object> staticInfo(CurrentUser actor) throws Exception {
         Authorization.requireAdmin(actor);
         File root = new File("/");
@@ -65,6 +74,10 @@ public class SystemService {
         return result;
     }
 
+    /**
+     * 服务器动态指标：负载、内存、磁盘、运行时长与数据库连接等实时数据（仅管理员）。
+     * 注意：hostUptime 实际是本应用进程的运行秒数，并非宿主机开机时长。
+     */
     public Map<String, Object> dynamicInfo(CurrentUser actor) {
         Authorization.requireAdmin(actor);
         File root = new File("/");

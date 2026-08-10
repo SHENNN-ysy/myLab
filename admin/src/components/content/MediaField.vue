@@ -26,10 +26,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
-import type { FileResource } from '@/types'
+import type { FileResource, ResourceDirectory } from '@/types'
 import { getAllFilesApi, getFileAccessUrlApi, uploadFileApi } from '@/api/file'
 
-defineProps<{ modelValue: string }>()
+const props = withDefaults(defineProps<{ modelValue: string, directory?: ResourceDirectory }>(), {
+  directory: 'hero'
+})
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
 const visible = ref(false)
@@ -41,7 +43,7 @@ const openPicker = async () => {
   visible.value = true
   loading.value = true
   try {
-    files.value = (await getAllFilesApi()).filter(file => file.mimeType.startsWith('image/'))
+    files.value = (await getAllFilesApi(props.directory)).filter(file => file.mimeType.startsWith('image/'))
   } finally {
     loading.value = false
   }
@@ -59,7 +61,7 @@ const selectFile = async (file: FileResource) => {
 const upload = async (file: File) => {
   uploading.value = true
   try {
-    const result = await uploadFileApi(file)
+    const result = await uploadFileApi(file, props.directory)
     files.value.unshift(result)
     await selectFile(result)
     message.success('上传成功')

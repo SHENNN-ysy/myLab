@@ -67,17 +67,23 @@ const section = {
   description: '从前端界面设计到后端服务构建再到AI基础应用，正在努力让我的技能覆盖软件开发的全栈领域。'
 }
 type ManagedSkill = Skill & { iconUrl?: string; isNew?: boolean }
-const skillItems = computed<ManagedSkill[]>(() => {
+type SkillBarStyle = 'coral' | 'teal' | 'gray-white'
+type PresentedSkill = ManagedSkill & { levelText: string; barStyle: SkillBarStyle }
+const skillLevelPresentation: Record<Skill['level'], { levelText: string; barStyle: SkillBarStyle }> = {
+  proficient: { levelText: '熟练', barStyle: 'coral' },
+  competent: { levelText: '掌握', barStyle: 'teal' },
+  novice: { levelText: '入门', barStyle: 'gray-white' }
+}
+const presentSkill = (skill: ManagedSkill): PresentedSkill => ({ ...skill, ...skillLevelPresentation[skill.level] })
+const skillItems = computed<PresentedSkill[]>(() => {
   const items = content.value.skills?.items
-  if (!Array.isArray(items) || items.length === 0) return fallbackSkills
-  return items.filter(item => item.enabled !== false).map(item => ({
+  if (!Array.isArray(items) || items.length === 0) return fallbackSkills.map(presentSkill)
+  return items.filter(item => item.enabled !== false).map(item => presentSkill({
     name: item.name || '',
     percentage: item.percentage || 0,
     level: item.level_code || item.level || 'novice',
-    levelText: item.level_text || '',
     icon: 'code',
     iconUrl: item.icon_url,
-    barStyle: item.bar_style,
     isNew: item.is_new,
   }))
 })
@@ -325,6 +331,10 @@ onMounted(() => {
   background: linear-gradient(90deg, #5BA4E6, #2EC4B6) !important;
 }
 
+.has-gray-white-bar .skill-fill {
+  background: linear-gradient(90deg, rgba(216, 222, 230, 0.55), #f4f0eb) !important;
+}
+
 .skill-icon {
   width: 28px;
   height: 28px;
@@ -412,6 +422,16 @@ onMounted(() => {
   color: #f0a090;
   padding: 0.15rem 0.5rem;
   border: 1px solid rgba(240, 160, 144, 0.5);
+}
+
+.has-teal-bar .skill-level {
+  color: #2EC4B6;
+  border-color: rgba(46, 196, 182, 0.5);
+}
+
+.has-gray-white-bar .skill-level {
+  color: #d8dee6;
+  border-color: rgba(216, 222, 230, 0.5);
 }
 
 @keyframes badgeShine {

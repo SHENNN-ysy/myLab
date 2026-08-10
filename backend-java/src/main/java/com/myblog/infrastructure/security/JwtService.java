@@ -19,22 +19,23 @@ import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 /**
- * JWT service: issues, parses, and revokes tokens. Pure signing lives in {@link JwtUtil};
- * this class adds Redis-backed blacklist lookups.
+ * JWT 服务：负责令牌的签发、解析与吊销。纯签名/验签逻辑在 {@link JwtUtil}，
+ * 本类在其上叠加基于 Redis 的黑名单校验，实现应用层 {@link TokenService} 端口。
  */
 @Service
 public class JwtService implements TokenService {
 
-    private static final String BLACKLIST_PREFIX = "jwt:blacklist:";
+    private static final String BLACKLIST_PREFIX = "jwt:blacklist:"; // Redis 吊销黑名单键前缀（键为令牌 jti）
 
-    private final AppProperties props;
-    private final StringRedisTemplate redis;
+    private final AppProperties props; // JWT 密钥与有效期等配置
+    private final StringRedisTemplate redis; // 黑名单读写
 
     public JwtService(AppProperties props, StringRedisTemplate redis) {
         this.props = props;
         this.redis = redis;
     }
 
+    /** 为用户签发访问/刷新令牌对，有效期取自配置 */
     @Override
     public TokenPairVO pair(User user) {
         String access = JwtUtil.issue(props, user.getId().toString(), user.getRole(), "access",
@@ -44,6 +45,11 @@ public class JwtService implements TokenService {
         return new TokenPairVO(access, refresh, "bearer", props.accessExpireMinutes() * 60);
     }
 
+    /**
+     * 解析并校验令牌，返回其中的用户身份声明。
+     *
+     * @param expectedType 期望的令牌类型（access / refresh），类型不符视为无效
+     */
     @Override
     public TokenClaims parse(String token, String expectedType) {
         Claims claims = parseClaims(token, expectedType);
@@ -51,6 +57,7 @@ public class JwtService implements TokenService {
                 claims.get("role", String.class));
     }
 
+    /** 解析并做完整校验：过期、无效、类型错误、已吊销分别抛出对应业务异常 */
     private Claims parseClaims(String token, String expectedType) {
         Claims claims;
         try {
@@ -70,6 +77,7 @@ public class JwtService implements TokenService {
         return claims;
     }
 
+    /** 吊销访问令牌：把令牌 jti 写入 Redis 黑名单，TTL 取令牌剩余有效期 */
     @Override
     public void revoke(String token) {
         Claims claims = parseClaims(token, "access");

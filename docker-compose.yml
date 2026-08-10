@@ -26,6 +26,7 @@ services:
       - pg_data:/var/lib/postgresql/data
       - ./backend-java/src/main/resources/db/migration/V1__initial_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./backend-java/src/main/resources/db/migration/V2__initial_data.sql:/docker-entrypoint-initdb.d/02_initial_data.sql:ro
+      - ./backend-java/src/main/resources/db/migration/V3__engagement_and_site_traffic.sql:/docker-entrypoint-initdb.d/03_engagement_and_site_traffic.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -43,12 +44,14 @@ services:
       - redis-server
       - --appendonly
       - "yes"
+      - --appendfsync
+      - everysec
       - --requirepass
       - ${REDIS_PASSWORD:-myblog_redis_secret}
       - --maxmemory
       - 128mb
       - --maxmemory-policy
-      - allkeys-lru
+      - noeviction
     volumes:
       - redis_data:/data
     healthcheck:
@@ -81,13 +84,15 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:-myblog_redis_secret}
       JWT_SECRET: ${JWT_SECRET}
+      ENGAGEMENT_HASH_SECRET: ${ENGAGEMENT_HASH_SECRET:-change-this-engagement-hash-secret}
+      VISITOR_COOKIE_SECURE: ${VISITOR_COOKIE_SECURE:-false}
       CORS_ORIGINS: ${CORS_ORIGINS}
       OSS_ENDPOINT: ${OSS_ENDPOINT}
       OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID}
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET}
       OSS_BUCKET: ${OSS_BUCKET}
       OSS_CDN_DOMAIN: ${OSS_CDN_DOMAIN}
-      OSS_OBJECT_PREFIX: ${OSS_OBJECT_PREFIX:-images}
+      OSS_OBJECT_PREFIX: ${OSS_OBJECT_PREFIX-}
       OSS_MAX_FILE_SIZE_MB: ${OSS_MAX_FILE_SIZE_MB:-10}
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
       INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD:-Admin@123456}

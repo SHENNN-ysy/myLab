@@ -320,15 +320,36 @@ function setupIngredientBubbles() {
     }
   }))
 
-  // 文字气泡使用固定网格槽位，保证后台配置的每一条都能显示；随机性只用于后续装饰小气泡。
-  const labelColumns = Math.max(1, Math.ceil(labeledBubbles.length / 2))
-  const labelCellWidth = CARD_W / labelColumns
-  const labelCellHeight = CARD_H / 2
-  labeledBubbles.forEach((configured, index) => {
+  const LABEL_GAP = 8
+  const EDGE_PADDING = 10
+  const MAX_RANDOM_ATTEMPTS = 240
+
+  const findBubblePosition = (r: number, gap: number) => {
+    for (let attempt = 0; attempt < MAX_RANDOM_ATTEMPTS; attempt++) {
+      const x = EDGE_PADDING + r + Math.random() * (CARD_W - (EDGE_PADDING + r) * 2)
+      const y = EDGE_PADDING + r + Math.random() * (CARD_H - (EDGE_PADDING + r) * 2)
+      if (!grid.collides({ x, y, r: r + gap })) return { x, y }
+    }
+
+    const step = 6
+    for (let y = EDGE_PADDING + r; y <= CARD_H - EDGE_PADDING - r; y += step) {
+      for (let x = EDGE_PADDING + r; x <= CARD_W - EDGE_PADDING - r; x += step) {
+        if (!grid.collides({ x, y, r: r + gap })) return { x, y }
+      }
+    }
+    return null
+  }
+
+  // 优先放置大气泡，再随机填入中气泡；多级间距回退保证每条后台配置都能显示。
+  const orderedLabeledBubbles = [...labeledBubbles].sort((a, b) => Number(b.tier === 'big') - Number(a.tier === 'big'))
+  orderedLabeledBubbles.forEach((configured) => {
     const r = configured.tier === 'big' ? 46 : 36
-    const x = (index % labelColumns + 0.5) * labelCellWidth
-    const y = (Math.floor(index / labelColumns) + 0.5) * labelCellHeight
-    const bubble: Bubble = { x, y, r, label: configured.label, tier: configured.tier, style: configured.style }
+    const position = findBubblePosition(r, LABEL_GAP)
+      || findBubblePosition(r, 2)
+      || findBubblePosition(r, 0)
+    if (!position) return
+
+    const bubble: Bubble = { ...position, r, label: configured.label, tier: configured.tier, style: configured.style }
     grid.add(bubble)
     bubbles.push(bubble)
   })

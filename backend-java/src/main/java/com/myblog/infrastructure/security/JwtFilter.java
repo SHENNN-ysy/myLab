@@ -18,11 +18,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * JWT 认证过滤器：解析请求头中的 Bearer 令牌，校验通过且用户处于启用状态时，
+ * 把当前用户写入 Spring Security 上下文；令牌缺失或无效时按匿名请求放行，
+ * 是否拦截由后续授权规则决定。
+ */
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
-    private final TokenService tokens;
-    private final UserMapper users;
+    private final TokenService tokens; // 令牌解析与校验
+    private final UserMapper users;    // 按令牌中的用户 id 加载用户
 
     public JwtFilter(TokenService tokens, UserMapper users) {
         this.tokens = tokens;
@@ -45,7 +50,7 @@ public class JwtFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             } catch (Exception ignored) {
-                // anonymous request continues without authentication
+                // 令牌无效/过期/已吊销时静默放行，请求以匿名身份继续
             }
         }
         chain.doFilter(req, res);

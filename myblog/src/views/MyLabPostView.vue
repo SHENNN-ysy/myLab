@@ -13,8 +13,6 @@
           />
         </div>
 
-        <RouterLink class="post-back" to="/mylab">← 返回上一级</RouterLink>
-
         <h1 class="post-title">{{ post.title }}</h1>
 
         <div class="post-meta">
@@ -35,6 +33,13 @@
               <path d="M3 10h18" />
             </svg>
             写作时间: {{ post.date }}
+          </span>
+          <span class="post-date" title="浏览量">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            {{ formatNumber(postEngagement.view_count) }} 次浏览
           </span>
           <span v-for="tag in post.tags" :key="tag" class="post-tag"># {{ tag }}</span>
         </div>
@@ -58,6 +63,25 @@
           </h2>
           <p v-for="paragraph in section.paragraphs" :key="paragraph">{{ paragraph }}</p>
         </section>
+
+        <div class="post-actions">
+          <RouterLink class="post-back" to="/mylab">← 返回上一级</RouterLink>
+          <button
+            type="button"
+            class="like-button"
+            :class="{ 'is-liked': postEngagement.liked }"
+            :aria-pressed="postEngagement.liked"
+            :disabled="likePending"
+            @click="toggleLike"
+          >
+            <svg viewBox="0 0 24 24" :fill="postEngagement.liked ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+            </svg>
+            {{ postEngagement.liked ? '已点赞' : '点赞' }}
+            <strong>{{ formatNumber(postEngagement.like_count) }}</strong>
+          </button>
+          <span v-if="interactionError" class="engagement-error" role="status">{{ interactionError }}</span>
+        </div>
       </article>
 
       <!-- ============ 右侧小面板：RECOMMENDED + Table of Contents ============ -->
@@ -103,6 +127,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLabPosts } from '../composables/useLabPosts'
+import { recordContentView, setContentLiked, useEngagement } from '../composables/useEngagement'
 import { renderMarkdown, type MarkdownHeading } from '../utils/markdown'
 
 const route = useRoute()
@@ -110,6 +135,11 @@ const { labPosts } = useLabPosts()
 
 const post = computed(() => labPosts.value.find((p) => p.id === route.params.id) ?? null)
 const detailHero = computed(() => post.value?.detailImage ?? post.value?.image)
+const { engagement: postEngagement } = useEngagement(() => post.value?.id ?? '')
+const likePending = ref(false)
+const interactionError = ref('')
+const numberFormatter = new Intl.NumberFormat('zh-CN')
+const formatNumber = (value: number) => numberFormatter.format(value)
 const markdownHtml = ref('')
 const markdownHeadings = ref<MarkdownHeading[]>([])
 const markdownLoading = ref(false)
@@ -122,6 +152,22 @@ watch(
   () => {
     heroLoaded.value = false
   }
+)
+
+watch(
+  () => post.value?.id,
+  async (postKey, _previousKey, onCleanup) => {
+    interactionError.value = ''
+    if (!postKey) return
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+    try {
+      await recordContentView(postKey, controller.signal)
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') interactionError.value = '互动统计暂不可用'
+    }
+  },
+  { immediate: true },
 )
 
 watch(
@@ -173,6 +219,20 @@ const tocItems = computed<MarkdownHeading[]>(() => {
 
 function scrollToSection(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+async function toggleLike() {
+  const postKey = post.value?.id
+  if (!postKey || likePending.value) return
+  likePending.value = true
+  interactionError.value = ''
+  try {
+    await setContentLiked(postKey, !postEngagement.value.liked)
+  } catch {
+    interactionError.value = '点赞失败，请稍后再试'
+  } finally {
+    likePending.value = false
+  }
 }
 </script>
 
@@ -265,18 +325,28 @@ function scrollToSection(id: string) {
 }
 
 .post-back {
-  display: inline-block;
-  margin: 1.8rem 0 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
   font-family: var(--font-mono);
   font-size: 0.8rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--ink-muted);
+  color: var(--ink-light);
   text-decoration: none;
-  transition: color 0.25s ease;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
 }
 
 .post-back:hover {
   color: var(--accent-dark);
+  border-color: var(--accent);
+  background: var(--accent-light);
+  transform: translateY(-1px);
 }
 
 .post-title {
@@ -325,6 +395,38 @@ function scrollToSection(id: string) {
   line-height: 1.9;
   color: var(--ink-light);
 }
+
+.post-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2.8rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.like-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1rem;
+  color: var(--ink-light);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font: 700 0.78rem var(--font-body);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
+}
+
+.like-button:hover:not(:disabled) { transform: translateY(-1px); border-color: #ef7f8d; color: #d84d61; }
+.like-button.is-liked { color: #d84d61; border-color: rgba(216, 77, 97, 0.35); background: rgba(255, 235, 239, 0.9); }
+.like-button:disabled { cursor: wait; opacity: 0.65; }
+.like-button svg { width: 17px; height: 17px; }
+.like-button strong { font-family: var(--font-mono); }
+.engagement-error { flex-basis: 100%; color: #c55b5b; font-size: 0.75rem; text-align: right; }
 
 .post-section {
   margin-bottom: 2.2rem;

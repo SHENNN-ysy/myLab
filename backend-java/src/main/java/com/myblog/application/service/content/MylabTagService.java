@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * MyLab 标签管理服务：标签的查询与增删改，标签供 mylab 模块卡片引用。
+ */
 @Service
 public class MylabTagService {
     private final MylabTagRepository tags;
@@ -25,11 +28,17 @@ public class MylabTagService {
         this.tags = tags;
     }
 
+    /**
+     * 列出全部标签（含已停用），仅管理员可用。
+     */
     public List<MylabTag> list(CurrentUser actor) {
         Authorization.requireAdmin(actor);
         return tags.findAll(true);
     }
 
+    /**
+     * 新建标签：校验必填与唯一性，enabled 默认启用、sort_order 默认 0。
+     */
     @Transactional
     public MylabTag create(CurrentUser actor, ContentDtos.TagWrite command) {
         Authorization.requireAdmin(actor);
@@ -47,6 +56,9 @@ public class MylabTagService {
         return tag;
     }
 
+    /**
+     * 更新标签：未传的 enabled/sort_order 保持原值。
+     */
     @Transactional
     public MylabTag update(CurrentUser actor, UUID id, ContentDtos.TagWrite command) {
         Authorization.requireAdmin(actor);
@@ -62,12 +74,18 @@ public class MylabTagService {
         return tag;
     }
 
+    /**
+     * 删除标签，不存在时抛 NotFoundException。
+     */
     @Transactional
     public void delete(CurrentUser actor, UUID id) {
         Authorization.requireAdmin(actor);
         if (!tags.remove(id)) throw new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "MyLab 标签");
     }
 
+    /**
+     * 校验标签入参：tag_key/name 必填、sort_order 非负、标识与名称全局唯一（excludedId 用于更新时排除自身）。
+     */
     private void validate(ContentDtos.TagWrite command, UUID excludedId) {
         if (command == null || command.tagKey() == null || command.tagKey().isBlank()
                 || command.name() == null || command.name().isBlank()) {

@@ -21,10 +21,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * 版本化内容发布仓储：基于 {@link JdbcTemplate} 实现应用层 {@link ContentReleaseRepository} 端口。
+ * 负责 content_releases（发布记录）的草稿/发布/下线状态流转，以及各内容模块
+ * （home、about、skills、footprints、hobbies、vibe、mylab）数据表的整包读写：
+ * 写入时按 JSON 快照拆表落库，读取时再聚合回 JSON 结构。
+ */
 @Repository
 public class JdbcContentReleaseRepository implements ContentReleaseRepository {
-    private static final ObjectMapper OM = JacksonObjectMapper.get();
-    private static final RowMapper<ContentRelease> RELEASE_MAPPER = JdbcContentReleaseRepository::mapRelease;
+    private static final ObjectMapper OM = JacksonObjectMapper.get(); // 全局共享的 Jackson 实例
+    private static final RowMapper<ContentRelease> RELEASE_MAPPER = JdbcContentReleaseRepository::mapRelease; // 发布记录行映射器
 
     private final JdbcTemplate jdbc;
 
@@ -32,32 +38,38 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         this.jdbc = jdbc;
     }
 
+    /** 查询模块当前的草稿版本，无草稿返回 null */
     @Override
     public ContentRelease findDraft(String moduleKey) {
         return one("SELECT * FROM content_releases WHERE module_key = ? AND state = 'DRAFT' AND deleted_at IS NULL", moduleKey);
     }
 
+    /** 查询模块的当前版本（已发布或已下线，即最新一个非草稿、非归档版本） */
     @Override
     public ContentRelease findCurrent(String moduleKey) {
         return one("SELECT * FROM content_releases WHERE module_key = ? AND state IN ('PUBLISHED','OFFLINE') AND deleted_at IS NULL", moduleKey);
     }
 
+    /** 查询模块处于已发布状态的版本 */
     @Override
     public ContentRelease findPublished(String moduleKey) {
         return one("SELECT * FROM content_releases WHERE module_key = ? AND state = 'PUBLISHED' AND deleted_at IS NULL", moduleKey);
     }
 
+    /** 按版本号查询模块的历史版本 */
     @Override
     public ContentRelease findVersion(String moduleKey, int versionNo) {
         return one("SELECT * FROM content_releases WHERE module_key = ? AND version_no = ? AND deleted_at IS NULL", moduleKey, versionNo);
     }
 
+    /** 查询模块的全部历史版本（不含草稿），按版本号倒序 */
     @Override
     public List<ContentRelease> findVersions(String moduleKey) {
         return jdbc.query("SELECT * FROM content_releases WHERE module_key = ? AND state <> 'DRAFT' AND deleted_at IS NULL ORDER BY version_no DESC",
                 RELEASE_MAPPER, moduleKey);
     }
 
+    /** 对模块加 PostgreSQL 事务级咨询锁，串行化同一模块的发布操作，须在外层事务内调用 */
     @Override
     public void lockModule(String moduleKey) {
         jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))",
@@ -65,6 +77,7 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
                 resultSet -> null);
     }
 
+    /** 计算模块的下一个版本号（当前最大版本号 + 1，从 1 开始） */
     @Override
     public int nextVersion(String moduleKey) {
         Integer result = jdbc.queryForObject("SELECT COALESCE(MAX(version_no), 0) + 1 FROM content_releases WHERE module_key = ?",
@@ -72,6 +85,7 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         return result == null ? 1 : result;
     }
 
+    /** 插入一条新的发布记录（初始为草稿状态） */
     @Override
     public void add(ContentRelease release) {
         jdbc.update("""
@@ -82,6 +96,12 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
                 release.getSourceReleaseId(), release.getCreatedAt(), release.getUpdatedAt());
     }
 
+    /**
+     * 更新草稿的 updated_at 时间戳；传入 expectedUpdatedAt 时作为乐观锁条件，
+     * 防止并发编辑互相覆盖。
+     *
+     * @return 更新成功返回 true；期望时间戳不匹配（草稿已被他人改动）返回 false
+     */
     @Override
     public boolean touchDraft(UUID releaseId, OffsetDateTime expectedUpdatedAt, OffsetDateTime nextUpdatedAt) {
         if (expectedUpdatedAt == null) {
@@ -92,6 +112,11 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
                 nextUpdatedAt, releaseId, expectedUpdatedAt) == 1;
     }
 
+    /**
+     * 用 JSON 快照整体替换某次发布的模块数据：先清空该 release 的旧数据，再按模块拆表写入。
+     *
+     * @throws IllegalArgumentException 模块名无法识别时抛出
+     */
     @Override
     public void replaceData(ContentRelease release, Object data) {
         JsonNode root = OM.valueToTree(data);
@@ -108,6 +133,7 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         }
     }
 
+    /** 读取某次发布的模块数据并聚合为 JSON 结构（与 replaceData 的写入结构互逆） */
     @Override
     public Object readData(ContentRelease release) {
         if (release == null) return null;
@@ -134,6 +160,11 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         };
     }
 
+    /**
+     * 发布草稿：把当前生效版本归档，再将草稿置为已发布。
+     *
+     * @throws IllegalStateException 草稿状态在发布期间被并发修改时抛出
+     */
     @Override
     public void publish(ContentRelease draft, ContentRelease current, UUID actorId, OffsetDateTime now) {
         if (current != null) {
@@ -148,17 +179,20 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         if (updated != 1) throw new IllegalStateException("draft state changed while publishing");
     }
 
+    /** 下线当前已发布版本（状态置为 OFFLINE） */
     @Override
     public void offline(ContentRelease current, OffsetDateTime now) {
         jdbc.update("UPDATE content_releases SET state = 'OFFLINE', updated_at = ? WHERE id = ? AND state = 'PUBLISHED'",
                 now, current.getId());
     }
 
+    /** 物理删除草稿发布记录（仅草稿可删） */
     @Override
     public void deleteDraft(ContentRelease draft) {
         jdbc.update("DELETE FROM content_releases WHERE id = ? AND state = 'DRAFT'", draft.getId());
     }
 
+    /** 清空某次发布在各模块数据表中的数据（replaceData 前置步骤） */
     private void deleteReleaseData(ContentRelease release) {
         UUID releaseId = release.getId();
         switch (release.getModuleKey()) {
@@ -239,6 +273,7 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
             UUID id = uuid(item, "row_id");
             String contents = text(item, "contents");
             if (contents == null && item.path("paragraphs").isArray()) {
+                // 兼容旧结构：没有 contents 时把段落数组用空行拼接为正文
                 List<String> paragraphs = new ArrayList<>();
                 item.path("paragraphs").forEach(node -> paragraphs.add(node.asText()));
                 contents = String.join("\n\n", paragraphs);
@@ -308,6 +343,7 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         int order = 0;
         for (JsonNode item : iterable(items)) {
             UUID id = uuid(item, "row_id");
+            // 未显式给出 card_type 时按 post_key 前缀推断：project- 开头视为项目卡片
             String type = Objects.requireNonNullElse(firstText(item, "card_type"),
                     key(item, "post_key", "id").startsWith("project-") ? "PROJECT" : "ARTICLE").toUpperCase();
             Integer projectOrder = "PROJECT".equals(type)
@@ -543,6 +579,7 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
                 "mime_type", rs.getString("mime_type"), "sort_order", rs.getInt("sort_order")), footprintId);
     }
 
+    /** 执行查询并取第一条，无结果返回 null */
     private ContentRelease one(String sql, Object... args) {
         List<ContentRelease> rows = jdbc.query(sql, RELEASE_MAPPER, args);
         return rows.isEmpty() ? null : rows.getFirst();
@@ -563,6 +600,7 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         return release;
     }
 
+    /** 取 JSON 数组字段，优先 preferred 名，不是数组则回退到 fallback 名（兼容新旧字段命名） */
     private static JsonNode array(JsonNode root, String preferred, String fallback) {
         JsonNode result = root.path(preferred);
         return result.isArray() ? result : root.path(fallback);
@@ -572,6 +610,7 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         return node != null && node.isArray() ? node : List.of();
     }
 
+    /** 读取行 id；快照中缺失（新增行）时生成随机 UUID */
     private static UUID uuid(JsonNode node, String field) {
         UUID value = nullableUuid(node, field);
         return value == null ? UUID.randomUUID() : value;
@@ -585,6 +624,7 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         return null;
     }
 
+    /** 读取必填文本字段（优先 preferred 名，回退 fallback 名），缺失或空白时抛异常 */
     private static String key(JsonNode node, String preferred, String fallback) {
         String result = firstText(node, preferred, fallback);
         if (result == null || result.isBlank()) throw new IllegalArgumentException(preferred + " is required");
@@ -628,12 +668,14 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         return Arrays.stream(raw).map(item -> item instanceof UUID uuid ? uuid : UUID.fromString(item.toString())).toList();
     }
 
+    /** 按空行把正文切分为段落列表 */
     private static List<String> splitParagraphs(String contents) {
         if (contents == null || contents.isBlank()) return List.of();
         return Arrays.stream(contents.split("(?:\\r?\\n){2,}"))
                 .map(String::trim).filter(value -> !value.isEmpty()).toList();
     }
 
+    /** 以键值对构建有序 Map，值为 null 的键跳过（保持输出 JSON 字段顺序稳定） */
     private static Map<String, Object> mapOf(Object... pairs) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (int index = 0; index < pairs.length; index += 2) {

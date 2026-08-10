@@ -487,8 +487,8 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/v1/files?page=1&page_size=20` | 分页查询未删除资源 |
-| POST | `/api/v1/files/upload` | 以 `multipart/form-data` 上传，文件字段名为 `file` |
+| GET | `/api/v1/files?page=1&page_size=20&directory=hero` | 分页查询未删除资源，可按目录筛选 |
+| POST | `/api/v1/files/upload` | 以 `multipart/form-data` 上传，字段为 `file` 和 `directory` |
 | GET | `/api/v1/files/presigned/{id}` | 获取公开图片地址或一小时有效的私有签名地址 |
 | DELETE | `/api/v1/files/{id}` | 逻辑删除未被任何内容版本引用的资源 |
 
@@ -497,8 +497,9 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 ```json
 {
   "id": "uuid",
-  "object_key": "images/2026/08/example.png",
-  "bucket": "myblog",
+  "object_key": "hero/2026/08/example.png",
+  "directory": "hero",
+  "bucket": "ysy-myblog",
   "original_name": "example.png",
   "mime_type": "image/png",
   "size": 1024,
@@ -507,7 +508,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 }
 ```
 
-允许的 MIME：`image/png`、`image/jpeg`、`image/jpg`、`image/webp`、`image/gif`、`image/svg+xml`、`application/pdf`、`text/markdown`、`text/plain`。图片列表记录可直接包含 `url`；非图片应调用签名地址接口。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
+`directory` 只允许 `footstep`、`hero`、`hobbies`、`icon`、`mylab`、`mylab-post`。`mylab` 只保存 PDF、Markdown 和纯文本正文，其余目录只保存图片；MyLab 卡片封面固定使用 `mylab-post`。CDN 域名为空时图片与文档均使用 OSS 签名地址，配置 CDN 域名后图片自动改用 CDN 地址。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
 
 ## 9. 系统接口
 

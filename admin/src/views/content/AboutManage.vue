@@ -77,7 +77,7 @@
             <a-row :gutter="20">
               <a-col :xs="24" :lg="8">
                 <a-form-item label="头像资源">
-                  <OssImageResourcePicker v-model="draftContent.profile.avatarResource" />
+                  <OssImageResourcePicker v-model="draftContent.profile.avatarResource" directory="icon" />
                 </a-form-item>
                 <a-form-item label="头像说明">
                   <a-input v-model:value="draftContent.profile.avatarAlt" :maxlength="100" />

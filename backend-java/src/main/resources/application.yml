@@ -1,5 +1,6 @@
 server:
   port: ${APP_PORT:8000}
+  forward-headers-strategy: framework
 spring:
   application.name: myblog-api
   datasource:
@@ -55,10 +56,12 @@ app:
   oss-access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
   oss-bucket: ${OSS_BUCKET:}
   oss-cdn-domain: ${OSS_CDN_DOMAIN:}
-  oss-object-prefix: ${OSS_OBJECT_PREFIX:images}
+  oss-object-prefix: ${OSS_OBJECT_PREFIX:}
   oss-max-file-size-mb: ${OSS_MAX_FILE_SIZE_MB:10}
   initial-admin-username: ${INIT_ADMIN_USERNAME:admin}
   initial-admin-password: ${INIT_ADMIN_PASSWORD:Admin@123456}
+  engagement-hash-secret: ${ENGAGEMENT_HASH_SECRET:${JWT_SECRET:change-this-in-production-please}}
+  visitor-cookie-secure: ${VISITOR_COOKIE_SECURE:false}
 server.tomcat.threads:
   max: ${TOMCAT_MAX_THREADS:50}
   min-spare: ${TOMCAT_MIN_SPARE_THREADS:5}

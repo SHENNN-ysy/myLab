@@ -36,11 +36,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
-import type { FileResource } from '@/types'
+import type { FileResource, ResourceDirectory } from '@/types'
 import type { ContentResourceValue } from '@/types/content'
 import { getAllFilesApi, getFileAccessUrlApi, uploadFileApi } from '@/api/file'
 
-defineProps<{ modelValue: ContentResourceValue | null }>()
+const props = withDefaults(defineProps<{ modelValue: ContentResourceValue | null, directory?: ResourceDirectory }>(), {
+  directory: 'mylab'
+})
 const emit = defineEmits<{ 'update:modelValue': [value: ContentResourceValue | null] }>()
 const visible = ref(false)
 const loading = ref(false)
@@ -52,7 +54,7 @@ const openPicker = async () => {
   visible.value = true
   loading.value = true
   try {
-    files.value = (await getAllFilesApi()).filter(file => allowedMimeTypes.has(file.mimeType))
+    files.value = (await getAllFilesApi(props.directory)).filter(file => allowedMimeTypes.has(file.mimeType))
   } finally {
     loading.value = false
   }
@@ -71,7 +73,7 @@ const uploadDocument = async (file: File) => {
   }
   uploading.value = true
   try {
-    const uploaded = await uploadFileApi(file)
+    const uploaded = await uploadFileApi(file, props.directory)
     files.value.unshift(uploaded)
     await selectFile(uploaded)
     message.success('正文资源已上传到 OSS')

@@ -1,16 +1,21 @@
 <template>
   <a-card :bordered="false">
     <template #title>
-      <div class="header">
-        <span>管理员账号</span>
-        <a-space wrap>
-          <a-input v-model:value="keyword" placeholder="筛选当前页用户名" allow-clear />
-          <a-tooltip v-if="!isSuperadmin" title="只有超级管理员可以创建账号">
-            <a-button type="primary" disabled>新建用户</a-button>
-          </a-tooltip>
-          <a-button v-else type="primary" @click="open()">新建用户</a-button>
-          <a-button @click="load">刷新</a-button>
-        </a-space>
+      <span>管理员账号</span>
+    </template>
+    <template #extra>
+      <div class="header-actions">
+        <a-input
+          v-model:value="keyword"
+          class="user-filter"
+          placeholder="筛选当前页用户名"
+          allow-clear
+        />
+        <a-tooltip v-if="!isSuperadmin" title="只有超级管理员可以创建账号">
+          <a-button type="primary" disabled>新建用户</a-button>
+        </a-tooltip>
+        <a-button v-else type="primary" @click="open()">新建用户</a-button>
+        <a-button @click="load">刷新</a-button>
       </div>
     </template>
 
@@ -189,5 +194,50 @@ onMounted(load)
 </script>
 
 <style scoped>
-.header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.user-filter {
+  width: 246px;
+}
+
+:deep(.ant-card-head-wrapper) {
+  gap: 16px;
+}
+
+:deep(.ant-card-extra) {
+  padding: 12px 0;
+}
+
+@media (max-width: 760px) {
+  :deep(.ant-card-head-wrapper) {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 0;
+  }
+
+  :deep(.ant-card-head-title),
+  :deep(.ant-card-extra) {
+    width: 100%;
+    padding: 0;
+  }
+
+  :deep(.ant-card-extra) {
+    margin-left: 0;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .user-filter {
+    flex: 1 1 220px;
+    width: auto;
+    min-width: 0;
+  }
+}
 </style>
