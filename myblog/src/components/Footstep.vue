@@ -97,7 +97,16 @@
         <div class="photo-wall-wrapper stagger-item-left" :style="{ animationDelay: staggerDelay(8) }">
           <h4>照片墙</h4>
           <div class="modal-photos">
-            <div v-for="(image, index) in selectedHobbyDetail?.images" :key="image" class="modal-photo" :style="{ height: skeletonHeights[index % skeletonHeights.length] + 'px' }">
+            <div
+              v-for="(image, index) in selectedHobbyDetail?.images"
+              :key="image"
+              class="modal-photo"
+              role="button"
+              tabindex="0"
+              :aria-label="`放大查看照片 ${index + 1}`"
+              @click="openLightbox(index)"
+              @keydown.enter.prevent="openLightbox(index)"
+            >
               <img :src="image" :alt="`${selectedHobbyDetail?.title} 照片 ${index + 1}`" loading="lazy" />
             </div>
             <div v-if="!selectedHobbyDetail?.images?.length" v-for="height in skeletonHeights" :key="height" class="modal-photo photo-skeleton" :style="{ height: height + 'px' }" aria-hidden="true" />
@@ -107,6 +116,25 @@
         <button class="modal-cta stagger-item-left" :style="{ animationDelay: staggerDelay(9) }" @click="openFootprintLink">{{ selectedHobbyDetail?.cta }} →</button>
       </div>
     </ProjectModal>
+
+    <Teleport to="body">
+      <div
+        v-if="lightboxIndex !== null"
+        class="photo-lightbox"
+        role="dialog"
+        aria-modal="true"
+        aria-label="照片预览"
+        @click="closeLightbox"
+      >
+        <button class="photo-lightbox-close" aria-label="关闭预览" @click.stop="closeLightbox">×</button>
+        <img
+          class="photo-lightbox-image"
+          :src="selectedHobbyDetail?.images?.[lightboxIndex]"
+          :alt="`${selectedHobbyDetail?.title} 照片 ${lightboxIndex + 1}`"
+        />
+        <p class="photo-lightbox-counter">{{ lightboxIndex + 1 }} / {{ selectedHobbyDetail?.images?.length }}</p>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -128,10 +156,14 @@ const section = {
 const footprintItems = computed<ManagedFootprint[]>(() => {
   const details = content.value.footprints?.details
   const detailById = new Map<string, PublicFootprint>()
+  const managedOrder = new Map<string, number>()
   if (Array.isArray(details)) {
-    details.forEach(detail => {
+    details.forEach((detail, index) => {
       const key = detail.city_key || detail.id
-      if (key) detailById.set(key, detail)
+      if (key) {
+        detailById.set(key, detail)
+        managedOrder.set(key, typeof detail.sort_order === 'number' ? detail.sort_order : index)
+      }
     })
   }
   return fallbackFootprints.map((city) => {
@@ -148,12 +180,37 @@ const footprintItems = computed<ManagedFootprint[]>(() => {
       ctaText: detail.cta_text,
       ctaUrl: detail.cta_url,
     }
+  }).sort((a, b) => {
+    // 后台配置过顺序的城市排在前面，按 sort_order 升序；未配置的城市保持静态数据原有顺序
+    const orderA = managedOrder.get(a.id)
+    const orderB = managedOrder.get(b.id)
+    if (orderA == null && orderB == null) return 0
+    if (orderA == null) return 1
+    if (orderB == null) return -1
+    return orderA - orderB
   })
 })
 const activeHobby = ref(footprintItems.value[0]?.id || 'photo')
 const selectedHobby = ref<ManagedFootprint | null>(footprintItems.value[0] ?? null)
 const isModalOpen = ref(false)
 const skeletonHeights = [180, 240, 200, 280, 160]
+
+/* 照片墙放大预览：点击照片打开 lightbox，Esc 或点击任意处关闭 */
+const lightboxIndex = ref<number | null>(null)
+
+const onLightboxKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') closeLightbox()
+}
+
+const openLightbox = (index: number) => {
+  lightboxIndex.value = index
+  window.addEventListener('keydown', onLightboxKeydown)
+}
+
+const closeLightbox = () => {
+  lightboxIndex.value = null
+  window.removeEventListener('keydown', onLightboxKeydown)
+}
 
 const staggerDelay = (index: number) => `${0.08 + index * 0.07}s`
 
@@ -729,9 +786,105 @@ const openFootprintLink = () => {
 .modal-photo img {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
   border-radius: inherit;
+}
+
+/* 瀑布流照片：保持原始比例完整展示，hover 提示可点击放大 */
+.hobby-modal-body .modal-photo:not(.photo-skeleton) {
+  cursor: zoom-in;
+  overflow: hidden;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.hobby-modal-body .modal-photo:not(.photo-skeleton):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+}
+
+/* 照片放大预览 lightbox */
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vmin;
+  background: rgba(8, 12, 18, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: zoom-out;
+  animation: lightboxFade 0.25s ease;
+}
+
+.photo-lightbox-image {
+  max-width: min(1100px, 92vw);
+  max-height: 86vh;
+  width: auto;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  animation: lightboxZoom 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.photo-lightbox-close {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.3rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 1.35rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+
+.photo-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.06);
+}
+
+.photo-lightbox-counter {
+  position: absolute;
+  bottom: 1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+@keyframes lightboxFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lightboxZoom {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-lightbox,
+  .photo-lightbox-image {
+    animation: none;
+  }
 }
 
 @media (max-width: 900px) {

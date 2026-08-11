@@ -464,9 +464,15 @@ onBeforeUnmount(() => {
     right: 1rem;
   }
 
+  /* 窄屏下仍保持两列瀑布流，仅缩小列间距 */
   .modal-photos,
   .modal-photos--loading {
-    column-count: 1;
+    column-count: 2;
+    column-gap: 0.5rem;
+  }
+
+  .modal-photo {
+    margin-bottom: 0.5rem;
   }
 }
 </style>

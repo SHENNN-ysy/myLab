@@ -59,6 +59,7 @@ export interface PublicFootprint {
   cta_text?: string
   cta_url?: string
   enabled?: boolean
+  sort_order?: number
 }
 
 export interface PublicHobbyCard {
