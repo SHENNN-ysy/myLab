@@ -39,7 +39,7 @@ import java.util.UUID;
 @Service
 public class ContentModuleServiceImpl implements ContentModuleService {
     private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab"); // 支持的内容模块清单
-    private static final Set<String> TIME_KEYS = Set.of("Study", "Music", "Game", "Coding", "Social"); // hobbies 时间分布图的五个维度
+    private static final Set<String> TIME_KEYS = Set.of("爱好1", "爱好2", "爱好3", "爱好4", "爱好5"); // hobbies 时间分布图的五个维度
     private static final ObjectMapper OM = JacksonObjectMapper.get();
 
     private final ContentReleaseRepository releases;
@@ -246,6 +246,25 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         ContentRelease draft = releases.findDraft(moduleKey);
         if (draft == null) throw new NotFoundException(ErrorCode.CONTENT_VERSION_NOT_FOUND, "当前草稿");
         releases.deleteDraft(draft);
+    }
+
+    /**
+     * 软删除指定历史版本：级联标记其模块子表数据行以解除资源引用；线上发布态版本不可删除。
+     */
+    @Override
+    @Transactional
+    public void deleteVersion(CurrentUser actor, String moduleKey, int versionNo) {
+        Authorization.requireAdmin(actor);
+        requireKey(moduleKey);
+        releases.lockModule(moduleKey);
+        ContentRelease release = releases.findVersion(moduleKey, versionNo);
+        if (release == null || "DRAFT".equals(release.getState())) {
+            throw new NotFoundException(ErrorCode.CONTENT_VERSION_NOT_FOUND, moduleKey + " v" + versionNo);
+        }
+        if ("PUBLISHED".equals(release.getState())) {
+            throw conflict("线上版本不可删除，请先下线或发布新版本");
+        }
+        releases.softDeleteVersion(release, OffsetDateTime.now());
     }
 
     /**

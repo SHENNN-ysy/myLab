@@ -40,8 +40,8 @@
               :duration="5"
             />
             <PathEasedLogo
-              src="/assets/cursor-logo.png"
-              alt="Cursor"
+              src="/assets/kimi-logo.png"
+              alt="Kimi"
               left="32%"
               top="58%"
               :size="54"
@@ -51,8 +51,8 @@
               :duration="5"
             />
             <PathEasedLogo
-              src="/assets/kimi-logo.png"
-              alt="Kimi"
+              src="/assets/cursor-logo.png"
+              alt="Cursor"
               left="93%"
               top="50.5%"
               :size="32"
@@ -99,7 +99,7 @@ const animatedWidths = reactive<Record<string, string>>({})
 const { content } = usePublicContent()
 const section = {
   title: 'Vibe', highlight: 'Coding',
-  description: '这是我日常写代码时绕不开的工具链与核心技术栈。左手 LLM，右手 IDE，人机协作正在重塑我做产品的方式。'
+  description: '这是我日常学习和写代码时离不开的AI工具。在AI的协助下这个小站得以诞生，希望有一天AI能让工作变为创作。'
 }
 const toolItems = computed(() => {
   const tools = content.value.vibe?.tools

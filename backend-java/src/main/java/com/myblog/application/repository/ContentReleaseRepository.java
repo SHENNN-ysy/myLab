@@ -70,4 +70,8 @@ public interface ContentReleaseRepository {
      * 删除草稿。
      */
     void deleteDraft(ContentRelease draft);
+    /**
+     * 软删除历史版本及其在各模块子表中的数据行（仅非发布态版本可调用）。
+     */
+    void softDeleteVersion(ContentRelease release, OffsetDateTime now);
 }

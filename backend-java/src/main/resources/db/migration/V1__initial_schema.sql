@@ -154,7 +154,7 @@ CREATE TABLE hobby_time_tags (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     release_id  UUID         NOT NULL REFERENCES content_releases(id) ON DELETE CASCADE,
     data_key    VARCHAR(16)  NOT NULL
-                CHECK (data_key IN ('Study', 'Music', 'Game', 'Coding', 'Social')),
+                CHECK (data_key IN ('爱好1', '爱好2', '爱好3', '爱好4', '爱好5')),
     name        VARCHAR(64),
     color       VARCHAR(7),
     label_x     SMALLINT     CHECK (label_x BETWEEN 0 AND 500),
@@ -175,15 +175,15 @@ CREATE TABLE hobby_time_points (
     id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     release_id UUID         NOT NULL REFERENCES content_releases(id) ON DELETE CASCADE,
     age        SMALLINT     NOT NULL CHECK (age BETWEEN -1 AND 27),
-    study      NUMERIC(4,1) NOT NULL CHECK (study BETWEEN 0 AND 10),
-    music      NUMERIC(4,1) NOT NULL CHECK (music BETWEEN 0 AND 10),
-    game       NUMERIC(4,1) NOT NULL CHECK (game BETWEEN 0 AND 10),
-    coding     NUMERIC(4,1) NOT NULL CHECK (coding BETWEEN 0 AND 10),
-    social     NUMERIC(4,1) NOT NULL CHECK (social BETWEEN 0 AND 10),
+    "爱好1"    NUMERIC(4,1) NOT NULL CHECK ("爱好1" BETWEEN 0 AND 10),
+    "爱好2"    NUMERIC(4,1) NOT NULL CHECK ("爱好2" BETWEEN 0 AND 10),
+    "爱好3"    NUMERIC(4,1) NOT NULL CHECK ("爱好3" BETWEEN 0 AND 10),
+    "爱好4"    NUMERIC(4,1) NOT NULL CHECK ("爱好4" BETWEEN 0 AND 10),
+    "爱好5"    NUMERIC(4,1) NOT NULL CHECK ("爱好5" BETWEEN 0 AND 10),
     created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ,
-    CONSTRAINT ck_hobby_time_points_total CHECK (study + music + game + coding + social = 10.0)
+    CONSTRAINT ck_hobby_time_points_total CHECK ("爱好1" + "爱好2" + "爱好3" + "爱好4" + "爱好5" = 10.0)
 );
 CREATE UNIQUE INDEX uq_hobby_time_points_release_age
     ON hobby_time_points(release_id, age) WHERE deleted_at IS NULL;

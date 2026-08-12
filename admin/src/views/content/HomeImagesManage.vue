@@ -7,10 +7,16 @@
             <h2>首页图片</h2>
             <p>管理博客首页 WELCOME 区域的六张轮播图片</p>
           </div>
-          <a-button @click="router.push('/system/files')">
-            <PictureOutlined />
-            文件管理
-          </a-button>
+          <a-space>
+            <a-button @click="versionsVisible = true">
+              <HistoryOutlined />
+              历史版本
+            </a-button>
+            <a-button @click="router.push('/system/files')">
+              <PictureOutlined />
+              文件管理
+            </a-button>
+          </a-space>
         </div>
       </template>
 
@@ -75,6 +81,13 @@
       </a-tabs>
       </a-spin>
     </a-card>
+
+    <VersionHistoryModal
+      v-model:open="versionsVisible"
+      module-key="home"
+      :has-draft="Boolean(moduleMeta?.draft_release_id)"
+      @restored="load"
+    />
   </div>
 </template>
 
@@ -82,8 +95,9 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { PictureOutlined } from '@ant-design/icons-vue'
+import { HistoryOutlined, PictureOutlined } from '@ant-design/icons-vue'
 import OssImageResourcePicker, { type OssImageResourceValue } from '@/components/content/OssImageResourcePicker.vue'
+import VersionHistoryModal from '@/components/content/VersionHistoryModal.vue'
 import { getContentModuleApi, publishContentApi, saveContentDraftApi, type ContentModule } from '@/api/content'
 import type { HomeContentData, HomeImageData } from '@/types/content'
 
@@ -101,6 +115,7 @@ const activePanel = ref('current')
 const loading = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
+const versionsVisible = ref(false)
 const moduleMeta = ref<ContentModule<HomeContentData> | null>(null)
 const descriptions = [
   '香港太平山城市远景',

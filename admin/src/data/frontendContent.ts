@@ -47,11 +47,11 @@ export interface VibeToolItem {
 export interface HobbyTimeItem {
   rowId?: string
   age: number
-  Study: number
-  Music: number
-  Game: number
-  Coding: number
-  Social: number
+  爱好1: number
+  爱好2: number
+  爱好3: number
+  爱好4: number
+  爱好5: number
 }
 
 export type HobbyTimeKey = keyof Omit<HobbyTimeItem, 'age'>
@@ -141,45 +141,45 @@ export const cloneFrontendModule = <K extends StaticContentModuleKey>(key: K): S
 
 // 与 myblog/src/components/Hobbies.vue 保持一致：-1 ~ 27 共 29 个连续年龄点，每行合计为 10（100%）。
 export const frontendHobbyTimeData: HobbyTimeItem[] = [
-  { age: -1, Study: 0, Music: 0, Game: 0, Coding: 0, Social: 10 },
-  { age: 0, Study: 0, Music: 0, Game: 0, Coding: 0, Social: 10 },
-  { age: 1, Study: 1, Music: 0, Game: 0, Coding: 0, Social: 9 },
-  { age: 2, Study: 2, Music: 0, Game: 0, Coding: 0, Social: 8 },
-  { age: 3, Study: 3, Music: 0, Game: 0, Coding: 0, Social: 7 },
-  { age: 4, Study: 4, Music: 0, Game: 0, Coding: 0, Social: 6 },
-  { age: 5, Study: 5, Music: 0, Game: 0, Coding: 0, Social: 5 },
-  { age: 6, Study: 6, Music: 0, Game: 0, Coding: 0, Social: 4 },
-  { age: 7, Study: 5.3, Music: 0, Game: 1, Coding: 0, Social: 3.7 },
-  { age: 8, Study: 4.7, Music: 0, Game: 2, Coding: 0, Social: 3.3 },
-  { age: 9, Study: 4, Music: 0, Game: 3, Coding: 0, Social: 3 },
-  { age: 10, Study: 3.9, Music: 0, Game: 2.9, Coding: 0.3, Social: 2.9 },
-  { age: 11, Study: 3.8, Music: 0, Game: 2.8, Coding: 0.7, Social: 2.7 },
-  { age: 12, Study: 3.7, Music: 0, Game: 2.7, Coding: 1, Social: 2.6 },
-  { age: 13, Study: 3.6, Music: 0, Game: 2.6, Coding: 1.3, Social: 2.5 },
-  { age: 14, Study: 3.4, Music: 0, Game: 2.4, Coding: 1.7, Social: 2.5 },
-  { age: 15, Study: 3.3, Music: 0, Game: 2.3, Coding: 2, Social: 2.4 },
-  { age: 16, Study: 3.2, Music: 0, Game: 2.2, Coding: 2.3, Social: 2.3 },
-  { age: 17, Study: 3.1, Music: 0, Game: 2.1, Coding: 2.7, Social: 2.1 },
-  { age: 18, Study: 3, Music: 0, Game: 2, Coding: 3, Social: 2 },
-  { age: 19, Study: 2.8, Music: 0.2, Game: 2, Coding: 3, Social: 2 },
-  { age: 20, Study: 2.6, Music: 0.4, Game: 2, Coding: 3, Social: 2 },
-  { age: 21, Study: 2.4, Music: 0.6, Game: 2, Coding: 3, Social: 2 },
-  { age: 22, Study: 2.2, Music: 0.8, Game: 2, Coding: 3, Social: 2 },
-  { age: 23, Study: 2, Music: 1, Game: 2, Coding: 3, Social: 2 },
-  { age: 24, Study: 2, Music: 1, Game: 2, Coding: 3, Social: 2 },
-  { age: 25, Study: 2, Music: 1, Game: 2, Coding: 3, Social: 2 },
-  { age: 26, Study: 2.5, Music: 0.5, Game: 1.5, Coding: 3.5, Social: 2 },
-  { age: 27, Study: 3, Music: 0, Game: 1, Coding: 4, Social: 2 }
+  { age: -1, 爱好1: 0, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 10 },
+  { age: 0, 爱好1: 0, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 10 },
+  { age: 1, 爱好1: 1, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 9 },
+  { age: 2, 爱好1: 2, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 8 },
+  { age: 3, 爱好1: 3, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 7 },
+  { age: 4, 爱好1: 4, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 6 },
+  { age: 5, 爱好1: 5, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 5 },
+  { age: 6, 爱好1: 6, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 4 },
+  { age: 7, 爱好1: 5.3, 爱好2: 0, 爱好3: 1, 爱好4: 0, 爱好5: 3.7 },
+  { age: 8, 爱好1: 4.7, 爱好2: 0, 爱好3: 2, 爱好4: 0, 爱好5: 3.3 },
+  { age: 9, 爱好1: 4, 爱好2: 0, 爱好3: 3, 爱好4: 0, 爱好5: 3 },
+  { age: 10, 爱好1: 3.9, 爱好2: 0, 爱好3: 2.9, 爱好4: 0.3, 爱好5: 2.9 },
+  { age: 11, 爱好1: 3.8, 爱好2: 0, 爱好3: 2.8, 爱好4: 0.7, 爱好5: 2.7 },
+  { age: 12, 爱好1: 3.7, 爱好2: 0, 爱好3: 2.7, 爱好4: 1, 爱好5: 2.6 },
+  { age: 13, 爱好1: 3.6, 爱好2: 0, 爱好3: 2.6, 爱好4: 1.3, 爱好5: 2.5 },
+  { age: 14, 爱好1: 3.4, 爱好2: 0, 爱好3: 2.4, 爱好4: 1.7, 爱好5: 2.5 },
+  { age: 15, 爱好1: 3.3, 爱好2: 0, 爱好3: 2.3, 爱好4: 2, 爱好5: 2.4 },
+  { age: 16, 爱好1: 3.2, 爱好2: 0, 爱好3: 2.2, 爱好4: 2.3, 爱好5: 2.3 },
+  { age: 17, 爱好1: 3.1, 爱好2: 0, 爱好3: 2.1, 爱好4: 2.7, 爱好5: 2.1 },
+  { age: 18, 爱好1: 3, 爱好2: 0, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { age: 19, 爱好1: 2.8, 爱好2: 0.2, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { age: 20, 爱好1: 2.6, 爱好2: 0.4, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { age: 21, 爱好1: 2.4, 爱好2: 0.6, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { age: 22, 爱好1: 2.2, 爱好2: 0.8, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { age: 23, 爱好1: 2, 爱好2: 1, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { age: 24, 爱好1: 2, 爱好2: 1, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { age: 25, 爱好1: 2, 爱好2: 1, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { age: 26, 爱好1: 2.5, 爱好2: 0.5, 爱好3: 1.5, 爱好4: 3.5, 爱好5: 2 },
+  { age: 27, 爱好1: 3, 爱好2: 0, 爱好3: 1, 爱好4: 4, 爱好5: 2 }
 ]
 
 export const cloneFrontendHobbyTimeData = (): HobbyTimeItem[] => JSON.parse(JSON.stringify(frontendHobbyTimeData))
 
 export const frontendHobbyTimeTags: HobbyTimeTag[] = [
-  { id: 'time-study', dataKey: 'Study', name: 'Study', color: '#93c5fd', labelX: 110, labelY: 240, labelScale: 1.5, enabled: true },
-  { id: 'time-music', dataKey: 'Music', name: 'Music', color: '#7dd3fc', labelX: 410, labelY: 232, labelScale: 1.3, enabled: true },
-  { id: 'time-game', dataKey: 'Game', name: 'Game', color: '#67e8f9', labelX: 195, labelY: 150, labelScale: 1.5, enabled: true },
-  { id: 'time-coding', dataKey: 'Coding', name: 'Coding', color: '#5eead4', labelX: 340, labelY: 110, labelScale: 1.5, enabled: true },
-  { id: 'time-social', dataKey: 'Social', name: 'Social or Family', color: '#6ee7b7', labelX: 63, labelY: 65, labelScale: 1.5, enabled: true }
+  { id: 'time-study', dataKey: '爱好1', name: 'Study', color: '#93c5fd', labelX: 110, labelY: 240, labelScale: 1.5, enabled: true },
+  { id: 'time-music', dataKey: '爱好2', name: 'Music', color: '#7dd3fc', labelX: 410, labelY: 232, labelScale: 1.3, enabled: true },
+  { id: 'time-game', dataKey: '爱好3', name: 'Game', color: '#67e8f9', labelX: 195, labelY: 150, labelScale: 1.5, enabled: true },
+  { id: 'time-coding', dataKey: '爱好4', name: 'Coding', color: '#5eead4', labelX: 340, labelY: 110, labelScale: 1.5, enabled: true },
+  { id: 'time-social', dataKey: '爱好5', name: 'Social or Family', color: '#6ee7b7', labelX: 63, labelY: 65, labelScale: 1.5, enabled: true }
 ]
 
 export const cloneFrontendHobbyTimeTags = (): HobbyTimeTag[] =>

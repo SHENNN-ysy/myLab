@@ -61,8 +61,8 @@
           >
             <div
               class="game-card"
-              :class="{ 'is-active': activeTimeKey === timeChartKeys[index] }"
-              @mouseenter="activeTimeKey = timeChartKeys[index]"
+              :class="{ 'is-active': activeTimeKey === cardTimeKey(game, index) }"
+              @mouseenter="activeTimeKey = cardTimeKey(game, index)"
               @mouseleave="activeTimeKey = null"
             >
               <img :src="game.image" :alt="game.name" loading="lazy" />
@@ -131,17 +131,17 @@ const yTicks = [2, 4, 6, 8]
 
 type TimeKey = HobbyTimeKey
 
-const timeChartKeys: TimeKey[] = ['Study', 'Music', 'Game', 'Coding', 'Social']
+const timeChartKeys: TimeKey[] = ['爱好1', '爱好2', '爱好3', '爱好4', '爱好5']
 
 /* 色带仍按顺序与卡片联动，但 Time 标签名称使用独立配置。 */
 const activeTimeKey = ref<TimeKey | null>(null)
 
 const fallbackTimeChartMeta: Record<TimeKey, { label: string; color: string; labelTransform: string }> = {
-  Study: { label: 'Study', color: '#93c5fd', labelTransform: 'translate(110,240) scale(1.5)' },
-  Music: { label: 'Music', color: '#7dd3fc', labelTransform: 'translate(410,232) scale(1.3)' },
-  Game: { label: 'Game', color: '#67e8f9', labelTransform: 'translate(195,150) scale(1.5)' },
-  Coding: { label: 'Coding', color: '#5eead4', labelTransform: 'translate(340,110) scale(1.5)' },
-  Social: { label: 'Social or Family', color: '#6ee7b7', labelTransform: 'translate(63,65) scale(1.5)' }
+  爱好1: { label: 'Study', color: '#93c5fd', labelTransform: 'translate(110,240) scale(1.5)' },
+  爱好2: { label: 'Music', color: '#7dd3fc', labelTransform: 'translate(410,232) scale(1.3)' },
+  爱好3: { label: 'Game', color: '#67e8f9', labelTransform: 'translate(195,150) scale(1.5)' },
+  爱好4: { label: 'Coding', color: '#5eead4', labelTransform: 'translate(340,110) scale(1.5)' },
+  爱好5: { label: 'Social or Family', color: '#6ee7b7', labelTransform: 'translate(63,65) scale(1.5)' }
 }
 
 const timeChartMeta = computed<Record<TimeKey, { label: string; color: string; labelTransform: string }>>(() => {
@@ -158,37 +158,50 @@ const timeChartMeta = computed<Record<TimeKey, { label: string; color: string; l
   return result
 })
 
+/* 卡片与 Time 色带的联动：优先按卡片标题与标签显示名称匹配（后台可独立排序和改名），
+   名称对不上（如兜底的游戏数据）时退化为按顺序一一对应。 */
+const managedTimeTags = computed<PublicHobbyTimeTag[]>(() => {
+  const tags = content.value.hobbies?.time_tags
+  return Array.isArray(tags) ? tags.filter((tag: PublicHobbyTimeTag) => tag.enabled !== false) : []
+})
+
+const cardTimeKey = (card: { name: string }, index: number): TimeKey => {
+  const name = card.name.trim().toLowerCase()
+  const matched = managedTimeTags.value.find(tag => (tag.name || '').trim().toLowerCase() === name)
+  return matched?.data_key ?? timeChartKeys[index]
+}
+
 // 完整覆盖 -1 ~ 27 每个年龄；原锚点之间的数据为线性插值，每行总和保持 10（即 100%）
 const fallbackTimeChartData: Array<{ index: number } & Record<TimeKey, number>> = [
-  { index: -1, Study: 0, Music: 0, Game: 0, Coding: 0, Social: 10 },
-  { index: 0, Study: 0, Music: 0, Game: 0, Coding: 0, Social: 10 },
-  { index: 1, Study: 1, Music: 0, Game: 0, Coding: 0, Social: 9 },
-  { index: 2, Study: 2, Music: 0, Game: 0, Coding: 0, Social: 8 },
-  { index: 3, Study: 3, Music: 0, Game: 0, Coding: 0, Social: 7 },
-  { index: 4, Study: 4, Music: 0, Game: 0, Coding: 0, Social: 6 },
-  { index: 5, Study: 5, Music: 0, Game: 0, Coding: 0, Social: 5 },
-  { index: 6, Study: 6, Music: 0, Game: 0, Coding: 0, Social: 4 },
-  { index: 7, Study: 5.3, Music: 0, Game: 1, Coding: 0, Social: 3.7 },
-  { index: 8, Study: 4.7, Music: 0, Game: 2, Coding: 0, Social: 3.3 },
-  { index: 9, Study: 4, Music: 0, Game: 3, Coding: 0, Social: 3 },
-  { index: 10, Study: 3.9, Music: 0, Game: 2.9, Coding: 0.3, Social: 2.9 },
-  { index: 11, Study: 3.8, Music: 0, Game: 2.8, Coding: 0.7, Social: 2.7 },
-  { index: 12, Study: 3.7, Music: 0, Game: 2.7, Coding: 1, Social: 2.6 },
-  { index: 13, Study: 3.6, Music: 0, Game: 2.6, Coding: 1.3, Social: 2.5 },
-  { index: 14, Study: 3.4, Music: 0, Game: 2.4, Coding: 1.7, Social: 2.5 },
-  { index: 15, Study: 3.3, Music: 0, Game: 2.3, Coding: 2, Social: 2.4 },
-  { index: 16, Study: 3.2, Music: 0, Game: 2.2, Coding: 2.3, Social: 2.3 },
-  { index: 17, Study: 3.1, Music: 0, Game: 2.1, Coding: 2.7, Social: 2.1 },
-  { index: 18, Study: 3, Music: 0, Game: 2, Coding: 3, Social: 2 },
-  { index: 19, Study: 2.8, Music: 0.2, Game: 2, Coding: 3, Social: 2 },
-  { index: 20, Study: 2.6, Music: 0.4, Game: 2, Coding: 3, Social: 2 },
-  { index: 21, Study: 2.4, Music: 0.6, Game: 2, Coding: 3, Social: 2 },
-  { index: 22, Study: 2.2, Music: 0.8, Game: 2, Coding: 3, Social: 2 },
-  { index: 23, Study: 2, Music: 1, Game: 2, Coding: 3, Social: 2 },
-  { index: 24, Study: 2, Music: 1, Game: 2, Coding: 3, Social: 2 },
-  { index: 25, Study: 2, Music: 1, Game: 2, Coding: 3, Social: 2 },
-  { index: 26, Study: 2.5, Music: 0.5, Game: 1.5, Coding: 3.5, Social: 2 },
-  { index: 27, Study: 3, Music: 0, Game: 1, Coding: 4, Social: 2 }
+  { index: -1, 爱好1: 0, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 10 },
+  { index: 0, 爱好1: 0, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 10 },
+  { index: 1, 爱好1: 1, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 9 },
+  { index: 2, 爱好1: 2, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 8 },
+  { index: 3, 爱好1: 3, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 7 },
+  { index: 4, 爱好1: 4, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 6 },
+  { index: 5, 爱好1: 5, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 5 },
+  { index: 6, 爱好1: 6, 爱好2: 0, 爱好3: 0, 爱好4: 0, 爱好5: 4 },
+  { index: 7, 爱好1: 5.3, 爱好2: 0, 爱好3: 1, 爱好4: 0, 爱好5: 3.7 },
+  { index: 8, 爱好1: 4.7, 爱好2: 0, 爱好3: 2, 爱好4: 0, 爱好5: 3.3 },
+  { index: 9, 爱好1: 4, 爱好2: 0, 爱好3: 3, 爱好4: 0, 爱好5: 3 },
+  { index: 10, 爱好1: 3.9, 爱好2: 0, 爱好3: 2.9, 爱好4: 0.3, 爱好5: 2.9 },
+  { index: 11, 爱好1: 3.8, 爱好2: 0, 爱好3: 2.8, 爱好4: 0.7, 爱好5: 2.7 },
+  { index: 12, 爱好1: 3.7, 爱好2: 0, 爱好3: 2.7, 爱好4: 1, 爱好5: 2.6 },
+  { index: 13, 爱好1: 3.6, 爱好2: 0, 爱好3: 2.6, 爱好4: 1.3, 爱好5: 2.5 },
+  { index: 14, 爱好1: 3.4, 爱好2: 0, 爱好3: 2.4, 爱好4: 1.7, 爱好5: 2.5 },
+  { index: 15, 爱好1: 3.3, 爱好2: 0, 爱好3: 2.3, 爱好4: 2, 爱好5: 2.4 },
+  { index: 16, 爱好1: 3.2, 爱好2: 0, 爱好3: 2.2, 爱好4: 2.3, 爱好5: 2.3 },
+  { index: 17, 爱好1: 3.1, 爱好2: 0, 爱好3: 2.1, 爱好4: 2.7, 爱好5: 2.1 },
+  { index: 18, 爱好1: 3, 爱好2: 0, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { index: 19, 爱好1: 2.8, 爱好2: 0.2, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { index: 20, 爱好1: 2.6, 爱好2: 0.4, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { index: 21, 爱好1: 2.4, 爱好2: 0.6, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { index: 22, 爱好1: 2.2, 爱好2: 0.8, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { index: 23, 爱好1: 2, 爱好2: 1, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { index: 24, 爱好1: 2, 爱好2: 1, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { index: 25, 爱好1: 2, 爱好2: 1, 爱好3: 2, 爱好4: 3, 爱好5: 2 },
+  { index: 26, 爱好1: 2.5, 爱好2: 0.5, 爱好3: 1.5, 爱好4: 3.5, 爱好5: 2 },
+  { index: 27, 爱好1: 3, 爱好2: 0, 爱好3: 1, 爱好4: 4, 爱好5: 2 }
 ]
 
 const timeChartData = computed<Array<{ index: number } & Record<TimeKey, number>>>(() => {
@@ -196,11 +209,11 @@ const timeChartData = computed<Array<{ index: number } & Record<TimeKey, number>
   if (!Array.isArray(points) || points.length !== 29) return fallbackTimeChartData
   return points.map(point => ({
     index: point.age,
-    Study: Number(point.values.Study || 0),
-    Music: Number(point.values.Music || 0),
-    Game: Number(point.values.Game || 0),
-    Coding: Number(point.values.Coding || 0),
-    Social: Number(point.values.Social || 0)
+    爱好1: Number(point.values.爱好1 || 0),
+    爱好2: Number(point.values.爱好2 || 0),
+    爱好3: Number(point.values.爱好3 || 0),
+    爱好4: Number(point.values.爱好4 || 0),
+    爱好5: Number(point.values.爱好5 || 0)
   }))
 })
 

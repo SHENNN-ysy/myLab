@@ -192,6 +192,53 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         jdbc.update("DELETE FROM content_releases WHERE id = ? AND state = 'DRAFT'", draft.getId());
     }
 
+    /**
+     * 软删除历史版本：按模块级联为子表/孙表数据行打 deleted_at 标记（解除资源引用），
+     * 最后标记 content_releases 本体。所有 UPDATE 带 deleted_at IS NULL 条件，保证幂等。
+     */
+    @Override
+    public void softDeleteVersion(ContentRelease release, OffsetDateTime now) {
+        UUID releaseId = release.getId();
+        switch (release.getModuleKey()) {
+            case "home" -> softDelete("home_images", "release_id = ?", now, releaseId);
+            case "about" -> {
+                String parent = "about_content_id IN (SELECT id FROM about_contents WHERE release_id = ?)";
+                softDelete("about_profile_bullets", parent, now, releaseId);
+                softDelete("about_bubbles", parent, now, releaseId);
+                softDelete("about_contents", "release_id = ?", now, releaseId);
+            }
+            case "skills" -> softDelete("skills", "release_id = ?", now, releaseId);
+            case "footprints" -> {
+                softDelete("footprint_resources",
+                        "footprint_id IN (SELECT id FROM footprints WHERE release_id = ?)", now, releaseId);
+                softDelete("footprints", "release_id = ?", now, releaseId);
+            }
+            case "hobbies" -> {
+                softDelete("hobby_resources",
+                        "hobby_id IN (SELECT id FROM hobbies WHERE release_id = ?)", now, releaseId);
+                softDelete("hobbies", "release_id = ?", now, releaseId);
+                softDelete("hobby_time_tags", "release_id = ?", now, releaseId);
+                softDelete("hobby_time_points", "release_id = ?", now, releaseId);
+            }
+            case "vibe" -> softDelete("vibe_tools", "release_id = ?", now, releaseId);
+            case "mylab" -> {
+                String parent = "card_id IN (SELECT id FROM mylab_cards WHERE release_id = ?)";
+                softDelete("mylab_card_tags", parent, now, releaseId);
+                softDelete("mylab_resources", parent, now, releaseId);
+                softDelete("mylab_cards", "release_id = ?", now, releaseId);
+            }
+            default -> throw new IllegalArgumentException("unknown module: " + release.getModuleKey());
+        }
+        jdbc.update("UPDATE content_releases SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+                now, now, releaseId);
+    }
+
+    /** 按条件为指定表的数据行打 deleted_at 标记（幂等） */
+    private void softDelete(String table, String condition, OffsetDateTime now, UUID releaseId) {
+        jdbc.update("UPDATE " + table + " SET deleted_at = ? WHERE " + condition + " AND deleted_at IS NULL",
+                now, releaseId);
+    }
+
     /** 清空某次发布在各模块数据表中的数据（replaceData 前置步骤） */
     private void deleteReleaseData(ContentRelease release) {
         UUID releaseId = release.getId();
@@ -318,11 +365,11 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
             JsonNode values = point.path("values");
             jdbc.update("""
                     INSERT INTO hobby_time_points
-                        (id, release_id, age, study, music, game, coding, social)
+                        (id, release_id, age, "爱好1", "爱好2", "爱好3", "爱好4", "爱好5")
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """, uuid(point, "row_id"), releaseId, integer(point, "age", -2),
-                    decimal(values, "Study", 0), decimal(values, "Music", 0), decimal(values, "Game", 0),
-                    decimal(values, "Coding", 0), decimal(values, "Social", 0));
+                    decimal(values, "爱好1", 0), decimal(values, "爱好2", 0), decimal(values, "爱好3", 0),
+                    decimal(values, "爱好4", 0), decimal(values, "爱好5", 0));
         }
     }
 
@@ -509,13 +556,13 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
 
     private List<Map<String, Object>> readHobbyTimePoints(UUID releaseId) {
         return jdbc.query("""
-                SELECT id, age, study, music, game, coding, social
+                SELECT id, age, "爱好1", "爱好2", "爱好3", "爱好4", "爱好5"
                 FROM hobby_time_points WHERE release_id = ? AND deleted_at IS NULL ORDER BY age
                 """, (rs, n) -> {
             Map<String, Object> values = mapOf(
-                    "Study", rs.getBigDecimal("study"), "Music", rs.getBigDecimal("music"),
-                    "Game", rs.getBigDecimal("game"), "Coding", rs.getBigDecimal("coding"),
-                    "Social", rs.getBigDecimal("social"));
+                    "爱好1", rs.getBigDecimal("爱好1"), "爱好2", rs.getBigDecimal("爱好2"),
+                    "爱好3", rs.getBigDecimal("爱好3"), "爱好4", rs.getBigDecimal("爱好4"),
+                    "爱好5", rs.getBigDecimal("爱好5"));
             return mapOf("row_id", rs.getObject("id"), "age", rs.getInt("age"), "values", values);
         }, releaseId);
     }

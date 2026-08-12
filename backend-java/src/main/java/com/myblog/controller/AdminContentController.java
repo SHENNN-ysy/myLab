@@ -115,6 +115,17 @@ public class AdminContentController {
     }
 
     /**
+     * 软删除指定历史版本并解除其资源引用；线上发布态版本不可删除。
+     */
+    @DeleteMapping("/{moduleKey}/versions/{versionNo}")
+    public Result<?> deleteVersion(@AuthenticationPrincipal CurrentUser actor,
+                                   @PathVariable String moduleKey,
+                                   @PathVariable int versionNo) {
+        content.deleteVersion(actor, moduleKey, versionNo);
+        return Result.ok(null, "历史版本已删除");
+    }
+
+    /**
      * 放弃指定模块的当前草稿。
      */
     @DeleteMapping("/{moduleKey}/draft")

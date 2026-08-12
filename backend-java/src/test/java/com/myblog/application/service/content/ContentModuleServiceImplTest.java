@@ -137,6 +137,39 @@ class ContentModuleServiceImplTest {
                 !String.valueOf(data).contains(historicalRowId.toString())));
     }
 
+    @Test
+    void deletingArchivedVersionSoftDeletesRelease() {
+        ContentRelease archived = release("vibe", "ARCHIVED");
+        when(releases.findVersion("vibe", 1)).thenReturn(archived);
+
+        service.deleteVersion(admin, "vibe", 1);
+
+        verify(releases).softDeleteVersion(any(ContentRelease.class), any(OffsetDateTime.class));
+    }
+
+    @Test
+    void deletingPublishedVersionIsRejected() {
+        ContentRelease published = release("vibe", "PUBLISHED");
+        when(releases.findVersion("vibe", 1)).thenReturn(published);
+
+        assertThatThrownBy(() -> service.deleteVersion(admin, "vibe", 1))
+                .isInstanceOf(ConflictException.class);
+        verify(releases, never()).softDeleteVersion(any(), any());
+    }
+
+    @Test
+    void deletingMissingOrDraftVersionIsNotFound() {
+        when(releases.findVersion("vibe", 1)).thenReturn(null);
+        assertThatThrownBy(() -> service.deleteVersion(admin, "vibe", 1))
+                .isInstanceOf(NotFoundException.class);
+
+        ContentRelease draft = release("vibe", "DRAFT");
+        when(releases.findVersion("vibe", 2)).thenReturn(draft);
+        assertThatThrownBy(() -> service.deleteVersion(admin, "vibe", 2))
+                .isInstanceOf(NotFoundException.class);
+        verify(releases, never()).softDeleteVersion(any(), any());
+    }
+
     private ContentRelease release(String module, String state) {
         ContentRelease release = new ContentRelease();
         release.setId(UUID.randomUUID());

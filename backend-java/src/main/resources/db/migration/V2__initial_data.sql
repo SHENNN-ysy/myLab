@@ -200,18 +200,18 @@ SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:hobby-time-tag:' || data_key),
        uuid_generate_v5(uuid_ns_url(), 'myblog:release:hobbies:1'),
        data_key, name, color, label_x, label_y, label_scale, TRUE, sort_order
 FROM (VALUES
-    ('Study', 'Study', '#93C5FD', 110, 240, 1.5, 0),
-    ('Music', 'Music', '#7DD3FC', 410, 232, 1.3, 1),
-    ('Game', 'Game', '#67E8F9', 195, 150, 1.5, 2),
-    ('Coding', 'Coding', '#5EEAD4', 340, 110, 1.5, 3),
-    ('Social', 'Social or Family', '#6EE7B7', 63, 65, 1.5, 4)
+    ('爱好1', 'Study', '#93C5FD', 110, 240, 1.5, 0),
+    ('爱好2', 'Music', '#7DD3FC', 410, 232, 1.3, 1),
+    ('爱好3', 'Game', '#67E8F9', 195, 150, 1.5, 2),
+    ('爱好4', 'Coding', '#5EEAD4', 340, 110, 1.5, 3),
+    ('爱好5', 'Social or Family', '#6EE7B7', 63, 65, 1.5, 4)
 ) AS item(data_key, name, color, label_x, label_y, label_scale, sort_order)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO hobby_time_points (id, release_id, age, study, music, game, coding, social)
+INSERT INTO hobby_time_points (id, release_id, age, "爱好1", "爱好2", "爱好3", "爱好4", "爱好5")
 SELECT uuid_generate_v5(uuid_ns_url(), 'myblog:hobby-time-point:' || age),
        uuid_generate_v5(uuid_ns_url(), 'myblog:release:hobbies:1'),
-       age, study, music, game, coding, social
+       age, "爱好1", "爱好2", "爱好3", "爱好4", "爱好5"
 FROM (VALUES
     (-1,0,0,0,0,10),(0,0,0,0,0,10),(1,1,0,0,0,9),(2,2,0,0,0,8),(3,3,0,0,0,7),
     (4,4,0,0,0,6),(5,5,0,0,0,5),(6,6,0,0,0,4),(7,5.3,0,1,0,3.7),(8,4.7,0,2,0,3.3),
@@ -220,7 +220,7 @@ FROM (VALUES
     (17,3.1,0,2.1,2.7,2.1),(18,3,0,2,3,2),(19,2.8,0.2,2,3,2),(20,2.6,0.4,2,3,2),
     (21,2.4,0.6,2,3,2),(22,2.2,0.8,2,3,2),(23,2,1,2,3,2),(24,2,1,2,3,2),(25,2,1,2,3,2),
     (26,2.5,0.5,1.5,3.5,2),(27,3,0,1,4,2)
-) AS item(age, study, music, game, coding, social)
+) AS item(age, "爱好1", "爱好2", "爱好3", "爱好4", "爱好5")
 ON CONFLICT DO NOTHING;
 
 INSERT INTO vibe_tools (id, release_id, tool_key, name, percentage, description, enabled, sort_order)

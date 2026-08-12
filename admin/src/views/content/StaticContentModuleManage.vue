@@ -7,7 +7,13 @@
             <h2>{{ pageTitle }}</h2>
             <p>当前内容以博客前台 myblog 的静态内容为准</p>
           </div>
-          <a-tag color="blue">后端版本管理</a-tag>
+          <a-space>
+            <a-button @click="versionsVisible = true">
+              <HistoryOutlined />
+              历史版本
+            </a-button>
+            <a-tag color="blue">后端版本管理</a-tag>
+          </a-space>
         </div>
       </template>
 
@@ -190,14 +196,23 @@
       </a-tabs>
       </a-spin>
     </a-card>
+
+    <VersionHistoryModal
+      v-model:open="versionsVisible"
+      :module-key="moduleKey"
+      :has-draft="Boolean(moduleMeta?.draft_release_id)"
+      @restored="load"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, defineComponent, h, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { HistoryOutlined } from '@ant-design/icons-vue'
 import CollectionHeader from '@/components/content/CollectionHeader.vue'
 import OssImageResourcePicker from '@/components/content/OssImageResourcePicker.vue'
+import VersionHistoryModal from '@/components/content/VersionHistoryModal.vue'
 import { getContentModuleApi, publishContentApi, saveContentDraftApi, type ContentModule } from '@/api/content'
 import type {
   FootprintsContentData,
@@ -242,6 +257,7 @@ const activePanel = ref('current')
 const loading = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
+const versionsVisible = ref(false)
 const moduleMeta = ref<ContentModule<SupportedContentData> | null>(null)
 const current = reactive<StaticContentMap>({ skills: [], footprints: [], hobbies: [], vibe: [] })
 const draft = reactive<StaticContentMap>({ skills: [], footprints: [], hobbies: [], vibe: [] })
@@ -266,7 +282,7 @@ const skillLevelPresentation: Record<SkillItem['levelCode'], SkillLevelPresentat
   novice: { label: '入门', barStyle: 'gray-white' }
 }
 const skillLevelMeta = (levelCode: SkillItem['levelCode']) => skillLevelPresentation[levelCode]
-const timeKeys: HobbyTimeKey[] = ['Study', 'Music', 'Game', 'Coding', 'Social']
+const timeKeys: HobbyTimeKey[] = ['爱好1', '爱好2', '爱好3', '爱好4', '爱好5']
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 const replaceArray = <T>(target: T[], source: T[]) => target.splice(0, target.length, ...source)
 
@@ -320,11 +336,11 @@ const mapTimeTags = (data?: HobbiesContentData): HobbyTimeTag[] => (data?.time_t
 const mapTimePoints = (data?: HobbiesContentData): HobbyTimeItem[] => (data?.time_points || []).map(point => ({
   rowId: point.row_id,
   age: point.age,
-  Study: Number(point.values.Study || 0),
-  Music: Number(point.values.Music || 0),
-  Game: Number(point.values.Game || 0),
-  Coding: Number(point.values.Coding || 0),
-  Social: Number(point.values.Social || 0)
+  爱好1: Number(point.values.爱好1 || 0),
+  爱好2: Number(point.values.爱好2 || 0),
+  爱好3: Number(point.values.爱好3 || 0),
+  爱好4: Number(point.values.爱好4 || 0),
+  爱好5: Number(point.values.爱好5 || 0)
 }))
 
 const mapVibe = (data?: VibeContentData): VibeToolItem[] => (data?.tools || []).map(item => ({
@@ -478,7 +494,7 @@ const payload = (): SupportedContentData => {
     time_points: draftHobbyTime.map(row => ({
       row_id: row.rowId,
       age: row.age,
-      values: { Study: row.Study, Music: row.Music, Game: row.Game, Coding: row.Coding, Social: row.Social }
+      values: { 爱好1: row.爱好1, 爱好2: row.爱好2, 爱好3: row.爱好3, 爱好4: row.爱好4, 爱好5: row.爱好5 }
     }))
   }
   return {

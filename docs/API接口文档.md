@@ -171,7 +171,10 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 | GET | `/api/v1/admin/content/{moduleKey}/versions` | 查询非草稿版本列表 |
 | GET | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}` | 查询指定历史版本完整数据 |
 | POST | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}/restore` | 复制历史版本为新草稿 |
+| DELETE | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}` | 软删除指定历史版本并解除其资源引用 |
 | DELETE | `/api/v1/admin/content/{moduleKey}/draft` | 放弃当前草稿 |
+
+`DELETE .../versions/{versionNo}` 为软删除：版本本体及其在各模块子表中的数据行统一打 `deleted_at` 标记，版本号不会复用。版本不存在或为草稿返回 `10005`；`PUBLISHED` 线上版本不可删除，返回 `10006`，需先下线或发布新版本。删除后其独占引用的文件资源解除引用，可在文件管理中删除。
 
 模块管理响应 `data`：
 
@@ -329,7 +332,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
   "time_tags": [
     {
       "row_id": "uuid",
-      "data_key": "Study",
+      "data_key": "爱好1",
       "name": "Study",
       "color": "#93C5FD",
       "label_x": 110,
@@ -343,11 +346,11 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
     {
       "age": -1,
       "values": {
-        "Study": 0,
-        "Music": 0,
-        "Game": 0,
-        "Coding": 0,
-        "Social": 10
+        "爱好1": 0,
+        "爱好2": 0,
+        "爱好3": 0,
+        "爱好4": 0,
+        "爱好5": 10
       }
     }
   ]
@@ -355,7 +358,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 ```
 
 - 爱好卡片最多启用 5 条；已启用卡片的标题、描述和图片资源必填。
-- Time 标签最多启用 5 条，`data_key` 只允许 `Study`、`Music`、`Game`、`Coding`、`Social` 且不得重复。
+- Time 标签最多启用 5 条，`data_key` 只允许 `爱好1`、`爱好2`、`爱好3`、`爱好4`、`爱好5` 且不得重复。
 - 标签坐标范围为 X 0～500、Y 0～300，`label_scale` 为 0.5～3，颜色使用 `#RRGGBB`。
 - `time_points` 必须完整覆盖 -1～27 共 29 个年龄；每个 `values` 必须包含五个数据键，每项为 0～10且合计为 10。
 
