@@ -170,7 +170,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 | POST | `/api/v1/admin/content/{moduleKey}/offline` | 下线当前发布版本 |
 | GET | `/api/v1/admin/content/{moduleKey}/versions` | 查询非草稿版本列表 |
 | GET | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}` | 查询指定历史版本完整数据 |
-| POST | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}/restore` | 复制历史版本为新草稿 |
+| POST | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}/restore` | 提取历史版本内容覆盖当前草稿（无草稿时新建草稿） |
 | DELETE | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}` | 软删除指定历史版本并解除其资源引用 |
 | DELETE | `/api/v1/admin/content/{moduleKey}/draft` | 放弃当前草稿 |
 
@@ -493,6 +493,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 | GET | `/api/v1/files?page=1&page_size=20&directory=hero` | 分页查询未删除资源，可按目录筛选 |
 | POST | `/api/v1/files/upload` | 以 `multipart/form-data` 上传，字段为 `file` 和 `directory` |
 | GET | `/api/v1/files/presigned/{id}` | 获取公开图片地址或一小时有效的私有签名地址 |
+| GET | `/api/v1/files/{id}/references` | 查询资源被哪些内容版本引用（模块、版本号、版本状态、用途），供删除确认展示 |
 | DELETE | `/api/v1/files/{id}` | 逻辑删除未被任何内容版本引用的资源 |
 
 文件记录字段：
