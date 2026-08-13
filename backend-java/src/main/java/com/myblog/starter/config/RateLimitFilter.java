@@ -21,6 +21,11 @@ import java.time.Duration;
 /**
  * 基于 Redis 的 IP 限流过滤器：全局请求与登录接口按分钟窗口分别计数，超限返回 429。
  * Redis 不可用时放行（best-effort），执行优先级仅次于 {@link WebFilters}。
+ *
+ * <p>算法为固定窗口：以 {@code rate:{login|global}:{ip}} 为计数键，窗口内首个请求顺带设置
+ * 1 分钟过期，键过期即进入下一窗口、计数自然清零；只需 INCR/EXPIRE 两条命令，实现最简单。
+ * 登录接口单独计数是为防密码爆破，阈值通常低于全局阈值。
+ * Redis 故障时选择放行而非拒绝：可用性优先，认证与参数校验仍是安全兜底。</p>
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
@@ -53,6 +58,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
+        // 经反向代理部署时真实客户端 IP 在 X-Forwarded-For 首个地址，直连时退化为 remoteAddr
         String ip = req.getHeader("X-Forwarded-For");
         if (ip == null) {
             ip = req.getRemoteAddr();
@@ -73,7 +79,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 return;
             }
         } catch (Exception ignored) {
-            // best-effort: allow request through if Redis is down
+            // 尽力而为：Redis 故障时放行，避免存储抖动拖垮全站可用性
         }
         chain.doFilter(req, res);
     }

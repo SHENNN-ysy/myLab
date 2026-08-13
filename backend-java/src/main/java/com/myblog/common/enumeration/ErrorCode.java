@@ -8,9 +8,10 @@ import java.util.Arrays;
  * 全局稳定错误码。
  *
  * <p>编码约定：10xxx 为通用请求与安全错误，11xxx 为账号错误，
- * 12xxx 为内容管理错误，13xxx 为文件与存储错误，20xxx 为服务端错误。</p>
+ * 12xxx 为内容管理错误，13xxx 为文件与存储错误，14xxx 为互动统计错误，20xxx 为服务端错误。</p>
  */
-public enum ErrorCode {
+public enum
+ErrorCode {
     SUCCESS(0, HttpStatus.OK, "成功"),
 
     AUTHENTICATION_FAILED(10001, HttpStatus.UNAUTHORIZED, "身份认证失败"),

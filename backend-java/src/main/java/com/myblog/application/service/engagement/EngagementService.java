@@ -21,10 +21,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-/** 内容互动与站点统计应用服务。实时读取 Redis，读取失败时使用 PostgreSQL 聚合快照。 */
+/**
+ * 内容互动（浏览/点赞）与站点统计应用服务。
+ * 实时计数走 Redis（EngagementStore），Redis 不可用时降级读取 PostgreSQL 聚合快照，
+ * 保证公开读接口不随缓存故障整体不可用；写入路径不做降级，直接失败。
+ * 隐私边界：服务内只接触经 HMAC 哈希的 visitorHash，不保存访客原始标识。
+ */
 @Service
 public class EngagementService {
-    public static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Shanghai");
+    public static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Shanghai"); // 统计口径统一按业务时区（东八区）划日
     private static final Pattern POST_KEY_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$");
     private static final Set<Integer> TREND_DAYS = Set.of(7, 30, 90);
 
@@ -36,6 +41,11 @@ public class EngagementService {
         this.repository = repository;
     }
 
+    /**
+     * 批量查询文章的浏览/点赞计数。
+     * 优先读 Redis 实时值；Redis 不可用时降级为 PostgreSQL 最近一次聚合快照，
+     * 快照同样缺失的文章按 0 兜底，保证返回数量与入参一一对应。
+     */
     public List<EngagementDtos.EngagementSummary> engagement(List<String> rawPostKeys) {
         List<String> postKeys = normalizePostKeys(rawPostKeys);
         try {
@@ -49,25 +59,38 @@ public class EngagementService {
         }
     }
 
+    /**
+     * 登记一次文章浏览：先确认文章已对外可见再写入 Redis（同一访客当日去重由存储层保证）。
+     */
     public EngagementDtos.EngagementView registerView(String visitorHash, String postKey) {
         validatePublishedPost(postKey);
         return store.registerView(visitorHash, postKey, today());
     }
 
+    /**
+     * 点赞：先确认文章已对外可见再写入 Redis。
+     */
     public EngagementDtos.EngagementView like(String visitorHash, String postKey) {
         validatePublishedPost(postKey);
         return store.like(visitorHash, postKey, today());
     }
 
+    /**
+     * 取消点赞：先确认文章已对外可见再写入 Redis。
+     */
     public EngagementDtos.EngagementView unlike(String visitorHash, String postKey) {
         validatePublishedPost(postKey);
         return store.unlike(visitorHash, postKey);
     }
 
+    /** 登记一次站点访问（按访客当日去重，由存储层保证）。 */
     public EngagementDtos.SiteStatisticsView registerVisit(String visitorHash) {
         return store.registerVisit(visitorHash, today());
     }
 
+    /**
+     * 站点累计统计：优先读 Redis 实时值，不可用时降级为 PostgreSQL 最近一次快照。
+     */
     public EngagementDtos.SiteStatisticsView siteStatistics() {
         try {
             return store.siteStatistics();
@@ -81,6 +104,10 @@ public class EngagementService {
         return siteStatistics();
     }
 
+    /**
+     * 近 N 日趋势（仅管理员）：历史日期取 PostgreSQL 每日快照，当天用 Redis 实时值覆盖，
+     * 避免快照尚未落库导致当天数据恒为 0；Redis 不可用时保留快照值。缺数据的日期补 0。
+     */
     public EngagementDtos.AnalyticsTrendView trends(CurrentUser actor, int days) {
         Authorization.requireAdmin(actor);
         if (!TREND_DAYS.contains(days)) throw new ValidationException("days 只允许 7、30 或 90");
@@ -102,6 +129,10 @@ public class EngagementService {
         return new EngagementDtos.AnalyticsTrendView(days, BUSINESS_ZONE.getId(), items);
     }
 
+    /**
+     * 写入前的双层校验：先校验 post_key 格式，再确认文章存在且属于已发布内容，
+     * 防止对未公开或不存在的内容刷互动计数。
+     */
     private void validatePublishedPost(String postKey) {
         validatePostKey(postKey);
         if (!repository.publishedPostExists(postKey)) {
@@ -109,6 +140,7 @@ public class EngagementService {
         }
     }
 
+    /** 归一化批量查询的 post_key：去空白、去重、校验格式，并限制单次最多 100 个以防滥用。 */
     private List<String> normalizePostKeys(List<String> rawPostKeys) {
         if (rawPostKeys == null || rawPostKeys.isEmpty()) throw new ValidationException("post_keys 不能为空");
         LinkedHashSet<String> unique = new LinkedHashSet<>();

@@ -25,6 +25,10 @@ import java.util.List;
 
 /**
  * Spring Security 配置：无状态 JWT 认证、公开接口白名单、统一 401/403 JSON 响应及 CORS。
+ *
+ * <p>设计要点：JwtFilter 只负责校验令牌并在 SecurityContext 中建立身份，
+ * 授权规则全部集中在本类一处（白名单放行 + 其余请求需认证），便于审计与调整；
+ * 认证失败（401）与越权（403）同样返回统一 {@link Result} 包络，与业务错误响应结构保持一致。</p>
  */
 @Configuration
 @EnableMethodSecurity
@@ -82,6 +86,10 @@ public class SecurityConfig {
                 .build();
     }
 
+    /**
+     * 从 app.cors-origins 读取允许的跨域来源并注册全局 CORS 规则；允许携带凭证，
+     * 供管理端与前台跨域调用使用。
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource(AppProperties props) {
         CorsConfiguration cors = new CorsConfiguration();

@@ -9,6 +9,8 @@ import java.util.UUID;
 /**
  * 内容发布仓储接口：版本化内容（草稿/当前/历史版本）的持久化抽象。
  * 约定：每个 moduleKey 对应一条内容线，同一时刻至多存在一个草稿；发布时草稿转正并生成新的版本号。
+ * 职责分工：业务校验（字段合法性、模块结构）在应用层完成，实现侧只做
+ * JSON 快照与关系表之间的双向装配及状态机流转。
  */
 public interface ContentReleaseRepository {
     /**

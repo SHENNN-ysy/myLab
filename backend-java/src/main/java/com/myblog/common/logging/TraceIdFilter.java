@@ -21,6 +21,7 @@ import java.util.UUID;
  * 同时通过响应头 X-Trace-Id 回传给调用方，并记录请求耗时。
  */
 @Component
+// 最高优先级执行：确保后续过滤器与业务代码产生的日志都能带上 traceId
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class TraceIdFilter extends OncePerRequestFilter {
 
@@ -42,7 +43,7 @@ public class TraceIdFilter extends OncePerRequestFilter {
             long cost = System.currentTimeMillis() - start;
             log.info("{} {} {} {}ms", request.getMethod(), request.getRequestURI(),
                     response.getStatus(), cost);
-            MDC.remove(TRACE_ID_KEY);
+            MDC.remove(TRACE_ID_KEY); // 必须移除，避免线程池复用时 traceId 串号
         }
     }
 
