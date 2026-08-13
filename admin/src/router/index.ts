@@ -38,17 +38,28 @@ const router = createRouter({
           meta: { title: '关于我' }
         },
         {
-          path: 'content/:moduleKey(skills|footprints|hobbies|vibe)',
-          name: 'StaticContentModuleManage',
-          component: () => import('@/views/content/StaticContentModuleManage.vue'),
-          props: route => ({
-            moduleKey: route.params.moduleKey,
-            pageTitle: ({
-              skills: '技术栈管理', footprints: '足迹管理', hobbies: '爱好管理',
-              vibe: 'Vibe Coding 管理'
-            } as Record<string, string>)[String(route.params.moduleKey)]
-          }),
-          meta: { title: '内容管理' }
+          path: 'content/skills',
+          name: 'SkillsManage',
+          component: () => import('@/views/content/SkillsManage.vue'),
+          meta: { title: '技术栈管理' }
+        },
+        {
+          path: 'content/footprints',
+          name: 'FootprintsManage',
+          component: () => import('@/views/content/FootprintsManage.vue'),
+          meta: { title: '足迹管理' }
+        },
+        {
+          path: 'content/hobbies',
+          name: 'HobbiesManage',
+          component: () => import('@/views/content/HobbiesManage.vue'),
+          meta: { title: '爱好管理' }
+        },
+        {
+          path: 'content/vibe',
+          name: 'VibeManage',
+          component: () => import('@/views/content/VibeManage.vue'),
+          meta: { title: 'Vibe Coding 管理' }
         },
         {
           path: 'content/:moduleKey(mylab)',

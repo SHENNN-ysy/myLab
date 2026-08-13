@@ -13,7 +13,11 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 每分钟把 Redis 绝对计数写入 PostgreSQL，并在启动时恢复聚合数据。 */
+/**
+ * 互动聚合快照任务：每分钟把 Redis 中的绝对计数按 dirty→processing→ack 认领模式
+ * 整体覆盖写入 PostgreSQL（见 {@link RedisEngagementStore} 的一致性模型），
+ * 并在应用启动时把 PG 快照回填 Redis，作为 Redis 数据丢失后的兜底恢复。
+ */
 @Slf4j
 @Component
 public class EngagementSnapshotJob implements ApplicationRunner {
@@ -25,6 +29,11 @@ public class EngagementSnapshotJob implements ApplicationRunner {
         this.repository = repository;
     }
 
+    /**
+     * 启动恢复：先把上次异常退出遗留的 processing 标记搬回 dirty，
+     * 再从 PG 快照回填 Redis（近 120 天按日数据，与日键 TTL 口径一致）。
+     * 失败只告警不阻断启动，后续请求与快照任务会继续重试。
+     */
     @Override
     public void run(ApplicationArguments args) {
         try {
@@ -38,6 +47,11 @@ public class EngagementSnapshotJob implements ApplicationRunner {
         }
     }
 
+    /**
+     * 每 60 秒执行一轮：抢分布式锁防多实例并发 → 认领脏标记 → 读 Redis 绝对值
+     * 落 PG → ack。任何环节失败都不 ack，processing 标记留给下轮 recover 重试；
+     * 锁在 finally 中释放，避免异常导致 50 秒内快照停摆。
+     */
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
     public void synchronize() {
         String lockToken = null;

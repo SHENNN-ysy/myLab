@@ -27,6 +27,9 @@ services:
       - ./backend-java/src/main/resources/db/migration/V1__initial_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./backend-java/src/main/resources/db/migration/V2__initial_data.sql:/docker-entrypoint-initdb.d/02_initial_data.sql:ro
       - ./backend-java/src/main/resources/db/migration/V3__engagement_and_site_traffic.sql:/docker-entrypoint-initdb.d/03_engagement_and_site_traffic.sql:ro
+      - ./backend-java/src/main/resources/db/migration/V4__rename_hobby_time_keys.sql:/docker-entrypoint-initdb.d/04_rename_hobby_time_keys.sql:ro
+      - ./backend-java/src/main/resources/db/migration/V5__rename_hobby_time_point_columns.sql:/docker-entrypoint-initdb.d/05_rename_hobby_time_point_columns.sql:ro
+      - ./backend-java/src/main/resources/db/migration/V6__rename_hobby_time_point_columns_to_english.sql:/docker-entrypoint-initdb.d/06_rename_hobby_time_point_columns_to_english.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -96,6 +99,9 @@ services:
       OSS_MAX_FILE_SIZE_MB: ${OSS_MAX_FILE_SIZE_MB:-10}
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
       INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD:-Admin@123456}
+      LOG_PATH: "/logs"
+    volumes:
+      - ./logs:/logs
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }

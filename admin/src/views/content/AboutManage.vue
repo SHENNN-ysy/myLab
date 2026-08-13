@@ -7,10 +7,16 @@
             <h2>关于我</h2>
             <p>管理个人资料与“我的成分”气泡内容</p>
           </div>
-          <a-button @click="router.push('/system/files')">
-            <PictureOutlined />
-            文件管理
-          </a-button>
+          <a-space>
+            <a-button @click="versionsVisible = true">
+              <HistoryOutlined />
+              历史版本
+            </a-button>
+            <a-button @click="router.push('/system/files')">
+              <PictureOutlined />
+              文件管理
+            </a-button>
+          </a-space>
         </div>
       </template>
 
@@ -198,6 +204,13 @@
         </div>
       </a-form>
     </a-modal>
+
+    <VersionHistoryModal
+      v-model:open="versionsVisible"
+      module-key="about"
+      :has-draft="Boolean(moduleMeta?.draft_release_id)"
+      @restored="load"
+    />
   </div>
 </template>
 
@@ -206,8 +219,9 @@ import { nextTick, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import type { FormInstance, FormProps } from 'ant-design-vue'
-import { PictureOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { HistoryOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import OssImageResourcePicker, { type OssImageResourceValue } from '@/components/content/OssImageResourcePicker.vue'
+import VersionHistoryModal from '@/components/content/VersionHistoryModal.vue'
 import { getContentModuleApi, publishContentApi, saveContentDraftApi, type ContentModule } from '@/api/content'
 import type { AboutContentData } from '@/types/content'
 
@@ -245,6 +259,7 @@ const activePanel = ref('current')
 const loading = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
+const versionsVisible = ref(false)
 const moduleMeta = ref<ContentModule<AboutContentData> | null>(null)
 
 const bubbleSeed: Array<Omit<IngredientBubble, 'id'>> = [

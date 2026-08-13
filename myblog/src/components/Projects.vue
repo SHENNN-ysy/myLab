@@ -17,13 +17,7 @@
           :key="project.id"
           :delay="(index % 3) + 1"
         >
-          <div
-            :data-link-project="connectorKey(project.id)"
-            @mouseenter="showProjectLinks(connectorKey(project.id))"
-            @mouseleave="clearLinks"
-            @focusin="showProjectLinks(connectorKey(project.id))"
-            @focusout="clearLinks"
-          >
+          <div>
             <LabCard :post="project" :navigate="false" :tag-limit="3" @select="openModal" />
           </div>
         </RevealOnScroll>
@@ -116,10 +110,7 @@ const selectedProjectTechnologies = computed(() => {
   return project.projectTechnologies?.length ? project.projectTechnologies : project.tags.slice(1)
 })
 
-const connectorKey = (postId: string) => postId.startsWith('project-') ? postId.slice(8) : postId
-
 const openModal = (project: LabPost) => {
-  clearLinks()
   modalHeroLoaded.value = false
   selectedProject.value = project
   isModalOpen.value = true
@@ -131,12 +122,6 @@ const viewProject = async () => {
   isModalOpen.value = false
   await router.push(`/mylab/post/${postId}`)
 }
-
-const showProjectLinks = (projectId: string) => {
-  window.dispatchEvent(new CustomEvent('portfolio-link-hover', { detail: { type: 'project', key: projectId } }))
-}
-
-const clearLinks = () => window.dispatchEvent(new CustomEvent('portfolio-link-clear'))
 </script>
 
 <style scoped>

@@ -56,6 +56,10 @@ public interface ContentModuleService {
      */
     ContentDtos.ModuleView restore(CurrentUser actor, String moduleKey, int versionNo);
     /**
+     * 软删除指定历史版本并解除其资源引用；线上发布态版本不可删除。
+     */
+    void deleteVersion(CurrentUser actor, String moduleKey, int versionNo);
+    /**
      * 放弃当前草稿。
      */
     void deleteDraft(CurrentUser actor, String moduleKey);

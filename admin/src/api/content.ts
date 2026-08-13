@@ -66,3 +66,7 @@ export const restoreContentVersionApi = async <T>(key: ContentModuleKey, version
 export const deleteContentDraftApi = async (key: ContentModuleKey): Promise<void> => {
   await request.delete(`/admin/content/${key}/draft`)
 }
+
+export const deleteContentVersionApi = async (key: ContentModuleKey, version: number): Promise<void> => {
+  await request.delete(`/admin/content/${key}/versions/${version}`)
+}

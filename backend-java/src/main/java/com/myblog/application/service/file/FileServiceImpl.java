@@ -12,11 +12,13 @@ import com.myblog.common.security.CurrentUser;
 import com.myblog.application.port.ObjectStorage;
 import com.myblog.common.security.Authorization;
 import com.myblog.application.model.vo.FileOutVO;
+import com.myblog.application.model.vo.FileReferenceVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -153,6 +155,19 @@ public class FileServiceImpl implements FileService {
         record.setUpdatedAt(OffsetDateTime.now());
         files.save(record);
         storage.deleteAsync(record.getObjectKey());
+    }
+
+    @Override
+    /**
+     * 引用明细：文件不存在时抛 NotFoundException，否则返回全部内容版本引用（可能为空列表）。
+     */
+    public List<FileReferenceVO> references(CurrentUser actor, UUID id) {
+        Authorization.requireAdmin(actor);
+        FileRecord record = files.findById(id);
+        if (record == null || record.getDeletedAt() != null) {
+            throw new NotFoundException(ErrorCode.FILE_NOT_FOUND, null);
+        }
+        return files.findReferences(id);
     }
 
     /** 记录转视图：仅公开图片直接附带访问 URL，其余类型置空（需走 presign）。 */

@@ -1,6 +1,6 @@
 import { readonly, ref } from 'vue'
 
-export type HobbyTimeKey = 'Study' | 'Music' | 'Game' | 'Coding' | 'Social'
+export type HobbyTimeKey = '爱好1' | '爱好2' | '爱好3' | '爱好4' | '爱好5'
 
 export interface PublicHomeImage {
   image_resource_id?: string

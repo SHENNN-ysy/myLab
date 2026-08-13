@@ -27,7 +27,6 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-// import SkillProjectConnector from '../components/ui/SkillProjectConnector.vue'
 import HeroCinema from '../components/HeroCinema.vue'
 import About from '../components/About.vue'
 import Skills from '../components/Skills.vue'

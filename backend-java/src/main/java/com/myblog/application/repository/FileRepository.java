@@ -1,8 +1,10 @@
 package com.myblog.application.repository;
 
 import com.myblog.application.model.entity.FileRecord;
+import com.myblog.application.model.vo.FileReferenceVO;
 import com.myblog.common.result.PageResult;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -29,4 +31,8 @@ public interface FileRepository {
      * 文件是否仍被业务内容引用，用于删除前的安全性校验。
      */
     boolean hasReferences(UUID id);
+    /**
+     * 查询文件被哪些内容版本引用的明细（模块、版本号、版本状态、用途），无引用返回空列表。
+     */
+    List<FileReferenceVO> findReferences(UUID id);
 }

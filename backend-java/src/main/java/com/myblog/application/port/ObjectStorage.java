@@ -4,6 +4,10 @@ import java.io.InputStream;
 
 /**
  * 对象存储端口：应用层对文件对象存取能力的抽象（如 OSS），由基础设施层实现。
+ * <p>
+ * 开端口的理由：应用层只关心"存/取/删、生成访问地址"，不关心具体厂商 SDK；
+ * 同时对象存储是可选外部依赖——{@link #configured()} 把"未配置时降级处理"写进契约，
+ * 由实现与调用方共同遵守，使本地开发/无 OSS 环境下系统仍可运行。
  */
 public interface ObjectStorage {
 

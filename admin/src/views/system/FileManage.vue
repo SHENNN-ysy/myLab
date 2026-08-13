@@ -108,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, h, onMounted, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
 import {
@@ -122,7 +122,7 @@ import {
   UploadOutlined
 } from '@ant-design/icons-vue'
 import type { FileResource, ResourceDirectory } from '@/types'
-import { deleteFileApi, getFileAccessUrlApi, getFileListApi, uploadFileApi } from '@/api/file'
+import { deleteFileApi, getFileAccessUrlApi, getFileListApi, getFileReferencesApi, uploadFileApi } from '@/api/file'
 
 const imageTypes = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml'
 const files = ref<FileResource[]>([])
@@ -215,6 +215,21 @@ const formatFileSize = (size: number) => {
 }
 const formatTime = (value: string) => value ? new Date(value).toLocaleString('zh-CN') : '-'
 const directoryLabel = (directory?: ResourceDirectory) => resourceDirectoryOptions.find(item => item.value === directory)?.label || '旧本地资源'
+const moduleLabel = (moduleKey: string) => ({
+  home: '首页图片',
+  about: '关于我',
+  skills: '技术栈',
+  footprints: '足迹',
+  hobbies: '爱好',
+  vibe: 'Vibe Coding',
+  mylab: 'MyLab'
+} as Record<string, string>)[moduleKey] || moduleKey
+const versionStateLabel = (state: string) => ({
+  DRAFT: '草稿',
+  PUBLISHED: '已发布',
+  ARCHIVED: '已归档',
+  OFFLINE: '已下线'
+} as Record<string, string>)[state] || state
 
 const triggerUpload = () => fileInputRef.value?.click()
 const handleUpload = async (event: Event) => {
@@ -238,18 +253,28 @@ const copyAccessUrl = async (file: FileResource) => {
   message.success('访问地址已复制，有效期以接口返回策略为准')
 }
 
-const handleDelete = (file: FileResource) => Modal.confirm({
-  title: `确认删除「${file.originalName || file.objectKey}」？`,
-  content: '如果资源仍被任何内容版本引用，后端会拒绝删除。',
-  okText: '删除',
-  okButtonProps: { danger: true },
-  onOk: async () => {
-    await deleteFileApi(file.id)
-    if (files.value.length === 1 && page.value > 1) page.value--
-    message.success('文件删除任务已提交')
-    await loadData()
-  }
-})
+const handleDelete = async (file: FileResource) => {
+  const references = await getFileReferencesApi(file.id)
+  Modal.confirm({
+    title: `确认删除「${file.originalName || file.objectKey}」？`,
+    content: references.length
+      ? h('div', [
+          h('p', '该资源仍被以下内容版本引用，解除引用后才可删除：'),
+          h('ul', { style: 'margin: 8px 0 0; padding-left: 18px;' }, references.map(ref =>
+            h('li', `${moduleLabel(ref.moduleKey)} · v${ref.versionNo}（${versionStateLabel(ref.state)}）· ${ref.usage}`)
+          ))
+        ])
+      : '未被任何内容版本引用，可安全删除。',
+    okText: '删除',
+    okButtonProps: { danger: true, disabled: references.length > 0 },
+    onOk: async () => {
+      await deleteFileApi(file.id)
+      if (files.value.length === 1 && page.value > 1) page.value--
+      message.success('文件删除任务已提交')
+      await loadData()
+    }
+  })
+}
 
 onMounted(loadData)
 </script>
