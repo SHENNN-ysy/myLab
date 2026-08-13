@@ -1,4 +1,4 @@
-package com.myblog.infrastructure.persistence.mapper;
+package com.myblog.infrastructure.persistence.mapper.user;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
