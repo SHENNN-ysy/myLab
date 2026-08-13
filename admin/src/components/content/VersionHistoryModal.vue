@@ -9,7 +9,7 @@
     <a-alert
       type="info"
       show-icon
-      message="恢复会以历史版本为底创建新草稿；删除为软删除，仅解除其资源引用，线上版本不可删除。"
+      message="恢复会把历史版本的内容覆盖到当前草稿（无草稿时自动新建草稿），历史版本本身不变，同一草稿可多次恢复；删除为软删除，仅解除其资源引用，线上版本不可删除。"
       class="version-tip"
     />
     <a-list :data-source="versions" :loading="loading">
@@ -21,7 +21,7 @@
           />
           <a-tag :color="stateColor(item.state)">{{ stateText(item.state) }}</a-tag>
           <a-space size="small">
-            <a-button type="link" :disabled="hasDraft" @click="restore(item)">恢复为草稿</a-button>
+            <a-button type="link" @click="restore(item)">恢复为草稿</a-button>
             <a-button v-if="item.state !== 'PUBLISHED'" type="link" danger @click="remove(item)">删除</a-button>
           </a-space>
         </a-list-item>
@@ -77,10 +77,13 @@ const stateColor = (state: ContentVersion['state']) => ({
 const formatTime = (value?: string) => value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '—'
 
 const restore = (item: ContentVersion) => Modal.confirm({
-  title: `恢复版本 ${item.version_no} 为新草稿？`,
+  title: props.hasDraft
+    ? `将版本 ${item.version_no} 的内容覆盖当前草稿？`
+    : `以版本 ${item.version_no} 为底创建新草稿？`,
+  content: '历史版本本身不会被改动，可多次恢复不同历史版本。',
   onOk: async () => {
     await restoreContentVersionApi(props.moduleKey, item.version_no)
-    message.success('历史版本已恢复为草稿')
+    message.success(props.hasDraft ? '历史版本内容已覆盖当前草稿' : '历史版本已恢复为草稿')
     emit('update:open', false)
     emit('restored')
   }

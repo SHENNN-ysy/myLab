@@ -3,6 +3,7 @@ package com.myblog.application.service.file;
 import com.myblog.application.model.entity.FileRecord;
 import com.myblog.application.model.command.file.UploadFile;
 import com.myblog.application.model.vo.FileOutVO;
+import com.myblog.application.model.vo.FileReferenceVO;
 import com.myblog.application.port.ObjectStorage;
 import com.myblog.application.repository.FileRepository;
 import com.myblog.common.properties.AppProperties;
@@ -86,6 +87,25 @@ class FileServiceImplTest {
                 org.mockito.ArgumentMatchers.eq(3L), org.mockito.ArgumentMatchers.eq("image/png"));
         assertThat(result.directory()).isEqualTo("icon");
         assertThat(result.objectKey()).startsWith("icon/");
+    }
+
+    @Test
+    void referencesReturnsContentVersionsUsingTheFile() {
+        FileRecord image = resource("hobbies/2026/08/x.png", "image/png");
+        FileReferenceVO reference = new FileReferenceVO("hobbies", 3, "PUBLISHED", "爱好图片");
+        when(files.findById(image.getId())).thenReturn(image);
+        when(files.findReferences(image.getId())).thenReturn(List.of(reference));
+
+        List<FileReferenceVO> result = service.references(admin, image.getId());
+
+        assertThat(result).containsExactly(reference);
+    }
+
+    @Test
+    void referencesOfMissingFileIsNotFound() {
+        UUID id = UUID.randomUUID();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.references(admin, id))
+                .isInstanceOf(com.myblog.common.exception.NotFoundException.class);
     }
 
     private FileRecord resource(String objectKey, String mimeType) {

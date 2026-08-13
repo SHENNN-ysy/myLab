@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.Environment;
 
 import java.util.Map;
 import java.util.UUID;
@@ -20,13 +21,14 @@ class SystemServiceTest {
     @Mock DatabaseDiagnostics database;
     @Mock CacheDiagnostics cache;
     @Mock ObjectStorage storage;
+    @Mock Environment environment;
 
     private SystemService service;
     private CurrentUser admin;
 
     @BeforeEach
     void setUp() {
-        service = new SystemService(database, cache, storage);
+        service = new SystemService(database, cache, storage, environment);
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 

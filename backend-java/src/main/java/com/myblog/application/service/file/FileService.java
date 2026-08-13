@@ -4,7 +4,9 @@ import com.myblog.common.result.PageResult;
 import com.myblog.common.security.CurrentUser;
 import com.myblog.application.model.command.file.UploadFile;
 import com.myblog.application.model.vo.FileOutVO;
+import com.myblog.application.model.vo.FileReferenceVO;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,4 +34,9 @@ public interface FileService {
      * 删除文件：软删记录并异步清理对象存储中的文件。
      */
     void delete(CurrentUser actor, UUID id);
+
+    /**
+     * 查询文件被哪些内容版本引用的明细，供删除确认时展示（仅管理员）。
+     */
+    List<FileReferenceVO> references(CurrentUser actor, UUID id);
 }

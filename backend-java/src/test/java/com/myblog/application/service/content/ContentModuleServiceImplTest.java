@@ -138,6 +138,23 @@ class ContentModuleServiceImplTest {
     }
 
     @Test
+    void restoringWithExistingDraftOverwritesDraftWithoutTouchingSource() {
+        ContentRelease draft = release("vibe", "DRAFT");
+        ContentRelease source = release("vibe", "ARCHIVED");
+        when(releases.findDraft("vibe")).thenReturn(draft);
+        when(releases.findVersion("vibe", 1)).thenReturn(source);
+        when(releases.readData(source)).thenReturn(Map.of(
+                "tools", List.of(Map.of("tool_key", "cursor"))));
+        when(releases.readData(draft)).thenReturn(Map.of("tools", List.of()));
+
+        service.restore(admin, "vibe", 1);
+
+        verify(releases, never()).add(any());
+        verify(releases).touchDraft(any(UUID.class), any(), any(OffsetDateTime.class));
+        verify(releases).replaceData(argThat(release -> release.getId().equals(draft.getId())), any());
+    }
+
+    @Test
     void deletingArchivedVersionSoftDeletesRelease() {
         ContentRelease archived = release("vibe", "ARCHIVED");
         when(releases.findVersion("vibe", 1)).thenReturn(archived);

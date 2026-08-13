@@ -52,6 +52,14 @@ export interface FileResource {
   url?: string
 }
 
+// 文件资源的一条内容版本引用
+export interface FileReference {
+  moduleKey: string
+  versionNo: number
+  state: string
+  usage: string
+}
+
 // System Static Info - 系统静态信息
 export interface SystemStatic {
   hostname: string
