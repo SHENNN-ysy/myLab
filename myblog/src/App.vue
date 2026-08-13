@@ -1,7 +1,6 @@
 <template>
   <div id="app">
     <Navigation />
-    <!-- <SkillProjectConnector /> -->
     <RouterView />
     <Footer />
     <ScrollSphere />

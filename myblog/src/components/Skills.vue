@@ -20,12 +20,7 @@
           <div
             class="skill-item"
             :data-pct="skill.percentage"
-            :data-link-skill="skill.name"
             :class="skill.barStyle ? `has-gradient-bar has-${skill.barStyle}-bar` : ''"
-            @mouseenter="showSkillLinks(skill.name)"
-            @mouseleave="clearLinks"
-            @focusin="showSkillLinks(skill.name)"
-            @focusout="clearLinks"
           >
             <div v-if="isNewSkill(skill.name)" class="skill-new-badge" aria-label="New skill">
               <span class="badge-star">✦</span>
@@ -92,16 +87,6 @@ const hasManagedSkills = computed(() => Array.isArray(content.value.skills?.item
 
 const isNewSkill = (name: string) => skillItems.value.some(skill => skill.name === name && skill.isNew)
   || (!hasManagedSkills.value && fallbackNewSkillNames.has(name))
-
-const showSkillLinks = (skill: string) => {
-  window.dispatchEvent(new CustomEvent('portfolio-link-hover', {
-    detail: { type: 'skill', key: skill }
-  }))
-}
-
-const clearLinks = () => {
-  window.dispatchEvent(new CustomEvent('portfolio-link-clear'))
-}
 
 const getIcon = (type: string) => {
   const icons: Record<string, string> = {
