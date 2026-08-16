@@ -5,7 +5,8 @@ import com.myblog.common.enumeration.Role;
 import java.util.UUID;
 
 /**
- * 当前登录用户的认证主体。角色等级的比较逻辑复刻自旧版实现中的内联逻辑。
+ * 当前登录用户的认证主体，由认证过滤器解析令牌后写入 SecurityContext。
+ * 角色等级比较委托给 {@link Role} 的 rank 层级。
  */
 public record CurrentUser(UUID id, String username, String role) {
 

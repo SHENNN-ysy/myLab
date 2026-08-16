@@ -18,7 +18,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/public")
 @Tag(name = "公开内容")
-public class PublicContentController {
+public class
+PublicContentController {
     // 内容模块应用服务
     private final ContentModuleService content;
 

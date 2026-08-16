@@ -4,7 +4,13 @@
       <template #title>
         <div class="page-head">
           <div><h2>MyLab 管理</h2><p>当前内容以博客前台 myblog 的研究记录为准</p></div>
-          <a-tag color="blue">{{ currentCards.length }} 张已发布卡片</a-tag>
+          <a-space>
+            <a-button @click="versionsVisible = true">
+              <HistoryOutlined />
+              历史版本
+            </a-button>
+            <a-tag color="blue">{{ currentCards.length }} 张已发布卡片</a-tag>
+          </a-space>
         </div>
       </template>
 
@@ -37,25 +43,6 @@
             <a-space><a-button :loading="saving" @click="saveDraft">保存草稿</a-button><a-button type="primary" :loading="publishing" @click="publishDraft">发布</a-button></a-space>
           </div>
 
-          <CollectionHeader :title="`标签管理（${draftTags.length} 个）`" @add="addTag" />
-          <a-table :data-source="draftTags" :pagination="false" row-key="id" size="small" class="tag-table">
-            <a-table-column title="排序" width="70"><template #default="{ index }">{{ Number(index) + 1 }}</template></a-table-column>
-            <a-table-column title="标签名称">
-              <template #default="{ record }"><a-input v-model:value="record.name" :maxlength="30" placeholder="输入标签名称" @blur="commitTagName(record)" /></template>
-            </a-table-column>
-            <a-table-column title="引用卡片" width="100"><template #default="{ record }">{{ tagUsage(record.id) }}</template></a-table-column>
-            <a-table-column title="启用" width="80"><template #default="{ record }"><a-switch v-model:checked="record.enabled" /></template></a-table-column>
-            <a-table-column title="操作" width="210">
-              <template #default="{ record, index }">
-                <span class="row-actions">
-                  <button :disabled="Number(index) === 0" @click="moveTag(Number(index), -1)">上移</button>
-                  <button :disabled="Number(index) === draftTags.length - 1" @click="moveTag(Number(index), 1)">下移</button>
-                  <button class="danger" @click="removeTag(record)">删除</button>
-                </span>
-              </template>
-            </a-table-column>
-          </a-table>
-
           <CollectionHeader :title="`MyLab 卡片（${draftCards.length} 张）`" @add="addCard" />
           <a-collapse accordion>
             <a-collapse-panel v-for="(card, index) in draftCards" :key="card.postKey" :header="card.title || `卡片 ${index + 1}`">
@@ -83,19 +70,46 @@
               </a-row>
             </a-collapse-panel>
           </a-collapse>
+
+          <CollectionHeader :title="`标签管理（${draftTags.length} 个）`" @add="addTag" />
+          <a-table :data-source="draftTags" :pagination="false" row-key="id" size="small" class="tag-table">
+            <a-table-column title="排序" width="70"><template #default="{ index }">{{ Number(index) + 1 }}</template></a-table-column>
+            <a-table-column title="标签名称">
+              <template #default="{ record }"><a-input v-model:value="record.name" :maxlength="30" placeholder="输入标签名称" @blur="commitTagName(record)" /></template>
+            </a-table-column>
+            <a-table-column title="引用卡片" width="100"><template #default="{ record }">{{ tagUsage(record.id) }}</template></a-table-column>
+            <a-table-column title="操作" width="210">
+              <template #default="{ record, index }">
+                <span class="row-actions">
+                  <button :disabled="Number(index) === 0" @click="moveTag(Number(index), -1)">上移</button>
+                  <button :disabled="Number(index) === draftTags.length - 1" @click="moveTag(Number(index), 1)">下移</button>
+                  <button class="danger" @click="removeTag(record)">删除</button>
+                </span>
+              </template>
+            </a-table-column>
+          </a-table>
         </a-tab-pane>
       </a-tabs>
       </a-spin>
     </a-card>
+
+    <VersionHistoryModal
+      v-model:open="versionsVisible"
+      module-key="mylab"
+      :has-draft="Boolean(moduleMeta?.draft_release_id)"
+      @restored="load"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
+import { HistoryOutlined } from '@ant-design/icons-vue'
 import CollectionHeader from '@/components/content/CollectionHeader.vue'
 import OssImageResourcePicker, { type OssImageResourceValue } from '@/components/content/OssImageResourcePicker.vue'
 import OssDocumentResourcePicker from '@/components/content/OssDocumentResourcePicker.vue'
+import VersionHistoryModal from '@/components/content/VersionHistoryModal.vue'
 import { getContentModuleApi, publishContentApi, saveContentDraftApi, type ContentModule } from '@/api/content'
 import {
   createMylabTagApi,
@@ -133,6 +147,7 @@ const activePanel = ref('current')
 const loading = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
+const versionsVisible = ref(false)
 const moduleMeta = ref<ContentModule<MylabContentData> | null>(null)
 const currentCards = ref<AdminMylabCard[]>([])
 const currentTags = ref<MylabTag[]>([])
@@ -229,7 +244,8 @@ const removeTag = (tag: DraftTag) => Modal.confirm({
 
 const addCard = () => draftCards.unshift({
   postKey: `post-${Date.now()}`,
-  date: new Date().toISOString().slice(0, 10),
+  // 用本地时区取日期，避免 toISOString() 的 UTC 日期在凌晨 0~8 点差一天
+  date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
   title: '', tagIds: [], summary: '', image: '', imageResource: null, contentResource: null,
   cardType: 'ARTICLE', projectShowOrder: null, projectContents: '', enabled: true
 })

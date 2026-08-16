@@ -11,10 +11,10 @@ import org.springframework.http.HttpStatus;
 @Getter
 public class BaseException extends RuntimeException {
 
-    /** HTTP status returned to the client. */
+    /** 返回给客户端的 HTTP 状态码。 */
     private final HttpStatus status;
 
-    /** Stable business error code (e.g. 10001, 20001). */
+    /** 稳定的业务错误码（如 10001、20001）。 */
     private final int code;
 
     /** 规范化错误码定义。 */

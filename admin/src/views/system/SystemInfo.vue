@@ -26,7 +26,7 @@
           </div>
           <div class="version-item">
             <span class="label">运行模式</span>
-            <span class="value">开发模式 / {{ staticInfo.storageStatus || '存储状态未知' }}</span>
+            <span class="value">{{ staticInfo.runMode || 'N/A' }}</span>
           </div>
         </div>
       </div>
@@ -58,8 +58,8 @@
                 <span class="value">{{ staticInfo.timezone || 'N/A' }}</span>
               </div>
               <div class="info-item">
-                <span class="label">运行时间</span>
-                <span class="value">{{ formatDays(dynamicInfo.hostUptime) }}</span>
+                <span class="label">应用运行时间</span>
+                <span class="value">{{ formatDays(dynamicInfo.appUptime) }}</span>
               </div>
             </div>
           </div>
@@ -87,20 +87,12 @@
                 />
               </div>
               <div class="info-item">
-                <span class="label">型号</span>
-                <span class="value">{{ staticInfo.cpuModel || 'N/A' }}</span>
-              </div>
-              <div class="info-item">
                 <span class="label">架构</span>
                 <span class="value">{{ staticInfo.cpuArch }}</span>
               </div>
               <div class="info-item">
                 <span class="label">系统负载</span>
-                <span class="value">
-                  {{ dynamicInfo.load1?.toFixed(2) || 'N/A' }} /
-                  {{ dynamicInfo.load5?.toFixed(2) || 'N/A' }} /
-                  {{ dynamicInfo.load15?.toFixed(2) || 'N/A' }}
-                </span>
+                <span class="value">{{ formatLoad(dynamicInfo.load1) }}</span>
               </div>
             </div>
           </div>
@@ -135,7 +127,7 @@
                 <span class="value">{{ formatBytes(dynamicInfo.memoryAvailable) }}</span>
               </div>
               <div class="info-item">
-                <span class="label">Swap</span>
+                <span class="label">Swap 已用 / 总量</span>
                 <span class="value">
                   {{ formatBytes(dynamicInfo.swapUsed) }} /
                   {{ formatBytes(staticInfo.swapTotal) }}
@@ -177,76 +169,6 @@
             </div>
           </div>
         </a-col>
-
-        <!-- 数据库 -->
-        <a-col :xs="24" :sm="12">
-          <div class="info-section">
-            <div class="section-header">
-              <DatabaseOutlined class="icon-purple" />
-              <span>数据库</span>
-            </div>
-            <div class="section-body">
-              <div class="info-item">
-                <span class="label">类型</span>
-                <span class="value">{{ staticInfo.dbType }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">状态</span>
-                <a-tag :color="dynamicInfo.dbStatus === '正常' ? 'success' : 'error'">
-                  {{ dynamicInfo.dbStatus }}
-                </a-tag>
-              </div>
-              <div class="info-item">
-                <span class="label">大小</span>
-                <span class="value">{{ formatBytes(dynamicInfo.dbSize) }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">表数量</span>
-                <span class="value">{{ staticInfo.dbTables }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">连接数</span>
-                <span class="value">{{ dynamicInfo.dbConnCount }}</span>
-              </div>
-            </div>
-          </div>
-        </a-col>
-
-        <!-- 外部连通 -->
-        <a-col :xs="24" :sm="12">
-          <div class="info-section">
-            <div class="section-header">
-              <WifiOutlined class="icon-cyan" />
-              <span>外部连通</span>
-            </div>
-            <div class="section-body">
-              <div class="info-item">
-                <span class="label">文件存储</span>
-                <a-tag :color="staticInfo.storageStatus === 'OSS已配置' ? 'success' : 'default'">
-                  {{ staticInfo.storageStatus }}
-                </a-tag>
-              </div>
-              <div class="info-item">
-                <span class="label">邮箱通知</span>
-                <a-tag
-                  :color="staticInfo.emailStatus === '正常'
-                    ? 'success'
-                    : staticInfo.emailStatus === '未配置' ? 'default' : 'error'"
-                >
-                  {{ staticInfo.emailStatus }}
-                </a-tag>
-              </div>
-              <div class="info-item">
-                <span class="label">浏览器</span>
-                <span class="value">{{ browserInfo }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">屏幕分辨率</span>
-                <span class="value">{{ screenInfo }}</span>
-              </div>
-            </div>
-          </div>
-        </a-col>
       </a-row>
     </a-card>
   </div>
@@ -259,9 +181,7 @@ import {
   DesktopOutlined,
   CloudServerOutlined,
   CreditCardOutlined,
-  FolderOpenOutlined,
-  DatabaseOutlined,
-  WifiOutlined
+  FolderOpenOutlined
 } from '@ant-design/icons-vue'
 import { getSystemStaticApi, getSystemDynamicApi } from '@/api/system'
 import type { SystemStatic, SystemDynamic } from '@/types'
@@ -269,8 +189,6 @@ import type { SystemStatic, SystemDynamic } from '@/types'
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const loading = ref(false)
-const browserInfo = ref('')
-const screenInfo = ref('')
 
 const staticInfo = reactive<SystemStatic>({
   hostname: '',
@@ -278,32 +196,23 @@ const staticInfo = reactive<SystemStatic>({
   serverIp: '',
   timezone: '',
   cpuCore: 0,
-  cpuModel: '',
   cpuArch: '',
   memoryTotal: 0,
   swapTotal: 0,
   diskTotal: 0,
-  dbType: '',
-  dbTables: 0,
   appVersion: '',
-  storageStatus: '',
-  emailStatus: ''
+  runMode: ''
 })
 
 const dynamicInfo = reactive<SystemDynamic>({
   cpuUsage: 0,
   load1: 0,
-  load5: 0,
-  load15: 0,
   memoryUsed: 0,
   memoryAvailable: 0,
   swapUsed: 0,
-  hostUptime: 0,
+  appUptime: 0,
   diskUsed: 0,
-  diskFree: 0,
-  dbStatus: '',
-  dbSize: 0,
-  dbConnCount: 0
+  diskFree: 0
 })
 
 const fetchStaticInfo = async () => {
@@ -343,9 +252,16 @@ const calcPercent = (used: number, total: number): number => {
 }
 
 const formatDays = (seconds: number): string => {
+  if (!seconds) return '0 天 0 小时'
   const days = Math.floor(seconds / 86400)
   const hours = Math.floor((seconds % 86400) / 3600)
   return `${days} 天 ${hours} 小时`
+}
+
+// 部分平台（如 Windows）不支持系统负载，后端返回 -1，显示为 N/A
+const formatLoad = (load: number): string => {
+  if (load == null || load < 0) return 'N/A'
+  return load.toFixed(2)
 }
 
 const getProgressColor = (percentage: number): string => {
@@ -354,30 +270,7 @@ const getProgressColor = (percentage: number): string => {
   return '#ff4d4f'
 }
 
-const detectBrowser = () => {
-  const ua = navigator.userAgent
-  if (ua.includes('Chrome')) {
-    const match = ua.match(/Chrome\/([\d.]+)/)
-    return `Chrome ${match?.[1] || ''}`
-  }
-  if (ua.includes('Firefox')) {
-    const match = ua.match(/Firefox\/([\d.]+)/)
-    return `Firefox ${match?.[1] || ''}`
-  }
-  if (ua.includes('Safari') && !ua.includes('Chrome')) {
-    const match = ua.match(/Safari\/([\d.]+)/)
-    return `Safari ${match?.[1] || ''}`
-  }
-  if (ua.includes('Edge')) {
-    const match = ua.match(/Edge\/([\d.]+)/)
-    return `Edge ${match?.[1] || ''}`
-  }
-  return 'Unknown'
-}
-
 onMounted(() => {
-  browserInfo.value = detectBrowser()
-  screenInfo.value = `${window.screen.width} × ${window.screen.height}`
   fetchStaticInfo()
   fetchDynamicInfo()
   refreshTimer = setInterval(fetchDynamicInfo, 10000)
@@ -475,8 +368,6 @@ onUnmounted(() => {
     .icon-blue { color: #1677ff; }
     .icon-green { color: #52c41a; }
     .icon-orange { color: #fa8c16; }
-    .icon-purple { color: #722ed1; }
-    .icon-cyan { color: #13c2c2; }
     .icon-red { color: #ff4d4f; }
   }
 

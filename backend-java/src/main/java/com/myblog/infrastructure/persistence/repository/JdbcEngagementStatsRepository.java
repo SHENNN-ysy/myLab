@@ -13,7 +13,11 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
-/** PostgreSQL 聚合统计仓储实现，不写入任何访客级数据。 */
+/**
+ * PostgreSQL 互动聚合统计仓储：快照落库的实现侧，不写入任何访客级数据。
+ * 写入语义是"整体覆盖"——ON CONFLICT 用 Redis 的绝对值直接替换旧值而非增量累加，
+ * 因此快照可幂等重放（认领模式允许"至少一次"落库，重复写同一份绝对值无害）。
+ */
 @Repository
 public class JdbcEngagementStatsRepository implements EngagementStatsRepository {
     private final JdbcTemplate jdbc;
@@ -24,6 +28,7 @@ public class JdbcEngagementStatsRepository implements EngagementStatsRepository 
         this.namedJdbc = namedJdbc;
     }
 
+    /** 校验 postKey 对应的是已发布且启用的 mylab 卡片，防止对未上线内容记录互动 */
     @Override
     public boolean publishedPostExists(String postKey) {
         Integer count = jdbc.queryForObject("""
@@ -138,6 +143,10 @@ public class JdbcEngagementStatsRepository implements EngagementStatsRepository 
         });
     }
 
+    /**
+     * 一次快照的整体落库：三类 upsert 包在同一事务里，避免 PG 中不同维度的
+     * 快照时间不一致（文章、站点、按日要么同时更新，要么都不更新等待重试）。
+     */
     @Override
     @Transactional
     public void saveSnapshot(List<EngagementDtos.EngagementSummary> engagement,

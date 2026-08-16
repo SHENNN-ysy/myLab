@@ -14,7 +14,11 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.regex.Pattern;
 
-/** 创建和解析固定三天的匿名身份，原始 Cookie 令牌不会写入服务端存储。 */
+/**
+ * 匿名访客身份服务：为未登录访客签发和解析身份，供浏览/点赞按访客去重。
+ * 设计上只把 Cookie 令牌的 HMAC-SHA256 哈希写入服务端存储，原始令牌不落库，
+ * 服务端无法反推访客标识，满足互动统计的隐私边界。
+ */
 @Service
 public class VisitorIdentityService {
     public static final String COOKIE_NAME = "myblog_visitor";
@@ -33,6 +37,11 @@ public class VisitorIdentityService {
         this.cookieSecure = cookieSecure;
     }
 
+    /**
+     * 解析或签发访客身份：Cookie 令牌格式合法且对应身份仍在有效期内（Redis 未过期）则直接复用；
+     * 否则生成新的随机令牌并登记其哈希，issued=true 提示控制器回写新 Cookie。
+     * 复用时不刷新有效期，访客身份到期后自然换新。
+     */
     public EngagementDtos.VisitorIdentity resolve(String cookieToken) {
         if (cookieToken != null && TOKEN_PATTERN.matcher(cookieToken).matches()) {
             String visitorHash = hash(cookieToken);
@@ -53,6 +62,7 @@ public class VisitorIdentityService {
         return cookieSecure;
     }
 
+    /** 令牌转访客哈希：带服务端密钥的 HMAC-SHA256，数据库泄漏时无法由哈希反推或伪造令牌。 */
     private String hash(String token) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");

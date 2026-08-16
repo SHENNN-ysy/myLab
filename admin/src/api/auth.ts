@@ -25,7 +25,12 @@ export const getUserInfoApi = async (): Promise<User> => {
 
 export const logoutApi = async (): Promise<void> => {
   try {
-    await request.post('/auth/logout')
+    const refreshToken = storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN)
+    // 通知后端吊销 refresh token（与当前 access token，由请求拦截器附带），
+    // 失败不阻断本地退出——本地令牌照常丢弃，服务端令牌等待自然过期
+    await request.post('/auth/logout', refreshToken ? { refresh_token: refreshToken } : undefined)
+  } catch (error) {
+    console.warn('服务端吊销令牌失败，将等待其自然过期', error)
   } finally {
     storage.remove(STORAGE_KEYS.TOKEN)
     storage.remove(STORAGE_KEYS.REFRESH_TOKEN)

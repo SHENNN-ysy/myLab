@@ -51,12 +51,12 @@ export const hobbies: Hobby[] = [
 ]
 
 export const games: Game[] = [
-  { name: 'Counter-Strike 2', tag: 'FPS', image: './game_posters/cs2.jpg', subtitle: 'Valve · 经典竞技射击' },
-  { name: 'Apex 英雄', tag: 'Battle Royale', image: './game_posters/apex.jpg', subtitle: 'Respawn · 战术竞技' },
-  { name: '三角洲行动', tag: 'FPS', image: './game_posters/delta-force.jpg', subtitle: '腾讯 · 战术射击' },
-  { name: '无畏契约', tag: 'Tactical Shooter', image: './game_posters/the-finals.jpg', subtitle: 'Riot Games · 5v5竞技' },
-  { name: '守望先锋 2', tag: 'Hero Shooter', image: './game_posters/overwatch2.jpeg', subtitle: 'Blizzard · 团队射击' },
-  { name: '英雄联盟', tag: 'MOBA', image: './game_posters/league-of-legends.jpeg', subtitle: 'Riot Games · 5v5竞技' }
+  { name: 'Counter-Strike 2', tag: 'FPS', image: '/assets/404.png', subtitle: 'Valve · 经典竞技射击' },
+  { name: 'Apex 英雄', tag: 'Battle Royale', image: '/assets/404.png', subtitle: 'Respawn · 战术竞技' },
+  { name: '三角洲行动', tag: 'FPS', image: '/assets/404.png', subtitle: '腾讯 · 战术射击' },
+  { name: '无畏契约', tag: 'Tactical Shooter', image: '/assets/404.png', subtitle: 'Riot Games · 5v5竞技' },
+  { name: '守望先锋 2', tag: 'Hero Shooter', image: '/assets/404.png', subtitle: 'Blizzard · 团队射击' },
+  { name: '英雄联盟', tag: 'MOBA', image: '/assets/404.png', subtitle: 'Riot Games · 5v5竞技' }
 ]
 
 export const aiTools: AITool[] = [

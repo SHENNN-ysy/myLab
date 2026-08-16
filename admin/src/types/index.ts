@@ -52,6 +52,14 @@ export interface FileResource {
   url?: string
 }
 
+// 文件资源的一条内容版本引用
+export interface FileReference {
+  moduleKey: string
+  versionNo: number
+  state: string
+  usage: string
+}
+
 // System Static Info - 系统静态信息
 export interface SystemStatic {
   hostname: string
@@ -59,33 +67,24 @@ export interface SystemStatic {
   serverIp: string
   timezone: string
   cpuCore: number
-  cpuModel: string
   cpuArch: string
   memoryTotal: number
   swapTotal: number
   diskTotal: number
-  dbType: string
-  dbTables: number
   appVersion: string
-  storageStatus: string
-  emailStatus: string
+  runMode: string
 }
 
 // System Dynamic Info - 系统动态信息
 export interface SystemDynamic {
   cpuUsage: number
   load1: number
-  load5: number
-  load15: number
   memoryUsed: number
   memoryAvailable: number
   swapUsed: number
-  hostUptime: number
+  appUptime: number
   diskUsed: number
   diskFree: number
-  dbStatus: string
-  dbSize: number
-  dbConnCount: number
 }
 
 export interface HealthStatus {

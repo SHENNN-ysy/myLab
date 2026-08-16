@@ -45,7 +45,7 @@ mybatis-plus:
     map-underscore-to-camel-case: true
   global-config.banner: false
 app:
-  jwt-secret: ${JWT_SECRET:change-this-in-production-please}
+  jwt-secret: ${JWT_SECRET}
   access-expire-minutes: ${JWT_ACCESS_EXPIRE_MINUTES:30}
   refresh-expire-days: ${JWT_REFRESH_EXPIRE_DAYS:14}
   cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174}
@@ -59,8 +59,8 @@ app:
   oss-object-prefix: ${OSS_OBJECT_PREFIX:}
   oss-max-file-size-mb: ${OSS_MAX_FILE_SIZE_MB:10}
   initial-admin-username: ${INIT_ADMIN_USERNAME:admin}
-  initial-admin-password: ${INIT_ADMIN_PASSWORD:Admin@123456}
-  engagement-hash-secret: ${ENGAGEMENT_HASH_SECRET:${JWT_SECRET:change-this-in-production-please}}
+  initial-admin-password: ${INIT_ADMIN_PASSWORD}
+  engagement-hash-secret: ${ENGAGEMENT_HASH_SECRET:${JWT_SECRET}}
   visitor-cookie-secure: ${VISITOR_COOKIE_SECURE:false}
 server.tomcat.threads:
   max: ${TOMCAT_MAX_THREADS:50}

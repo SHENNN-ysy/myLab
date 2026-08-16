@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { FileResource, PageResult, ResourceDirectory } from '@/types'
+import type { FileReference, FileResource, PageResult, ResourceDirectory } from '@/types'
 import { mapFile, mapPageResult } from './adapter'
 
 export const getFileListApi = async (page = 1, pageSize = 20, directory?: ResourceDirectory): Promise<PageResult<FileResource>> => {
@@ -30,6 +30,16 @@ export const uploadFileApi = async (file: File, directory: ResourceDirectory): P
 
 export const deleteFileApi = async (id: string): Promise<void> => {
   await request.delete(`/files/${id}`)
+}
+
+export const getFileReferencesApi = async (id: string): Promise<FileReference[]> => {
+  const res = await request.get(`/files/${id}/references`)
+  return (res.data || []).map((item: Record<string, unknown>) => ({
+    moduleKey: String(item.module_key || ''),
+    versionNo: Number(item.version_no || 0),
+    state: String(item.state || ''),
+    usage: String(item.usage || '')
+  }))
 }
 
 export const getFileAccessUrlApi = async (id: string): Promise<string> => {

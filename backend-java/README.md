@@ -17,7 +17,7 @@ docker compose up -d --build api
 
 MyLab 卡片使用 `PROJECT/ARTICLE` 类型统一承载首页项目与文章。全局标签位于 `mylab_tags`，不参与版本；`mylab_card_tags` 使用外键和排序字段保存卡片标签，接口仍以有序 `tag_ids` 数组交互。图片及 Markdown 正文均通过 `resources` 和三个资源关联表管理。
 
-数据库最终结构共 19 张业务表。V1 直接创建完整表结构，V2 创建七个初始发布版本、全局标签及对应资源元数据。项目不启用 Flyway；Docker 只在 PostgreSQL 空数据卷首次初始化时执行 V1/V2。当前不包含访问量、访客数、点赞数、`support` 或独立 `projects` 模块。
+数据库最终结构共 19 张业务表。V1 直接创建完整表结构，V2 创建七个初始发布版本、全局标签及对应资源元数据，V3 起补充互动与站点流量聚合表。项目不启用 Flyway；Docker 只在 PostgreSQL 空数据卷首次初始化时执行 V1/V2。
 
 接口和表结构详见：
 

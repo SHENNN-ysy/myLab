@@ -71,7 +71,7 @@
                 <div class="marker-pulse" />
                 <div class="marker-pin">
                   <span class="marker-dot">
-                    <img v-if="hobby.isSelf" src="/assets/avatar.png" alt="" />
+                    <img v-if="hobby.isSelf" src="/assets/404.png" alt="" />
                   </span>
                   <span class="marker-stem" />
                 </div>

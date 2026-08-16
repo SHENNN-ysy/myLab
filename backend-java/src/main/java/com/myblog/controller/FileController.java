@@ -6,6 +6,7 @@ import com.myblog.common.security.CurrentUser;
 import com.myblog.application.service.file.FileService;
 import com.myblog.application.model.command.file.UploadFile;
 import com.myblog.application.model.vo.FileOutVO;
+import com.myblog.application.model.vo.FileReferenceVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -80,6 +82,16 @@ public class FileController {
     public Result<Map<String, String>> presign(@AuthenticationPrincipal CurrentUser actor,
                                                @PathVariable UUID id) throws Exception {
         return Result.ok(files.presign(actor, id));
+    }
+
+    /**
+     * 查询文件被哪些内容版本引用的明细，供删除确认时展示。
+     */
+    @GetMapping("/{id}/references")
+    @Operation(summary = "查询文件的内容版本引用明细")
+    public Result<List<FileReferenceVO>> references(@AuthenticationPrincipal CurrentUser actor,
+                                                    @PathVariable UUID id) {
+        return Result.ok(files.references(actor, id));
     }
 
     /**

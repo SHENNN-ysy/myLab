@@ -3,7 +3,7 @@ package com.myblog.infrastructure.security;
 import com.myblog.application.model.entity.User;
 import com.myblog.application.port.TokenClaims;
 import com.myblog.application.port.TokenService;
-import com.myblog.infrastructure.persistence.mapper.UserMapper;
+import com.myblog.infrastructure.persistence.mapper.user.UserMapper;
 import com.myblog.common.security.CurrentUser;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
