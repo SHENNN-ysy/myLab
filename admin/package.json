@@ -13,6 +13,7 @@
     "@vueuse/core": "^14.3.0",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.7.9",
+    "cropperjs": "^1.6.2",
     "dayjs": "^1.11.13",
     "echarts": "^5.6.0",
     "remixicon": "^4.9.1",

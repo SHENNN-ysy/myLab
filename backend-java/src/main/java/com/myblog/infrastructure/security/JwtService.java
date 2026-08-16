@@ -57,8 +57,18 @@ public class JwtService implements TokenService {
                 claims.get("role", String.class));
     }
 
-    /** 解析并做完整校验：过期、无效、类型错误、已吊销分别抛出对应业务异常 */
+    /** 解析并按期望类型校验：过期、无效、类型错误、已吊销分别抛出对应业务异常 */
     private Claims parseClaims(String token, String expectedType) {
+        Claims claims = parseClaims(token);
+        String actualType = claims.get("type", String.class);
+        if (!expectedType.equals(actualType)) {
+            throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, "令牌类型错误");
+        }
+        return claims;
+    }
+
+    /** 解析并做类型无关的完整校验：过期、无效、已吊销分别抛出对应业务异常 */
+    private Claims parseClaims(String token) {
         Claims claims;
         try {
             claims = JwtUtil.parse(props, token);
@@ -67,20 +77,23 @@ public class JwtService implements TokenService {
         } catch (Exception e) {
             throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, "访问令牌无效");
         }
-        String actualType = claims.get("type", String.class);
-        if (!expectedType.equals(actualType)) {
-            throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, "令牌类型错误");
-        }
         if (Boolean.TRUE.equals(redis.hasKey(BLACKLIST_PREFIX + claims.getId()))) {
             throw new TokenRevokedException();
         }
         return claims;
     }
 
-    /** 吊销访问令牌：把令牌 jti 写入 Redis 黑名单，TTL 取令牌剩余有效期 */
+    /**
+     * 吊销令牌（访问或刷新均可）：把令牌 jti 写入 Redis 黑名单，TTL 取令牌剩余有效期。
+     * 刷新令牌也可吊销是退出登录能真正生效的前提——否则长效 refresh 令牌泄露后无法收回。
+     */
     @Override
     public void revoke(String token) {
-        Claims claims = parseClaims(token, "access");
+        Claims claims = parseClaims(token);
+        String type = claims.get("type", String.class);
+        if (!"access".equals(type) && !"refresh".equals(type)) {
+            throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, "令牌类型错误");
+        }
         long ttl = Math.max(1L,
                 claims.getExpiration().toInstant().getEpochSecond() - Instant.now().getEpochSecond());
         redis.opsForValue().set(BLACKLIST_PREFIX + claims.getId(), "1", ttl, TimeUnit.SECONDS);

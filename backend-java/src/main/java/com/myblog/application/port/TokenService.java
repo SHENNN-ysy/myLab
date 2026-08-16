@@ -26,7 +26,7 @@ public interface TokenService {
     TokenClaims parse(String token, String expectedType);
 
     /**
-     * 吊销指定令牌，使其在过期前立即失效。
+     * 吊销指定令牌（访问或刷新令牌均可），使其在过期前立即失效。
      */
     void revoke(String token);
 }

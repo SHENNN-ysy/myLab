@@ -50,7 +50,7 @@ services:
       - --appendfsync
       - everysec
       - --requirepass
-      - ${REDIS_PASSWORD:-myblog_redis_secret}
+      - ${REDIS_PASSWORD}
       - --maxmemory
       - 128mb
       - --maxmemory-policy
@@ -58,7 +58,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-myblog_redis_secret}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,9 +85,9 @@ services:
       DB_MIN_IDLE: "1"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-myblog_redis_secret}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      ENGAGEMENT_HASH_SECRET: ${ENGAGEMENT_HASH_SECRET:-change-this-engagement-hash-secret}
+      ENGAGEMENT_HASH_SECRET: ${ENGAGEMENT_HASH_SECRET}
       VISITOR_COOKIE_SECURE: ${VISITOR_COOKIE_SECURE:-false}
       CORS_ORIGINS: ${CORS_ORIGINS}
       OSS_ENDPOINT: ${OSS_ENDPOINT}
@@ -98,7 +98,7 @@ services:
       OSS_OBJECT_PREFIX: ${OSS_OBJECT_PREFIX-}
       OSS_MAX_FILE_SIZE_MB: ${OSS_MAX_FILE_SIZE_MB:-10}
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
-      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD:-Admin@123456}
+      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD}
       LOG_PATH: "/logs"
     volumes:
       - ./logs:/logs
@@ -117,6 +117,7 @@ services:
     environment:
       BLOG_DOMAIN: ${BLOG_DOMAIN}
       ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      TZ: ${TZ:-Asia/Shanghai}
     ports:
       - "80:80"
     depends_on:

@@ -107,7 +107,7 @@ const featuredGames = computed(() => {
   if (Array.isArray(cards) && cards.length > 0) return cards.filter(card => card.enabled !== false).slice(0, 5).map((card: PublicHobbyCard) => ({
     id: card.hobby_key || card.id || card.title || '',
     name: card.title || '',
-    image: card.image_url || card.image || '',
+    image: card.image_url || card.image || '/assets/404.png',
     description: card.description || ''
   }))
   return fallbackGames.slice(0, 5).map((game, index) => ({
@@ -453,14 +453,16 @@ const timeSeries = computed(() => {
 }
 
 /* Game Cards Grid — 原有 bento 布局；
-   卡片放大，总高度与左侧 Time 面板对齐，向右侧空白延伸 */
+   卡片放大，总高度与左侧 Time 面板对齐，向右侧空白延伸。
+   行高用 minmax(0, 1fr)：禁止图片固有尺寸撑开轨道（1fr 默认 minmax(auto,1fr)，
+   换图时大图会把行撑高导致卡片大小变化），卡片尺寸只由网格决定。 */
 .game-cards-grid {
   flex: 1;
   min-width: 0;
   margin-right: -8rem;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 

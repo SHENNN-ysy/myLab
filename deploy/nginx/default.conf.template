@@ -26,29 +26,8 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    location /v3/api-docs {
-        proxy_pass http://$api_upstream;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
 
-    location /swagger-ui/ {
-        proxy_pass http://$api_upstream;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
 
-    location = /swagger-ui.html {
-        proxy_pass http://$api_upstream;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /game_posters/ {
-        try_files $uri =404;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
 
     location / {
         try_files $uri $uri/ /index.html;
@@ -83,29 +62,8 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    location /v3/api-docs {
-        proxy_pass http://$api_upstream;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
 
-    location /swagger-ui/ {
-        proxy_pass http://$api_upstream;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
 
-    location = /swagger-ui.html {
-        proxy_pass http://$api_upstream;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /game_posters/ {
-        try_files $uri =404;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
 
     location / {
         try_files $uri $uri/ /index.html;

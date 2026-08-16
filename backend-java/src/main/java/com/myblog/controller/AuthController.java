@@ -10,12 +10,14 @@ import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,6 +27,7 @@ import java.util.Map;
  * 认证接口：管理员登录、令牌刷新与吊销、当前用户信息查询及密码修改。
  * 基于无状态 JWT，业务逻辑委托给 {@link AuthService} 与 {@link TokenService}。
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "认证")
@@ -68,12 +71,31 @@ public class AuthController {
     }
 
     /**
-     * 退出当前登录。无状态 JWT 下服务端无需处理，由客户端丢弃本地令牌。
+     * 退出当前登录：吊销请求体携带的 refresh_token 与请求头中的 access 令牌，
+     * 使长效刷新令牌在退出后立即失效（吊销失败不阻断退出，本地仍会丢弃令牌）。
      */
     @PostMapping("/logout")
-    @Operation(summary = "退出当前登录", description = "无状态 JWT 客户端退出接口。", security = @SecurityRequirement(name = "bearerAuth"))
-    public Result<?> logout() {
+    @Operation(summary = "退出当前登录", description = "吊销当前 access 令牌及请求体携带的 refresh_token。",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    public Result<?> logout(@RequestBody(required = false) Map<String, String> body,
+                            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        if (body != null) {
+            revokeQuietly(body.get("refresh_token"));
+        }
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            revokeQuietly(authorization.substring(7));
+        }
         return Result.ok(null, "已退出登录");
+    }
+
+    /** 静默吊销：令牌缺失或吊销失败（已过期/已吊销/无效）只记日志，不影响退出流程 */
+    private void revokeQuietly(String token) {
+        if (token == null || token.isBlank()) return;
+        try {
+            tokens.revoke(token);
+        } catch (RuntimeException exception) {
+            log.warn("退出登录时吊销令牌失败，令牌将等待自然过期", exception);
+        }
     }
 
     /**

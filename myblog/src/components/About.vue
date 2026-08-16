@@ -139,7 +139,7 @@ gsap.registerPlugin(ScrollTrigger)
 
 const introWords = ['welcome', 'to', 'shennn']
 const fallbackProfile = {
-  kicker: 'Profile', title: '关于我', avatar: '/assets/avatar.png', avatar_alt: 'DNSamuel',
+  kicker: 'Profile', title: '关于我', avatar: '/assets/404.png', avatar_alt: 'DNSamuel',
   display_name: 'SHENNN', intro: '你好，我是 SHENNN，目前专注于全栈开发、AI agent学习实践中...',
   bullets: [
     '上位机开发：C#/.NET，负责为实验室内若干智能装备进行上位机软件开发与维护',

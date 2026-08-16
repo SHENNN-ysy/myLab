@@ -4,6 +4,7 @@
 import { ref, computed } from 'vue'
 import type { User } from '@/types'
 import { storage, STORAGE_KEYS } from '@/utils/storage'
+import { logoutApi } from '@/api/auth'
 
 type StoredUser = Omit<Partial<User>, 'role'> & { role?: string; status?: string }
 
@@ -33,12 +34,14 @@ export const useAuth = () => {
     storage.set(STORAGE_KEYS.USER_INFO, userInfo)
   }
 
-  const logout = () => {
-    token.value = null
-    currentUser.value = null
-    storage.remove(STORAGE_KEYS.TOKEN)
-    storage.remove(STORAGE_KEYS.REFRESH_TOKEN)
-    storage.remove(STORAGE_KEYS.USER_INFO)
+  /** 退出登录：先调后端吊销令牌（本地 storage 由 logoutApi 统一清理），再清空内存态 */
+  const logout = async () => {
+    try {
+      await logoutApi()
+    } finally {
+      token.value = null
+      currentUser.value = null
+    }
   }
 
   const getToken = () => token.value

@@ -20,10 +20,11 @@
     >
       <img
         class="nav-logo-img"
-        src="/assets/avatar.png"
+        :src="navAvatar"
         alt=""
         loading="eager"
         decoding="async"
+        @error="onAvatarError"
       />
       <span class="nav-logo-label">shennn</span>
     </a>
@@ -107,8 +108,21 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { usePublicContent } from '@/composables/usePublicContent'
+
+/* ============ 导航头像：与"关于我"头像一致，未配置或加载失败时回退 404 默认图 ============ */
+const FALLBACK_AVATAR = '/assets/404.png'
+const { content } = usePublicContent()
+const avatarLoadFailed = ref(false)
+const navAvatar = computed(() => {
+  const avatarUrl = content.value.about?.profile?.avatar_url
+  return avatarUrl && !avatarLoadFailed.value ? avatarUrl : FALLBACK_AVATAR
+})
+function onAvatarError() {
+  avatarLoadFailed.value = true
+}
 
 /* ============ 导航链接配置 ============
  * hash：首页区块锚点；path：独立路由页面。

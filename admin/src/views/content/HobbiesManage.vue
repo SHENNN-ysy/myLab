@@ -47,6 +47,10 @@
           <a-form-item label="标题"><a-input v-model:value="item.title" /></a-form-item>
           <a-form-item label="描述"><a-textarea v-model:value="item.description" :rows="3" /></a-form-item>
           <a-form-item label="OSS 图片资源"><OssImageResourcePicker v-model="item.imageResource" directory="hobbies" /></a-form-item>
+          <a-form-item label="图片裁剪">
+            <a-button size="small" :disabled="!item.imageResource?.url" @click="openCropper(item)">裁剪当前图片</a-button>
+            <span class="crop-hint">裁剪结果会作为新资源上传，原图保留在素材库</span>
+          </a-form-item>
           <img v-if="item.image" class="draft-image" :src="item.image" :alt="item.title" />
           <a-switch v-model:checked="item.enabled" @change="onEnabledChange(draftHobbies, item, Boolean($event), MAX_HOBBIES, '爱好卡片')" /> 启用
         </a-card>
@@ -89,6 +93,14 @@
         </a-table-column>
         <a-table-column title="合计" width="100" fixed="right"><template #default="{ record }"><strong :class="{ 'invalid-total': !isValidTimeRow(record) }">{{ timeRowTotal(record) }}</strong></template></a-table-column>
       </a-table>
+
+      <ImageCropperModal
+        :open="cropperOpen"
+        :src="cropperSrc"
+        :confirming="cropping"
+        @confirm="onCropConfirm"
+        @cancel="cropperOpen = false"
+      />
     </template>
   </StaticModuleShell>
 </template>
@@ -97,9 +109,11 @@
 import { computed, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import CollectionHeader from '@/components/content/CollectionHeader.vue'
+import ImageCropperModal from '@/components/content/ImageCropperModal.vue'
 import ListActions from '@/components/content/ListActions.vue'
 import OssImageResourcePicker from '@/components/content/OssImageResourcePicker.vue'
 import StaticModuleShell from '@/components/content/StaticModuleShell.vue'
+import { getFileAccessUrlApi, uploadFileApi } from '@/api/file'
 import { useStaticModule } from '@/composables/useStaticModule'
 import { canEnable, enabledCount, makeId, move, onEnabledChange, remove, replaceArray } from '@/utils/listEditing'
 import type { HobbiesContentData, HobbyTimeKey as ApiHobbyTimeKey } from '@/types/content'
@@ -149,6 +163,41 @@ const mapTimePoints = (data?: HobbiesContentData): HobbyTimeItem[] => (data?.tim
 }))
 
 const addHobby = () => draftHobbies.value.push({ id: makeId('hobby'), title: '', description: '', image: '', imageResource: null, enabled: canEnable(draftHobbies.value, MAX_HOBBIES) })
+
+/* ── 图片裁剪：对当前卡片已选的 OSS 图片裁剪，结果作为新资源上传并替换引用 ── */
+const cropperOpen = ref(false)
+const cropperSrc = ref('')
+const cropping = ref(false)
+const croppingHobbyId = ref<string | null>(null)
+
+const openCropper = (item: HobbyItem) => {
+  if (!item.imageResource?.url) return
+  croppingHobbyId.value = item.id
+  cropperSrc.value = item.imageResource.url
+  cropperOpen.value = true
+}
+
+const onCropConfirm = async (blob: Blob) => {
+  const item = draftHobbies.value.find(hobby => hobby.id === croppingHobbyId.value)
+  if (!item) {
+    cropperOpen.value = false
+    return
+  }
+  cropping.value = true
+  try {
+    const file = new File([blob], `hobby-crop-${Date.now()}.jpg`, { type: 'image/jpeg' })
+    const uploaded = await uploadFileApi(file, 'hobbies')
+    const url = uploaded.url || await getFileAccessUrlApi(uploaded.id)
+    item.imageResource = { id: uploaded.id, name: uploaded.originalName || file.name, url }
+    item.image = url
+    cropperOpen.value = false
+    message.success('裁剪完成，已上传为新图片资源')
+  } catch {
+    // 上传/取址失败的错误提示由 request 拦截器统一弹出
+  } finally {
+    cropping.value = false
+  }
+}
 const timeTagName = (tags: HobbyTimeTag[], key: HobbyTimeKey) => tags.find(tag => tag.dataKey === key)?.name.trim() || key
 const timeRowTotal = (row: HobbyTimeItem) => Number(timeKeys.reduce((sum, key) => sum + Number(row[key] || 0), 0).toFixed(1))
 const isValidTimeRow = (row: HobbyTimeItem) => Math.abs(timeRowTotal(row) - 10) < 0.001
@@ -235,6 +284,7 @@ const { activePanel, loading, saving, publishing, hasDraft, load, saveDraft, pub
 .color-editor { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; gap: 8px; }
 .color-editor input[type='color'] { width: 38px; height: 32px; padding: 2px; cursor: pointer; background: #fff; border: 1px solid #d9d9d9; border-radius: 6px; }
 .draft-image { display: block; width: 100%; max-height: 180px; margin: 0 0 12px; object-fit: cover; border-radius: 6px; }
+.crop-hint { margin-left: 10px; color: #8c8c8c; font-size: 12px; }
 :deep(.invalid-time-row > td) { background: #fff2f0 !important; }
 :deep(.ant-input-number) { width: 100%; }
 @media (max-width: 900px) {

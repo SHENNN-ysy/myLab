@@ -113,8 +113,9 @@ const handleCommand = async ({ key }: { key: string }) => {
         content: '确定要退出登录吗？',
         okText: '确定',
         cancelText: '取消',
-        onOk: () => {
-          logout()
+        onOk: async () => {
+          // 必须先等 logout 清完本地令牌再跳转：守卫会拦截"已登录访问登录页"并弹回 /dashboard
+          await logout()
           router.push('/login')
         }
       })
