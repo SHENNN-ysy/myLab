@@ -1,33 +1,76 @@
 <template>
   <div class="oss-document-picker">
-    <div v-if="modelValue" class="selected-resource">
-      <div class="file-icon">MD</div>
+    <div
+      v-if="modelValue"
+      class="selected-resource"
+    >
+      <div class="file-icon">
+        MD
+      </div>
       <div>
         <strong>{{ modelValue.name }}</strong>
         <small>OSS 资源 ID：{{ modelValue.id }}</small>
       </div>
-      <a-button type="link" danger @click="emit('update:modelValue', null)">移除</a-button>
+      <a-button
+        type="link"
+        danger
+        @click="emit('update:modelValue', null)"
+      >
+        移除
+      </a-button>
     </div>
-    <a-button v-else block @click="openPicker">从 OSS 素材库选择 Markdown</a-button>
-    <a-button v-if="modelValue" size="small" class="replace-button" @click="openPicker">更换正文资源</a-button>
+    <a-button
+      v-else
+      block
+      @click="openPicker"
+    >
+      从 OSS 素材库选择 Markdown
+    </a-button>
+    <a-button
+      v-if="modelValue"
+      size="small"
+      class="replace-button"
+      @click="openPicker"
+    >
+      更换正文资源
+    </a-button>
 
-    <a-modal v-model:open="visible" title="选择 Markdown 正文资源" :width="720" :footer="null">
+    <a-modal
+      v-model:open="visible"
+      title="选择 Markdown 正文资源"
+      :width="720"
+      :footer="null"
+    >
       <a-upload
         :show-upload-list="false"
         :before-upload="uploadDocument"
         accept=".md,.markdown,.txt,text/markdown,text/plain"
       >
-        <a-button type="primary" :loading="uploading">上传 Markdown 到 OSS</a-button>
+        <a-button
+          type="primary"
+          :loading="uploading"
+        >
+          上传 Markdown 到 OSS
+        </a-button>
       </a-upload>
       <a-spin :spinning="loading">
         <div class="resource-list">
-          <button v-for="file in files" :key="file.id" type="button" class="resource-item" @click="selectFile(file)">
+          <button
+            v-for="file in files"
+            :key="file.id"
+            type="button"
+            class="resource-item"
+            @click="selectFile(file)"
+          >
             <span class="file-icon">MD</span>
             <span class="file-name">{{ file.originalName || file.objectKey }}</span>
             <small>{{ file.mimeType }}</small>
           </button>
         </div>
-        <a-empty v-if="!loading && files.length === 0" description="OSS 中暂无 Markdown 或文本资源" />
+        <a-empty
+          v-if="!loading && files.length === 0"
+          description="OSS 中暂无 Markdown 或文本资源"
+        />
       </a-spin>
     </a-modal>
   </div>

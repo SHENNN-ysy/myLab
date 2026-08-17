@@ -5,7 +5,11 @@
     底部为像素风海平面（与 Dino 一致的像素块风格，波浪量化到像素网格滚动）。
     仅作装饰背景，不响应交互；离开视口自动暂停，prefers-reduced-motion 时静止渲染。
   -->
-  <canvas ref="canvasRef" class="seagull-sea" aria-hidden="true" />
+  <canvas
+    ref="canvasRef"
+    class="seagull-sea"
+    aria-hidden="true"
+  />
 </template>
 
 <script setup lang="ts">

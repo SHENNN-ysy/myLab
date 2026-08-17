@@ -7,7 +7,10 @@
       'is-title-hidden': isTitleHiding,
     }"
   >
-    <div class="hero-intro-title" aria-label="Welcome to shennn">
+    <div
+      class="hero-intro-title"
+      aria-label="Welcome to shennn"
+    >
       <span
         v-for="(word, index) in introWords"
         :key="word"
@@ -18,13 +21,25 @@
       </span>
     </div>
 
-    <div ref="panelRevealRef" class="container hero-panel-reveal">
-      <div ref="cardShellRef" class="hero-card-shell" aria-hidden="true" />
+    <div
+      ref="panelRevealRef"
+      class="container hero-panel-reveal"
+    >
+      <div
+        ref="cardShellRef"
+        class="hero-card-shell"
+        aria-hidden="true"
+      />
       <div class="hero-content-card">
         <div class="hero-grid">
-          <div ref="travelerPanelRef" class="hero-motion-panel hero-traveler-panel">
+          <div
+            ref="travelerPanelRef"
+            class="hero-motion-panel hero-traveler-panel"
+          >
             <div class="hero-left">
-              <div class="hero-eyebrow">数字旅行者 · 技术探索者</div>
+              <div class="hero-eyebrow">
+                数字旅行者 · 技术探索者
+              </div>
               <h1 class="hero-name">
                 <span>旅</span>
                 <span>行</span>
@@ -36,9 +51,14 @@
             </div>
           </div>
 
-          <div ref="visualPanelRef" class="hero-motion-panel hero-visual-panel">
+          <div
+            ref="visualPanelRef"
+            class="hero-motion-panel hero-visual-panel"
+          >
             <div class="hero-right">
-              <div class="hero-deco-number">07</div>
+              <div class="hero-deco-number">
+                07
+              </div>
               <div class="ring-outer" />
               <div class="ring-inner" />
               <div class="ring-square" />
@@ -52,16 +72,36 @@
                     <span class="editor-filename">learning_routine.py</span>
                   </div>
                   <div class="card-editor-body">
-                    <div class="code-line"><span class="c-keyword">def</span> <span class="c-fn">daily_routine</span><span class="c-punc">():</span></div>
-                    <div class="code-line code-indent"><span class="c-prop">focus_time</span> <span class="c-punc">=</span> <span class="c-str">"Deep Work"</span></div>
-                    <div class="code-line code-indent"><span class="c-prop">tools</span> <span class="c-punc">=</span> <span class="c-punc">[</span><span class="c-str">"Obsidian"</span><span class="c-punc">,</span> <span class="c-str">"Python"</span><span class="c-punc">]</span></div>
-                    <div class="code-line code-indent"><span class="c-keyword">while</span> <span class="c-var">learning</span><span class="c-punc">:</span></div>
-                    <div class="code-line code-indent2"><span class="c-fn">improve_skills</span><span class="c-punc">()</span></div>
-                    <div class="code-line code-indent2"><span class="c-keyword">if</span> <span class="c-var">stuck</span><span class="c-punc">:</span></div>
-                    <div class="code-line code-indent3"><span class="c-fn">read_documentation</span><span class="c-punc">()</span></div>
-                    <div class="code-line code-indent"><span class="c-keyword">return</span> <span class="c-var">growth</span></div>
-                    <div class="code-line"><span class="c-comment"># 保持好奇，保持饥饿</span></div>
-                    <div class="code-line"><span class="c-fn">print</span><span class="c-punc">(</span><span class="c-str">"Hello World"</span><span class="c-punc">)</span></div>
+                    <div class="code-line">
+                      <span class="c-keyword">def</span> <span class="c-fn">daily_routine</span><span class="c-punc">():</span>
+                    </div>
+                    <div class="code-line code-indent">
+                      <span class="c-prop">focus_time</span> <span class="c-punc">=</span> <span class="c-str">"Deep Work"</span>
+                    </div>
+                    <div class="code-line code-indent">
+                      <span class="c-prop">tools</span> <span class="c-punc">=</span> <span class="c-punc">[</span><span class="c-str">"Obsidian"</span><span class="c-punc">,</span> <span class="c-str">"Python"</span><span class="c-punc">]</span>
+                    </div>
+                    <div class="code-line code-indent">
+                      <span class="c-keyword">while</span> <span class="c-var">learning</span><span class="c-punc">:</span>
+                    </div>
+                    <div class="code-line code-indent2">
+                      <span class="c-fn">improve_skills</span><span class="c-punc">()</span>
+                    </div>
+                    <div class="code-line code-indent2">
+                      <span class="c-keyword">if</span> <span class="c-var">stuck</span><span class="c-punc">:</span>
+                    </div>
+                    <div class="code-line code-indent3">
+                      <span class="c-fn">read_documentation</span><span class="c-punc">()</span>
+                    </div>
+                    <div class="code-line code-indent">
+                      <span class="c-keyword">return</span> <span class="c-var">growth</span>
+                    </div>
+                    <div class="code-line">
+                      <span class="c-comment"># 保持好奇，保持饥饿</span>
+                    </div>
+                    <div class="code-line">
+                      <span class="c-fn">print</span><span class="c-punc">(</span><span class="c-str">"Hello World"</span><span class="c-punc">)</span>
+                    </div>
                   </div>
                   <div class="card-editor-footer">
                     <span class="editor-cmd"><span class="cmd-prompt">$</span> npm run connect</span>
@@ -70,40 +110,72 @@
               </Card3D>
 
               <div class="hero-stat-float sf-2">
-                <img class="float-logo" src="/assets/codex-logo.png" alt="Codex" />
+                <img
+                  class="float-logo"
+                  src="/assets/codex-logo.png"
+                  alt="Codex"
+                >
               </div>
               <div class="hero-stat-float sf-5">
-                <img class="float-logo" src="/assets/kimi-logo.png" alt="Kimi" />
+                <img
+                  class="float-logo"
+                  src="/assets/kimi-logo.png"
+                  alt="Kimi"
+                >
               </div>
               <div class="hero-stat-float sf-3">
-                <img class="float-logo" src="/assets/cursor-logo.png" alt="Cursor" />
+                <img
+                  class="float-logo"
+                  src="/assets/cursor-logo.png"
+                  alt="Cursor"
+                >
               </div>
               <div class="hero-stat-float sf-4">
-                <img class="float-logo" src="/assets/claude-code-logo.png" alt="Claude" />
+                <img
+                  class="float-logo"
+                  src="/assets/claude-code-logo.png"
+                  alt="Claude"
+                >
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div ref="aboutRevealPanelsRef" class="about-reveal-panels">
-        <article ref="profilePanelRef" class="about-reveal-panel about-profile-panel">
+      <div
+        ref="aboutRevealPanelsRef"
+        class="about-reveal-panels"
+      >
+        <article
+          ref="profilePanelRef"
+          class="about-reveal-panel about-profile-panel"
+        >
           <div class="about-reveal-grid">
             <div class="about-reveal-heading">
               <span class="about-reveal-kicker">{{ profile.kicker }}</span>
               <h2>{{ profile.title }}</h2>
             </div>
             <div class="about-avatar">
-              <img :src="profile.avatar" :alt="profile.avatar_alt" />
+              <img
+                :src="profile.avatar"
+                :alt="profile.avatar_alt"
+              >
             </div>
             <div class="about-card">
               <div class="about-card-right">
-                <h3 class="about-card-title">个人简介</h3>
+                <h3 class="about-card-title">
+                  个人简介
+                </h3>
                 <p class="about-bio">
                   {{ profile.intro }}
                 </p>
                 <ul class="about-bio about-bio-list">
-                  <li v-for="bullet in profile.bullets" :key="bullet">{{ bullet }}</li>
+                  <li
+                    v-for="bullet in profile.bullets"
+                    :key="bullet"
+                  >
+                    {{ bullet }}
+                  </li>
                 </ul>
                 <p class="about-bio">
                   {{ profile.outro }}
@@ -113,14 +185,23 @@
           </div>
         </article>
 
-        <article ref="ingredientsPanelRef" class="about-reveal-panel about-ingredients-panel">
+        <article
+          ref="ingredientsPanelRef"
+          class="about-reveal-panel about-ingredients-panel"
+        >
           <div class="about-reveal-heading">
             <span class="about-reveal-kicker">{{ ingredients.kicker }}</span>
             <h2>{{ ingredients.title }}</h2>
             <p>{{ ingredients.description }}</p>
           </div>
-          <div class="linked-card" ref="linkedCardEl">
-            <div class="linked-card-track" ref="linkedTrackEl" />
+          <div
+            ref="linkedCardEl"
+            class="linked-card"
+          >
+            <div
+              ref="linkedTrackEl"
+              class="linked-card-track"
+            />
           </div>
         </article>
       </div>

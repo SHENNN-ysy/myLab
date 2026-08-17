@@ -1,12 +1,15 @@
 <template>
   <section
-    ref="heroCinemaRef"
     id="hero-cinema"
+    ref="heroCinemaRef"
     class="hero-cinema"
     :class="{ 'is-loaded': isReady }"
     :style="heroCinemaStyle"
   >
-    <div class="hero-cinema__bg-stack" aria-hidden="true">
+    <div
+      class="hero-cinema__bg-stack"
+      aria-hidden="true"
+    >
       <img
         v-for="(slide, index) in slides"
         :key="slide.src"
@@ -21,7 +24,7 @@
         :loading="index === 0 ? 'eager' : 'lazy'"
         :fetchpriority="index === 0 ? 'high' : 'auto'"
         @load="onBgLoaded(index)"
-      />
+      >
     </div>
 
     <div class="hero-cinema__veil" />
@@ -29,8 +32,12 @@
     <HeroWordmark />
 
     <div class="hero-cinema__copy">
-      <h1 class="hero-cinema__heading">WELCOME</h1>
-      <p class="hero-cinema__sub">This is only the beginning</p>
+      <h1 class="hero-cinema__heading">
+        WELCOME
+      </h1>
+      <p class="hero-cinema__sub">
+        This is only the beginning
+      </p>
 
       <!-- 圆点选择条：位于 EXPLORE 上方；hover 圆点锁定对应背景图 -->
       <div
@@ -79,13 +86,22 @@
               />
             </svg>
           </span>
-          <span aria-hidden="true" class="hero-cinema__cta-shine" />
+          <span
+            aria-hidden="true"
+            class="hero-cinema__cta-shine"
+          />
         </button>
-        <span class="hero-cinema__hint" aria-hidden="true">↓ 下滑探索</span>
+        <span
+          class="hero-cinema__hint"
+          aria-hidden="true"
+        >↓ 下滑探索</span>
       </div>
     </div>
 
-    <p class="hero-cinema__watermark" aria-label="面朝大海，春暖花开">
+    <p
+      class="hero-cinema__watermark"
+      aria-label="面朝大海，春暖花开"
+    >
       <span>面朝大海</span>
       <span class="hero-cinema__watermark-sep">·</span>
       <span>春暖花开</span>

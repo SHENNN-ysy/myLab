@@ -6,16 +6,26 @@
         <div class="section-header">
           <span class="section-num">06</span>
           <div class="section-title-group">
-            <h2 class="section-title">{{ section.title }} <em>{{ section.highlight }}</em></h2>
-            <p class="section-desc">{{ section.description }}</p>
+            <h2 class="section-title">
+              {{ section.title }} <em>{{ section.highlight }}</em>
+            </h2>
+            <p class="section-desc">
+              {{ section.description }}
+            </p>
           </div>
         </div>
       </RevealOnScroll>
 
       <div class="ai-coding-body">
-        <RevealOnScroll class="ai-coding-visual" :delay="1">
+        <RevealOnScroll
+          class="ai-coding-visual"
+          :delay="1"
+        >
           <div class="ai-coding-img-panel">
-            <img src="/assets/ai-demo.png" alt="Vibe Coding Demo" />
+            <img
+              src="/assets/ai-demo.png"
+              alt="Vibe Coding Demo"
+            >
 
             <PathEasedLogo
               src="/assets/claude-code-logo.png"
@@ -70,14 +80,20 @@
             :key="tool.name"
             :delay="2"
           >
-            <div class="ai-tool-item" :data-pct="tool.percentage">
+            <div
+              class="ai-tool-item"
+              :data-pct="tool.percentage"
+            >
               <div class="ai-tool-header">
                 <span class="ai-tool-name">{{ tool.name }}</span>
                 <span class="ai-tool-pct">{{ tool.percentage }}%</span>
               </div>
               <span class="ai-tool-desc">{{ tool.description }}</span>
               <div class="ai-tool-bar">
-                <div class="ai-tool-fill" :style="{ width: animatedWidths[tool.name] || '0%' }" />
+                <div
+                  class="ai-tool-fill"
+                  :style="{ width: animatedWidths[tool.name] || '0%' }"
+                />
               </div>
             </div>
           </RevealOnScroll>

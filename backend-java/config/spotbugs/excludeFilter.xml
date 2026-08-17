@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SpotBugs exclusions for MyBlog backend. Each entry is a verified false
+     positive; keep the comment explaining why.
+     Note: <Bug pattern="..."/> matches the full bug pattern (e.g. EI_EXPOSE_REP2);
+     the code attribute is the short family code (e.g. EI). -->
+<FindBugsFilter>
+    <!-- Spring constructor injection stores container-managed singletons in
+         fields; that is not exposing internal state. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <!-- Returning shared collections/singletons held by records and utility
+         holders (PageResult, ClaimedSnapshot, JacksonObjectMapper) is by design. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="MS_EXPOSE_REP"/>
+    </Match>
+    <!-- The server-monitor endpoints intentionally inspect the filesystem
+         root to report disk usage. -->
+    <Match>
+        <Bug pattern="DMI_HARDCODED_ABSOLUTE_FILENAME"/>
+        <Class name="com.myblog.application.service.system.SystemService"/>
+    </Match>
+    <!-- The rate-limit filter deliberately swallows Redis failures to fail
+         open and keep the site available. -->
+    <Match>
+        <Bug pattern="REC_CATCH_EXCEPTION"/>
+        <Class name="com.myblog.starter.config.RateLimitFilter"/>
+    </Match>
+</FindBugsFilter>

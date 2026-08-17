@@ -1,19 +1,27 @@
 <template>
   <main class="post-page">
-    <div v-if="post" class="post-container">
+    <div
+      v-if="post"
+      class="post-container"
+    >
       <!-- ============ 主栏：头图 + 标题 + 正文 ============ -->
       <article class="post-main">
-        <div class="post-hero" :class="{ 'is-loaded': heroLoaded || !detailHero }">
+        <div
+          class="post-hero"
+          :class="{ 'is-loaded': heroLoaded || !detailHero }"
+        >
           <img
             v-if="detailHero"
             :src="detailHero"
             :alt="post.title"
             decoding="async"
             @load="heroLoaded = true"
-          />
+          >
         </div>
 
-        <h1 class="post-title">{{ post.title }}</h1>
+        <h1 class="post-title">
+          {{ post.title }}
+        </h1>
 
         <div class="post-meta">
           <span class="post-date">
@@ -29,30 +37,69 @@
             >
               <path d="M8 2v4" />
               <path d="M16 2v4" />
-              <rect width="18" height="18" x="3" y="4" rx="2" />
+              <rect
+                width="18"
+                height="18"
+                x="3"
+                y="4"
+                rx="2"
+              />
               <path d="M3 10h18" />
             </svg>
             写作时间: {{ post.date }}
           </span>
-          <span class="post-date" title="浏览量">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <span
+            class="post-date"
+            title="浏览量"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
               <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-              <circle cx="12" cy="12" r="3" />
+              <circle
+                cx="12"
+                cy="12"
+                r="3"
+              />
             </svg>
             {{ formatNumber(postEngagement.view_count) }} 次浏览
           </span>
-          <span v-for="tag in post.tags" :key="tag" class="post-tag"># {{ tag }}</span>
+          <span
+            v-for="tag in post.tags"
+            :key="tag"
+            class="post-tag"
+          ># {{ tag }}</span>
         </div>
 
-        <p class="post-summary">{{ post.summary }}</p>
+        <p class="post-summary">
+          {{ post.summary }}
+        </p>
 
-        <p v-if="markdownLoading" class="post-content-state">正在从 OSS 加载正文…</p>
-        <p v-else-if="markdownError && !post.sections.length" class="post-content-state is-error">{{ markdownError }}</p>
-        <div v-else-if="markdownHtml" class="markdown-body" v-html="markdownHtml" />
+        <p
+          v-if="markdownLoading"
+          class="post-content-state"
+        >
+          正在从 OSS 加载正文…
+        </p>
+        <p
+          v-else-if="markdownError && !post.sections.length"
+          class="post-content-state is-error"
+        >
+          {{ markdownError }}
+        </p>
+        <div
+          v-else-if="markdownHtml"
+          class="markdown-body"
+          v-html="markdownHtml"
+        />
 
         <section
-          v-else
           v-for="(section, index) in post.sections"
+          v-else
           :id="`sec-${index}`"
           :key="section.heading"
           class="post-section"
@@ -61,11 +108,21 @@
             <span class="post-heading-num">{{ index + 1 }}.</span>
             {{ section.heading }}
           </h2>
-          <p v-for="paragraph in section.paragraphs" :key="paragraph">{{ paragraph }}</p>
+          <p
+            v-for="paragraph in section.paragraphs"
+            :key="paragraph"
+          >
+            {{ paragraph }}
+          </p>
         </section>
 
         <div class="post-actions">
-          <RouterLink class="post-back" to="/mylab">← 返回上一级</RouterLink>
+          <RouterLink
+            class="post-back"
+            to="/mylab"
+          >
+            ← 返回上一级
+          </RouterLink>
           <button
             type="button"
             class="like-button"
@@ -74,20 +131,32 @@
             :disabled="likePending"
             @click="toggleLike"
           >
-            <svg viewBox="0 0 24 24" :fill="postEngagement.liked ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              :fill="postEngagement.liked ? 'currentColor' : 'none'"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
               <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
             </svg>
             {{ postEngagement.liked ? '已点赞' : '点赞' }}
             <strong>{{ formatNumber(postEngagement.like_count) }}</strong>
           </button>
-          <span v-if="interactionError" class="engagement-error" role="status">{{ interactionError }}</span>
+          <span
+            v-if="interactionError"
+            class="engagement-error"
+            role="status"
+          >{{ interactionError }}</span>
         </div>
       </article>
 
       <!-- ============ 右侧小面板：RECOMMENDED + Table of Contents ============ -->
       <aside class="post-aside">
         <div class="aside-panel">
-          <h3 class="aside-label">Recommended</h3>
+          <h3 class="aside-label">
+            Recommended
+          </h3>
           <RouterLink
             v-for="item in recommended"
             :key="item.id"
@@ -95,12 +164,17 @@
             :to="`/mylab/post/${item.id}`"
           >
             <span class="aside-rec-title">{{ item.title }}</span>
-            <time class="aside-rec-date" :datetime="item.date">{{ item.date }}</time>
+            <time
+              class="aside-rec-date"
+              :datetime="item.date"
+            >{{ item.date }}</time>
           </RouterLink>
         </div>
 
         <div class="aside-panel">
-          <h3 class="aside-label">Table of Contents</h3>
+          <h3 class="aside-label">
+            Table of Contents
+          </h3>
           <button
             v-for="item in tocItems"
             :key="item.id"
@@ -116,9 +190,17 @@
     </div>
 
     <!-- ============ 记录不存在 ============ -->
-    <div v-else class="post-missing">
+    <div
+      v-else
+      class="post-missing"
+    >
       <p>没有找到这条记录。</p>
-      <RouterLink class="post-back" to="/mylab">← 返回 MyLab</RouterLink>
+      <RouterLink
+        class="post-back"
+        to="/mylab"
+      >
+        ← 返回 MyLab
+      </RouterLink>
     </div>
   </main>
 </template>

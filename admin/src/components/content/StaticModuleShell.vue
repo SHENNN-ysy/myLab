@@ -12,29 +12,62 @@
               <HistoryOutlined />
               历史版本
             </a-button>
-            <a-tag color="blue">后端版本管理</a-tag>
+            <a-tag color="blue">
+              后端版本管理
+            </a-tag>
           </a-space>
         </div>
       </template>
 
       <a-spin :spinning="loading">
-      <a-tabs :active-key="activePanel" @update:active-key="emit('update:activePanel', String($event))">
-        <a-tab-pane key="current" tab="当前内容">
-          <a-alert type="info" show-icon message="当前内容为只读视图" description="本面板展示后端当前已发布版本，修改请前往草稿内容。" class="panel-tip" />
-          <slot name="current" />
-        </a-tab-pane>
+        <a-tabs
+          :active-key="activePanel"
+          @update:active-key="emit('update:activePanel', String($event))"
+        >
+          <a-tab-pane
+            key="current"
+            tab="当前内容"
+          >
+            <a-alert
+              type="info"
+              show-icon
+              message="当前内容为只读视图"
+              description="本面板展示后端当前已发布版本，修改请前往草稿内容。"
+              class="panel-tip"
+            />
+            <slot name="current" />
+          </a-tab-pane>
 
-        <a-tab-pane key="draft" tab="草稿内容">
-          <div class="draft-toolbar">
-            <a-alert type="info" show-icon message="草稿通过后端版本接口保存" description="保存草稿不会影响博客前台；发布成功后公开接口切换到新版本。" />
-            <a-space>
-              <a-button :loading="saving" @click="emit('save')">保存草稿</a-button>
-              <a-button type="primary" :loading="publishing" @click="emit('publish')">发布</a-button>
-            </a-space>
-          </div>
-          <slot name="draft" />
-        </a-tab-pane>
-      </a-tabs>
+          <a-tab-pane
+            key="draft"
+            tab="草稿内容"
+          >
+            <div class="draft-toolbar">
+              <a-alert
+                type="info"
+                show-icon
+                message="草稿通过后端版本接口保存"
+                description="保存草稿不会影响博客前台；发布成功后公开接口切换到新版本。"
+              />
+              <a-space>
+                <a-button
+                  :loading="saving"
+                  @click="emit('save')"
+                >
+                  保存草稿
+                </a-button>
+                <a-button
+                  type="primary"
+                  :loading="publishing"
+                  @click="emit('publish')"
+                >
+                  发布
+                </a-button>
+              </a-space>
+            </div>
+            <slot name="draft" />
+          </a-tab-pane>
+        </a-tabs>
       </a-spin>
     </a-card>
 

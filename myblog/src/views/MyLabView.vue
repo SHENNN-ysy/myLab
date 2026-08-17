@@ -1,8 +1,13 @@
 <template>
   <main class="mylab">
     <!-- ============ Hero：标题 + 记录总数 ============ -->
-    <section class="mylab-hero" aria-label="MyLab 页头">
-      <h1 class="mylab-title">MyLab</h1>
+    <section
+      class="mylab-hero"
+      aria-label="MyLab 页头"
+    >
+      <h1 class="mylab-title">
+        MyLab
+      </h1>
       <p class="mylab-count">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -25,14 +30,17 @@
     </section>
 
     <!-- ============ 控制区：搜索 + 标签汇总 + 视图切换 ============ -->
-    <section class="mylab-controls" aria-label="筛选与视图控制">
+    <section
+      class="mylab-controls"
+      aria-label="筛选与视图控制"
+    >
       <div class="mylab-search">
         <input
           v-model="keyword"
           type="text"
           placeholder="搜寻被封存的知识..."
           aria-label="搜索记录"
-        />
+        >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
@@ -44,12 +52,20 @@
           aria-hidden="true"
         >
           <path d="m21 21-4.34-4.34" />
-          <circle cx="11" cy="11" r="8" />
+          <circle
+            cx="11"
+            cy="11"
+            r="8"
+          />
         </svg>
       </div>
 
       <div class="mylab-filterbar">
-        <div class="mylab-tags" role="group" aria-label="按标签筛选">
+        <div
+          class="mylab-tags"
+          role="group"
+          aria-label="按标签筛选"
+        >
           <button
             type="button"
             class="mylab-tag-btn"
@@ -71,7 +87,11 @@
           </button>
         </div>
 
-        <div class="mylab-viewtoggle" role="group" aria-label="切换布局">
+        <div
+          class="mylab-viewtoggle"
+          role="group"
+          aria-label="切换布局"
+        >
           <button
             type="button"
             :class="{ 'is-active': viewMode === 'chain' }"
@@ -112,10 +132,34 @@
               stroke-linejoin="round"
               aria-hidden="true"
             >
-              <rect width="7" height="7" x="3" y="3" rx="1" />
-              <rect width="7" height="7" x="14" y="3" rx="1" />
-              <rect width="7" height="7" x="14" y="14" rx="1" />
-              <rect width="7" height="7" x="3" y="14" rx="1" />
+              <rect
+                width="7"
+                height="7"
+                x="3"
+                y="3"
+                rx="1"
+              />
+              <rect
+                width="7"
+                height="7"
+                x="14"
+                y="3"
+                rx="1"
+              />
+              <rect
+                width="7"
+                height="7"
+                x="14"
+                y="14"
+                rx="1"
+              />
+              <rect
+                width="7"
+                height="7"
+                x="3"
+                y="14"
+                rx="1"
+              />
             </svg>
             <span>矩阵网格</span>
           </button>
@@ -124,9 +168,16 @@
     </section>
 
     <!-- ============ 内容区 ============ -->
-    <section class="mylab-content" aria-label="记录列表">
+    <section
+      class="mylab-content"
+      aria-label="记录列表"
+    >
       <!-- 中枢链路：中轴时间线，卡片左右交替 -->
-      <div v-if="viewMode === 'chain'" key="chain" class="lab-timeline">
+      <div
+        v-if="viewMode === 'chain'"
+        key="chain"
+        class="lab-timeline"
+      >
         <div
           v-for="(post, index) in filteredPosts"
           :key="post.id"
@@ -134,7 +185,10 @@
           :class="{ 'is-right': index % 2 === 1 }"
           :style="{ '--i': index }"
         >
-          <span class="lab-tl-node" aria-hidden="true" />
+          <span
+            class="lab-tl-node"
+            aria-hidden="true"
+          />
           <div class="lab-tl-card">
             <LabCard :post="post" />
           </div>
@@ -142,7 +196,11 @@
       </div>
 
       <!-- 矩阵网格：均分卡片栅格 -->
-      <div v-else key="grid" class="lab-grid">
+      <div
+        v-else
+        key="grid"
+        class="lab-grid"
+      >
         <div
           v-for="(post, index) in filteredPosts"
           :key="post.id"
@@ -153,7 +211,10 @@
         </div>
       </div>
 
-      <p v-if="filteredPosts.length === 0" class="mylab-empty">
+      <p
+        v-if="filteredPosts.length === 0"
+        class="mylab-empty"
+      >
         没有找到匹配的记录，换个关键词或标签试试。
       </p>
     </section>

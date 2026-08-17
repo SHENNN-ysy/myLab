@@ -12,23 +12,127 @@
     @restored="load"
   >
     <template #current>
-      <a-table :data-source="currentSkills" :pagination="false" row-key="id" size="small">
-        <a-table-column title="名称" data-index="name" />
-        <a-table-column title="百分比" data-index="percentage"><template #default="{ text }">{{ text }}%</template></a-table-column>
-        <a-table-column title="等级"><template #default="{ record }"><a-tag :color="skillLevelMeta(record.levelCode).tagColor">{{ skillLevelMeta(record.levelCode).label }}</a-tag></template></a-table-column>
-        <a-table-column title="图标资源"><template #default="{ record }"><a-space><img v-if="record.iconResource?.url" class="skill-icon" :src="record.iconResource.url" :alt="record.name" /><a-tag v-else>前台内置图标：{{ record.frontendIcon }}</a-tag></a-space></template></a-table-column>
+      <a-table
+        :data-source="currentSkills"
+        :pagination="false"
+        row-key="id"
+        size="small"
+      >
+        <a-table-column
+          title="名称"
+          data-index="name"
+        />
+        <a-table-column
+          title="百分比"
+          data-index="percentage"
+        >
+          <template #default="{ text }">
+            {{ text }}%
+          </template>
+        </a-table-column>
+        <a-table-column title="等级">
+          <template #default="{ record }">
+            <a-tag :color="skillLevelMeta(record.levelCode).tagColor">
+              {{ skillLevelMeta(record.levelCode).label }}
+            </a-tag>
+          </template>
+        </a-table-column>
+        <a-table-column title="图标资源">
+          <template #default="{ record }">
+            <a-space>
+              <img
+                v-if="record.iconResource?.url"
+                class="skill-icon"
+                :src="record.iconResource.url"
+                :alt="record.name"
+              ><a-tag v-else>
+                前台内置图标：{{ record.frontendIcon }}
+              </a-tag>
+            </a-space>
+          </template>
+        </a-table-column>
       </a-table>
     </template>
 
     <template #draft>
-      <CollectionHeader :title="`技术栈列表（已启用 ${enabledCount(draftSkills)}/${MAX_SKILLS}，共 ${draftSkills.length} 条）`" @add="addSkill" />
-      <a-table :data-source="draftSkills" :pagination="false" row-key="id" size="small" :scroll="{ x: 1020 }">
-        <a-table-column title="名称" width="190"><template #default="{ record }"><a-input v-model:value="record.name" /></template></a-table-column>
-        <a-table-column title="百分比" width="110"><template #default="{ record }"><a-input-number v-model:value="record.percentage" :min="0" :max="100" /></template></a-table-column>
-        <a-table-column title="等级" width="130"><template #default="{ record }"><a-select v-model:value="record.levelCode" :options="levelOptions" /></template></a-table-column>
-        <a-table-column title="OSS 图标资源" width="330"><template #default="{ record }"><OssImageResourcePicker v-model="record.iconResource" directory="icon" /></template></a-table-column>
-        <a-table-column title="启用" width="70"><template #default="{ record }"><a-switch v-model:checked="record.enabled" @change="onEnabledChange(draftSkills, record, Boolean($event), MAX_SKILLS, '技术栈卡片')" /></template></a-table-column>
-        <a-table-column title="操作" width="190" fixed="right"><template #default="{ record, index }"><ListActions :index="Number(index)" :length="draftSkills.length" @move="move(draftSkills, Number(index), $event)" @remove="remove(draftSkills, record.id)" /></template></a-table-column>
+      <CollectionHeader
+        :title="`技术栈列表（已启用 ${enabledCount(draftSkills)}/${MAX_SKILLS}，共 ${draftSkills.length} 条）`"
+        @add="addSkill"
+      />
+      <a-table
+        :data-source="draftSkills"
+        :pagination="false"
+        row-key="id"
+        size="small"
+        :scroll="{ x: 1020 }"
+      >
+        <a-table-column
+          title="名称"
+          width="190"
+        >
+          <template #default="{ record }">
+            <a-input v-model:value="record.name" />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="百分比"
+          width="110"
+        >
+          <template #default="{ record }">
+            <a-input-number
+              v-model:value="record.percentage"
+              :min="0"
+              :max="100"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="等级"
+          width="130"
+        >
+          <template #default="{ record }">
+            <a-select
+              v-model:value="record.levelCode"
+              :options="levelOptions"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="OSS 图标资源"
+          width="330"
+        >
+          <template #default="{ record }">
+            <OssImageResourcePicker
+              v-model="record.iconResource"
+              directory="icon"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="启用"
+          width="70"
+        >
+          <template #default="{ record }">
+            <a-switch
+              v-model:checked="record.enabled"
+              @change="onEnabledChange(draftSkills, record, Boolean($event), MAX_SKILLS, '技术栈卡片')"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="操作"
+          width="190"
+          fixed="right"
+        >
+          <template #default="{ record, index }">
+            <ListActions
+              :index="Number(index)"
+              :length="draftSkills.length"
+              @move="move(draftSkills, Number(index), $event)"
+              @remove="remove(draftSkills, record.id)"
+            />
+          </template>
+        </a-table-column>
       </a-table>
     </template>
   </StaticModuleShell>

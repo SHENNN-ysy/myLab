@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 
 /**
  * PostgreSQL 互动聚合统计仓储：快照落库的实现侧，不写入任何访客级数据。

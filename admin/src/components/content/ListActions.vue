@@ -1,8 +1,17 @@
 <template>
   <span class="list-actions">
-    <button :disabled="index === 0" @click="onMove($event, -1)">上移</button>
-    <button :disabled="index === length - 1" @click="onMove($event, 1)">下移</button>
-    <button class="danger" @click="onRemove">删除</button>
+    <button
+      :disabled="index === 0"
+      @click="onMove($event, -1)"
+    >上移</button>
+    <button
+      :disabled="index === length - 1"
+      @click="onMove($event, 1)"
+    >下移</button>
+    <button
+      class="danger"
+      @click="onRemove"
+    >删除</button>
   </span>
 </template>
 

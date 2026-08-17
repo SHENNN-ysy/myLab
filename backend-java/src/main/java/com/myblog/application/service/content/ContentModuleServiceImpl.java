@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.myblog.application.model.dto.ContentDtos;
 import com.myblog.application.model.entity.ContentRelease;
 import com.myblog.application.model.entity.FileRecord;
-import com.myblog.application.model.entity.MylabTag;
 import com.myblog.application.port.ObjectStorage;
 import com.myblog.application.repository.ContentReleaseRepository;
 import com.myblog.application.repository.FileRepository;

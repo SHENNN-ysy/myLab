@@ -5,8 +5,12 @@
         <div class="section-header">
           <span class="section-num">05</span>
           <div class="section-title-group">
-            <h2 class="section-title">{{ section.title }}<em>{{ section.highlight }}</em></h2>
-            <p class="section-desc">{{ section.description }}</p>
+            <h2 class="section-title">
+              {{ section.title }}<em>{{ section.highlight }}</em>
+            </h2>
+            <p class="section-desc">
+              {{ section.description }}
+            </p>
           </div>
         </div>
       </RevealOnScroll>
@@ -14,9 +18,17 @@
       <div class="game-panels">
         <RevealOnScroll class="time-panel-slot">
           <div class="time-panel">
-            <h3 class="panel-title">{{ section.panel_title }}</h3>
+            <h3 class="panel-title">
+              {{ section.panel_title }}
+            </h3>
 
-            <svg class="time-chart-svg" viewBox="0 0 500 300" preserveAspectRatio="none" role="img" aria-label="时间分配堆叠面积图">
+            <svg
+              class="time-chart-svg"
+              viewBox="0 0 500 300"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="时间分配堆叠面积图"
+            >
               <g>
                 <path
                   v-for="series in timeSeries"
@@ -36,18 +48,41 @@
                 >{{ series.label }}</text>
               </g>
               <g class="time-axis">
-                <g v-for="tick in yTicks" :key="tick" :transform="`translate(-1,${scaleY(tick)})`">
-                  <line x1="0" x2="7" />
-                  <text class="time-axis-y-label" x="10" dy="0.32em">{{ tick * 10 }}%</text>
+                <g
+                  v-for="tick in yTicks"
+                  :key="tick"
+                  :transform="`translate(-1,${scaleY(tick)})`"
+                >
+                  <line
+                    x1="0"
+                    x2="7"
+                  />
+                  <text
+                    class="time-axis-y-label"
+                    x="10"
+                    dy="0.32em"
+                  >{{ tick * 10 }}%</text>
                 </g>
               </g>
               <g class="time-axis">
-                <g v-for="tick in xTicks" :key="tick" :transform="`translate(${scaleX(tick)},301)`">
-                  <line y1="0" y2="-7" />
+                <g
+                  v-for="tick in xTicks"
+                  :key="tick"
+                  :transform="`translate(${scaleX(tick)},301)`"
+                >
+                  <line
+                    y1="0"
+                    y2="-7"
+                  />
                   <text y="-10">{{ tick }}</text>
                 </g>
               </g>
-              <text class="time-axis-title" x="260" y="290" text-anchor="middle">Age</text>
+              <text
+                class="time-axis-title"
+                x="260"
+                y="290"
+                text-anchor="middle"
+              >Age</text>
             </svg>
           </div>
         </RevealOnScroll>
@@ -65,10 +100,18 @@
               @mouseenter="activeTimeKey = cardTimeKey(game, index)"
               @mouseleave="activeTimeKey = null"
             >
-              <img :src="game.image" :alt="game.name" loading="lazy" />
+              <img
+                :src="game.image"
+                :alt="game.name"
+                loading="lazy"
+              >
               <div class="game-card-overlay">
-                <p class="game-card-description">{{ game.description }}</p>
-                <h3 class="game-card-title">{{ game.name }}</h3>
+                <p class="game-card-description">
+                  {{ game.description }}
+                </p>
+                <h3 class="game-card-title">
+                  {{ game.name }}
+                </h3>
               </div>
             </div>
           </RevealOnScroll>

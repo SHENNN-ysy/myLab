@@ -1,8 +1,6 @@
 package com.myblog.infrastructure.persistence.mapper.file;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.myblog.application.model.entity.FileRecord;
 /**
  * 文件资源记录表 Mapper：仅继承 MyBatis-Plus {@link BaseMapper} 提供基础 CRUD，

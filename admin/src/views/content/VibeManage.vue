@@ -12,21 +12,93 @@
     @restored="load"
   >
     <template #current>
-      <a-table :data-source="currentVibe" :pagination="false" row-key="id" size="small">
-        <a-table-column title="工具" data-index="name" />
-        <a-table-column title="使用占比" data-index="percentage"><template #default="{ text }">{{ text }}%</template></a-table-column>
-        <a-table-column title="说明" data-index="description" />
+      <a-table
+        :data-source="currentVibe"
+        :pagination="false"
+        row-key="id"
+        size="small"
+      >
+        <a-table-column
+          title="工具"
+          data-index="name"
+        />
+        <a-table-column
+          title="使用占比"
+          data-index="percentage"
+        >
+          <template #default="{ text }">
+            {{ text }}%
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="说明"
+          data-index="description"
+        />
       </a-table>
     </template>
 
     <template #draft>
-      <CollectionHeader :title="`Vibe Coding 工具（已启用 ${enabledCount(draftVibe)}/${MAX_VIBE_TOOLS}，共 ${draftVibe.length} 条）`" @add="addVibeTool" />
-      <a-table :data-source="draftVibe" :pagination="false" row-key="id" size="small" :scroll="{ x: 780 }">
-        <a-table-column title="名称" width="170"><template #default="{ record }"><a-input v-model:value="record.name" /></template></a-table-column>
-        <a-table-column title="占比" width="120"><template #default="{ record }"><a-input-number v-model:value="record.percentage" :min="0" :max="100" /></template></a-table-column>
-        <a-table-column title="说明"><template #default="{ record }"><a-input v-model:value="record.description" /></template></a-table-column>
-        <a-table-column title="启用" width="70"><template #default="{ record }"><a-switch v-model:checked="record.enabled" @change="onEnabledChange(draftVibe, record, Boolean($event), MAX_VIBE_TOOLS, 'Vibe Coding 工具')" /></template></a-table-column>
-        <a-table-column title="操作" width="190" fixed="right"><template #default="{ record, index }"><ListActions :index="Number(index)" :length="draftVibe.length" @move="move(draftVibe, Number(index), $event)" @remove="remove(draftVibe, record.id)" /></template></a-table-column>
+      <CollectionHeader
+        :title="`Vibe Coding 工具（已启用 ${enabledCount(draftVibe)}/${MAX_VIBE_TOOLS}，共 ${draftVibe.length} 条）`"
+        @add="addVibeTool"
+      />
+      <a-table
+        :data-source="draftVibe"
+        :pagination="false"
+        row-key="id"
+        size="small"
+        :scroll="{ x: 780 }"
+      >
+        <a-table-column
+          title="名称"
+          width="170"
+        >
+          <template #default="{ record }">
+            <a-input v-model:value="record.name" />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="占比"
+          width="120"
+        >
+          <template #default="{ record }">
+            <a-input-number
+              v-model:value="record.percentage"
+              :min="0"
+              :max="100"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column title="说明">
+          <template #default="{ record }">
+            <a-input v-model:value="record.description" />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="启用"
+          width="70"
+        >
+          <template #default="{ record }">
+            <a-switch
+              v-model:checked="record.enabled"
+              @change="onEnabledChange(draftVibe, record, Boolean($event), MAX_VIBE_TOOLS, 'Vibe Coding 工具')"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="操作"
+          width="190"
+          fixed="right"
+        >
+          <template #default="{ record, index }">
+            <ListActions
+              :index="Number(index)"
+              :length="draftVibe.length"
+              @move="move(draftVibe, Number(index), $event)"
+              @remove="remove(draftVibe, record.id)"
+            />
+          </template>
+        </a-table-column>
       </a-table>
     </template>
   </StaticModuleShell>

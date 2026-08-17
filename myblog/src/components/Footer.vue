@@ -1,7 +1,13 @@
 <template>
   <footer>
     <span class="copy">&copy; 2026 旅行者 · shennn</span>
-    <button type="button" class="back-top" @click="scrollToTop">↑ 回到顶部</button>
+    <button
+      type="button"
+      class="back-top"
+      @click="scrollToTop"
+    >
+      ↑ 回到顶部
+    </button>
   </footer>
 </template>
 

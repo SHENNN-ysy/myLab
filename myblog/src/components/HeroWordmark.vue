@@ -20,9 +20,18 @@
           x2="100%"
           y2="10%"
         >
-          <stop offset="0%" stop-color="var(--hero-wordmark-stroke)" />
-          <stop offset="52%" stop-color="var(--hero-wordmark-stroke-mid)" />
-          <stop offset="100%" stop-color="var(--hero-wordmark-stroke-end)" />
+          <stop
+            offset="0%"
+            stop-color="var(--hero-wordmark-stroke)"
+          />
+          <stop
+            offset="52%"
+            stop-color="var(--hero-wordmark-stroke-mid)"
+          />
+          <stop
+            offset="100%"
+            stop-color="var(--hero-wordmark-stroke-end)"
+          />
         </linearGradient>
         <linearGradient
           id="hero-wordmark-fill-gradient"
@@ -31,9 +40,18 @@
           x2="100%"
           y2="12%"
         >
-          <stop offset="0%" stop-color="var(--hero-wordmark-fill)" />
-          <stop offset="58%" stop-color="var(--hero-wordmark-fill-mid)" />
-          <stop offset="100%" stop-color="var(--hero-wordmark-fill-end)" />
+          <stop
+            offset="0%"
+            stop-color="var(--hero-wordmark-fill)"
+          />
+          <stop
+            offset="58%"
+            stop-color="var(--hero-wordmark-fill-mid)"
+          />
+          <stop
+            offset="100%"
+            stop-color="var(--hero-wordmark-fill-end)"
+          />
         </linearGradient>
       </defs>
       <text

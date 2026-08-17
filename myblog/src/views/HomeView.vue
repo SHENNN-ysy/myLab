@@ -6,7 +6,11 @@
       aria-label="首页视觉区"
     >
       <HeroCinema />
-      <div ref="scrollCueRef" class="hero-scroll-cue" aria-hidden="true">
+      <div
+        ref="scrollCueRef"
+        class="hero-scroll-cue"
+        aria-hidden="true"
+      >
         <span>FEEL</span>
         <span>FREE</span>
         <span>TO</span>

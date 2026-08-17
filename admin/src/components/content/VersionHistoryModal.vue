@@ -12,21 +12,40 @@
       message="恢复会把历史版本的内容覆盖到当前草稿（无草稿时自动新建草稿），历史版本本身不变，同一草稿可多次恢复；删除为软删除，仅解除其资源引用，线上版本不可删除。"
       class="version-tip"
     />
-    <a-list :data-source="versions" :loading="loading">
+    <a-list
+      :data-source="versions"
+      :loading="loading"
+    >
       <template #renderItem="{ item }">
         <a-list-item>
           <a-list-item-meta
             :title="`版本 ${item.version_no}`"
             :description="`发布时间：${formatTime(item.published_at)}`"
           />
-          <a-tag :color="stateColor(item.state)">{{ stateText(item.state) }}</a-tag>
+          <a-tag :color="stateColor(item.state)">
+            {{ stateText(item.state) }}
+          </a-tag>
           <a-space size="small">
-            <a-button type="link" @click="restore(item)">恢复为草稿</a-button>
-            <a-button v-if="item.state !== 'PUBLISHED'" type="link" danger @click="remove(item)">删除</a-button>
+            <a-button
+              type="link"
+              @click="restore(item)"
+            >
+              恢复为草稿
+            </a-button>
+            <a-button
+              v-if="item.state !== 'PUBLISHED'"
+              type="link"
+              danger
+              @click="remove(item)"
+            >
+              删除
+            </a-button>
           </a-space>
         </a-list-item>
       </template>
-      <template #empty><a-empty description="暂无历史版本" /></template>
+      <template #empty>
+        <a-empty description="暂无历史版本" />
+      </template>
     </a-list>
   </a-modal>
 </template>

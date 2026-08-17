@@ -2,6 +2,8 @@ name: myblog
 
 # 2核4G生产部署：Nginx + Java + PostgreSQL + Redis。
 # 图片由Java通过OSS内网上传，并通过CDN域名访问。
+# 数据库 schema 由后端 Flyway 管理（启动时自动执行 db/migration 下的迁移脚本），
+# db 容器不再挂载 docker-entrypoint-initdb.d 初始化脚本。
 services:
   db:
     ports:
@@ -24,12 +26,6 @@ services:
       - work_mem=4MB
     volumes:
       - pg_data:/var/lib/postgresql/data
-      - ./backend-java/src/main/resources/db/migration/V1__initial_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
-      - ./backend-java/src/main/resources/db/migration/V2__initial_data.sql:/docker-entrypoint-initdb.d/02_initial_data.sql:ro
-      - ./backend-java/src/main/resources/db/migration/V3__engagement_and_site_traffic.sql:/docker-entrypoint-initdb.d/03_engagement_and_site_traffic.sql:ro
-      - ./backend-java/src/main/resources/db/migration/V4__rename_hobby_time_keys.sql:/docker-entrypoint-initdb.d/04_rename_hobby_time_keys.sql:ro
-      - ./backend-java/src/main/resources/db/migration/V5__rename_hobby_time_point_columns.sql:/docker-entrypoint-initdb.d/05_rename_hobby_time_point_columns.sql:ro
-      - ./backend-java/src/main/resources/db/migration/V6__rename_hobby_time_point_columns_to_english.sql:/docker-entrypoint-initdb.d/06_rename_hobby_time_point_columns_to_english.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -112,7 +108,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: deploy/nginx/Dockerfile
+      dockerfile: nginx/Dockerfile
     image: ${WEB_IMAGE:-myblog-web:latest}
     environment:
       BLOG_DOMAIN: ${BLOG_DOMAIN}

@@ -12,7 +12,10 @@
       '--pe-bounce-end': bounceEnd + '%',
     }"
   >
-    <img :src="src" :alt="alt" />
+    <img
+      :src="src"
+      :alt="alt"
+    >
   </div>
 </template>
 

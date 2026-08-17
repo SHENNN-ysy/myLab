@@ -5,7 +5,11 @@
     永不撞死；云朵慢速飘动形成视差，地面持续滚动。
     仅作装饰背景，不响应交互；离开视口自动暂停，prefers-reduced-motion 时静止渲染。
   -->
-  <canvas ref="canvasRef" class="dino-runner" aria-hidden="true" />
+  <canvas
+    ref="canvasRef"
+    class="dino-runner"
+    aria-hidden="true"
+  />
 </template>
 
 <script setup lang="ts">

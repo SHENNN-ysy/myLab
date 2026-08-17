@@ -8,6 +8,7 @@ import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.exception.ValidationException;
 import com.myblog.common.security.Authorization;
 import com.myblog.common.security.CurrentUser;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -28,6 +29,7 @@ import java.util.regex.Pattern;
  * 隐私边界：服务内只接触经 HMAC 哈希的 visitorHash，不保存访客原始标识。
  */
 @Service
+@Slf4j
 public class EngagementService {
     public static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Shanghai"); // 统计口径统一按业务时区（东八区）划日
     private static final Pattern POST_KEY_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$");
@@ -118,8 +120,9 @@ public class EngagementService {
         repository.findDailyStatistics(from, today).forEach(value -> values.put(value.date(), value));
         try {
             values.put(today, store.dailyStatistics(today));
-        } catch (EngagementUnavailableException ignored) {
-            // Redis 不可用时保留数据库最后一次快照。
+        } catch (EngagementUnavailableException e) {
+            // Redis 不可用时降级：保留数据库最后一次快照。
+            log.warn("engagement store unavailable, fallback to db snapshot, date={}, err={}", today, e.toString());
         }
 
         List<EngagementDtos.DailyStatisticsView> items = new ArrayList<>(days);

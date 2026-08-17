@@ -1,26 +1,84 @@
 <template>
   <div class="oss-picker">
-    <div v-if="modelValue" class="selected-resource">
-      <img v-if="modelValue.url" :src="modelValue.url" :alt="modelValue.name" />
+    <div
+      v-if="modelValue"
+      class="selected-resource"
+    >
+      <img
+        v-if="modelValue.url"
+        :src="modelValue.url"
+        :alt="modelValue.name"
+      >
       <div><strong>{{ modelValue.name }}</strong><small>OSS 资源 ID：{{ modelValue.id }}</small></div>
-      <a-button type="link" danger @click="emit('update:modelValue', null)">移除</a-button>
+      <a-button
+        type="link"
+        danger
+        @click="emit('update:modelValue', null)"
+      >
+        移除
+      </a-button>
     </div>
-    <a-button v-else block @click="openPicker">从 OSS 素材库选择</a-button>
-    <a-button v-if="modelValue" size="small" class="replace-button" @click="openPicker">更换资源</a-button>
+    <a-button
+      v-else
+      block
+      @click="openPicker"
+    >
+      从 OSS 素材库选择
+    </a-button>
+    <a-button
+      v-if="modelValue"
+      size="small"
+      class="replace-button"
+      @click="openPicker"
+    >
+      更换资源
+    </a-button>
 
-    <a-modal v-model:open="visible" title="选择 OSS 图片资源" :width="780" :footer="null">
-      <a-upload :show-upload-list="false" :before-upload="uploadImage" accept="image/*">
-        <a-button type="primary" :loading="uploading">上传图片到 OSS</a-button>
+    <a-modal
+      v-model:open="visible"
+      title="选择 OSS 图片资源"
+      :width="780"
+      :footer="null"
+    >
+      <a-upload
+        :show-upload-list="false"
+        :before-upload="uploadImage"
+        accept="image/*"
+      >
+        <a-button
+          type="primary"
+          :loading="uploading"
+        >
+          上传图片到 OSS
+        </a-button>
       </a-upload>
       <a-spin :spinning="loading">
         <div class="resource-grid">
-          <button v-for="file in files" :key="file.id" type="button" class="resource-item" @click="selectFile(file)">
-            <img v-if="file.url" :src="file.url" :alt="file.originalName" />
-            <div v-else class="image-placeholder">IMG</div>
+          <button
+            v-for="file in files"
+            :key="file.id"
+            type="button"
+            class="resource-item"
+            @click="selectFile(file)"
+          >
+            <img
+              v-if="file.url"
+              :src="file.url"
+              :alt="file.originalName"
+            >
+            <div
+              v-else
+              class="image-placeholder"
+            >
+              IMG
+            </div>
             <span>{{ file.originalName || file.objectKey }}</span>
           </button>
         </div>
-        <a-empty v-if="!loading && files.length === 0" description="OSS 中暂无图片资源" />
+        <a-empty
+          v-if="!loading && files.length === 0"
+          description="OSS 中暂无图片资源"
+        />
       </a-spin>
     </a-modal>
   </div>

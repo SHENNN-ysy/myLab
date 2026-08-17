@@ -5,8 +5,12 @@
         <div class="section-header">
           <span class="section-num">02</span>
           <div class="section-title-group">
-            <h2 class="section-title">{{ section.title }}<em>{{ section.highlight }}</em></h2>
-            <p class="section-desc">{{ section.description }}</p>
+            <h2 class="section-title">
+              {{ section.title }}<em>{{ section.highlight }}</em>
+            </h2>
+            <p class="section-desc">
+              {{ section.description }}
+            </p>
           </div>
         </div>
       </RevealOnScroll>
@@ -22,15 +26,28 @@
             :data-pct="skill.percentage"
             :class="skill.barStyle ? `has-gradient-bar has-${skill.barStyle}-bar` : ''"
           >
-            <div v-if="isNewSkill(skill.name)" class="skill-new-badge" aria-label="New skill">
+            <div
+              v-if="isNewSkill(skill.name)"
+              class="skill-new-badge"
+              aria-label="New skill"
+            >
               <span class="badge-star">✦</span>
               <span>NEW</span>
             </div>
             <div class="skill-icon">
-              <img v-if="skill.iconUrl" :src="skill.iconUrl" :alt="`${skill.name} 图标`" />
-              <span v-else v-html="getIcon(skill.icon)" />
+              <img
+                v-if="skill.iconUrl"
+                :src="skill.iconUrl"
+                :alt="`${skill.name} 图标`"
+              >
+              <span
+                v-else
+                v-html="getIcon(skill.icon)"
+              />
             </div>
-            <div class="skill-name">{{ skill.name }}</div>
+            <div class="skill-name">
+              {{ skill.name }}
+            </div>
             <div class="skill-track">
               <div 
                 class="skill-fill"

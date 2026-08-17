@@ -13,85 +13,361 @@
   >
     <template #current>
       <div class="hobby-grid">
-        <article v-for="item in currentHobbies" :key="item.id" class="hobby-card">
-          <img :src="item.image" :alt="item.title" />
+        <article
+          v-for="item in currentHobbies"
+          :key="item.id"
+          class="hobby-card"
+        >
+          <img
+            :src="item.image"
+            :alt="item.title"
+          >
           <div><h3>{{ item.title }}</h3><p>{{ item.description }}</p></div>
         </article>
       </div>
       <div class="subsection-head">
         <div><h3>Time 标签</h3><p>标签名称、色带颜色和图内位置均为独立配置，不使用左侧爱好卡片标题。</p></div>
-        <a-tag color="blue">已启用 {{ enabledCount(currentHobbyTimeTags) }}/{{ MAX_TIME_TAGS }}</a-tag>
+        <a-tag color="blue">
+          已启用 {{ enabledCount(currentHobbyTimeTags) }}/{{ MAX_TIME_TAGS }}
+        </a-tag>
       </div>
-      <a-table :data-source="currentHobbyTimeTags" :pagination="false" row-key="id" size="small" :scroll="{ x: 900 }">
-        <a-table-column title="顺序" width="70"><template #default="{ index }">{{ Number(index) + 1 }}</template></a-table-column>
-        <a-table-column title="数据键" data-index="dataKey" width="110" />
-        <a-table-column title="显示名称" data-index="name" width="180" />
-        <a-table-column title="色带颜色" width="140"><template #default="{ record }"><span class="color-value"><i :style="{ backgroundColor: record.color }" />{{ record.color }}</span></template></a-table-column>
-        <a-table-column title="标签坐标" width="140"><template #default="{ record }">X {{ record.labelX }} / Y {{ record.labelY }}</template></a-table-column>
-        <a-table-column title="缩放" data-index="labelScale" width="90" />
-        <a-table-column title="状态" width="80"><template #default="{ record }"><a-tag :color="record.enabled ? 'green' : 'default'">{{ record.enabled ? '启用' : '停用' }}</a-tag></template></a-table-column>
+      <a-table
+        :data-source="currentHobbyTimeTags"
+        :pagination="false"
+        row-key="id"
+        size="small"
+        :scroll="{ x: 900 }"
+      >
+        <a-table-column
+          title="顺序"
+          width="70"
+        >
+          <template #default="{ index }">
+            {{ Number(index) + 1 }}
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="数据键"
+          data-index="dataKey"
+          width="110"
+        />
+        <a-table-column
+          title="显示名称"
+          data-index="name"
+          width="180"
+        />
+        <a-table-column
+          title="色带颜色"
+          width="140"
+        >
+          <template #default="{ record }">
+            <span class="color-value"><i :style="{ backgroundColor: record.color }" />{{ record.color }}</span>
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="标签坐标"
+          width="140"
+        >
+          <template #default="{ record }">
+            X {{ record.labelX }} / Y {{ record.labelY }}
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="缩放"
+          data-index="labelScale"
+          width="90"
+        />
+        <a-table-column
+          title="状态"
+          width="80"
+        >
+          <template #default="{ record }">
+            <a-tag :color="record.enabled ? 'green' : 'default'">
+              {{ record.enabled ? '启用' : '停用' }}
+            </a-tag>
+          </template>
+        </a-table-column>
       </a-table>
-      <div class="subsection-head"><div><h3>Time 面板数据</h3><p>完整覆盖 -1～27 岁，共 {{ currentHobbyTime.length }} 个年龄点；每行合计 10 代表 100%。</p></div></div>
-      <a-table :data-source="currentHobbyTime" :pagination="false" row-key="age" size="small" :scroll="{ x: 760, y: 520 }">
-        <a-table-column title="年龄" data-index="age" width="80" fixed="left" />
-        <a-table-column v-for="key in timeKeys" :key="key" :title="timeTagName(currentHobbyTimeTags, key)" :data-index="key" width="130" />
-        <a-table-column title="合计" width="100"><template #default="{ record }">{{ timeRowTotal(record) }}</template></a-table-column>
+      <div class="subsection-head">
+        <div><h3>Time 面板数据</h3><p>完整覆盖 -1～27 岁，共 {{ currentHobbyTime.length }} 个年龄点；每行合计 10 代表 100%。</p></div>
+      </div>
+      <a-table
+        :data-source="currentHobbyTime"
+        :pagination="false"
+        row-key="age"
+        size="small"
+        :scroll="{ x: 760, y: 520 }"
+      >
+        <a-table-column
+          title="年龄"
+          data-index="age"
+          width="80"
+          fixed="left"
+        />
+        <a-table-column
+          v-for="key in timeKeys"
+          :key="key"
+          :title="timeTagName(currentHobbyTimeTags, key)"
+          :data-index="key"
+          width="130"
+        />
+        <a-table-column
+          title="合计"
+          width="100"
+        >
+          <template #default="{ record }">
+            {{ timeRowTotal(record) }}
+          </template>
+        </a-table-column>
       </a-table>
     </template>
 
     <template #draft>
-      <CollectionHeader :title="`爱好卡片（已启用 ${enabledCount(draftHobbies)}/${MAX_HOBBIES}，共 ${draftHobbies.length} 条）`" @add="addHobby" />
+      <CollectionHeader
+        :title="`爱好卡片（已启用 ${enabledCount(draftHobbies)}/${MAX_HOBBIES}，共 ${draftHobbies.length} 条）`"
+        @add="addHobby"
+      />
       <div class="content-grid">
-        <a-card v-for="(item, index) in draftHobbies" :key="item.id" size="small" :title="item.title || `爱好 ${index + 1}`">
-          <template #extra><ListActions :index="Number(index)" :length="draftHobbies.length" @move="move(draftHobbies, Number(index), $event)" @remove="remove(draftHobbies, item.id)" /></template>
-          <a-form-item label="标题"><a-input v-model:value="item.title" /></a-form-item>
-          <a-form-item label="描述"><a-textarea v-model:value="item.description" :rows="3" /></a-form-item>
-          <a-form-item label="OSS 图片资源"><OssImageResourcePicker v-model="item.imageResource" directory="hobbies" /></a-form-item>
+        <a-card
+          v-for="(item, index) in draftHobbies"
+          :key="item.id"
+          size="small"
+          :title="item.title || `爱好 ${index + 1}`"
+        >
+          <template #extra>
+            <ListActions
+              :index="Number(index)"
+              :length="draftHobbies.length"
+              @move="move(draftHobbies, Number(index), $event)"
+              @remove="remove(draftHobbies, item.id)"
+            />
+          </template>
+          <a-form-item label="标题">
+            <a-input v-model:value="item.title" />
+          </a-form-item>
+          <a-form-item label="描述">
+            <a-textarea
+              v-model:value="item.description"
+              :rows="3"
+            />
+          </a-form-item>
+          <a-form-item label="OSS 图片资源">
+            <OssImageResourcePicker
+              v-model="item.imageResource"
+              directory="hobbies"
+            />
+          </a-form-item>
           <a-form-item label="图片裁剪">
-            <a-button size="small" :disabled="!item.imageResource?.url" @click="openCropper(item)">裁剪当前图片</a-button>
+            <a-button
+              size="small"
+              :disabled="!item.imageResource?.url"
+              @click="openCropper(item)"
+            >
+              裁剪当前图片
+            </a-button>
             <span class="crop-hint">裁剪结果会作为新资源上传，原图保留在素材库</span>
           </a-form-item>
-          <img v-if="item.image" class="draft-image" :src="item.image" :alt="item.title" />
-          <a-switch v-model:checked="item.enabled" @change="onEnabledChange(draftHobbies, item, Boolean($event), MAX_HOBBIES, '爱好卡片')" /> 启用
+          <img
+            v-if="item.image"
+            class="draft-image"
+            :src="item.image"
+            :alt="item.title"
+          >
+          <a-switch
+            v-model:checked="item.enabled"
+            @change="onEnabledChange(draftHobbies, item, Boolean($event), MAX_HOBBIES, '爱好卡片')"
+          /> 启用
         </a-card>
       </div>
 
       <div class="subsection-head">
         <div><h3>Time 标签管理</h3><p>五个数据键对应图表的五条固定数据通道；可独立管理显示名称、颜色、位置、大小及显示顺序。</p></div>
-        <a-tag :color="enabledCount(draftHobbyTimeTags) > MAX_TIME_TAGS ? 'red' : 'blue'">已启用 {{ enabledCount(draftHobbyTimeTags) }}/{{ MAX_TIME_TAGS }}</a-tag>
+        <a-tag :color="enabledCount(draftHobbyTimeTags) > MAX_TIME_TAGS ? 'red' : 'blue'">
+          已启用 {{ enabledCount(draftHobbyTimeTags) }}/{{ MAX_TIME_TAGS }}
+        </a-tag>
       </div>
-      <a-alert type="info" show-icon message="Time 标签最多启用 5 条；停用标签不会删除对应年龄数据。" class="time-alert" />
-      <a-table :data-source="draftHobbyTimeTags" :pagination="false" row-key="id" size="small" :scroll="{ x: 1260 }">
-        <a-table-column title="顺序" width="70"><template #default="{ index }">{{ Number(index) + 1 }}</template></a-table-column>
-        <a-table-column title="数据键" width="100"><template #default="{ record }"><a-tag>{{ record.dataKey }}</a-tag></template></a-table-column>
-        <a-table-column title="显示名称" width="190"><template #default="{ record }"><a-input v-model:value="record.name" :maxlength="30" :placeholder="record.dataKey" /></template></a-table-column>
-        <a-table-column title="色带颜色" width="210">
-          <template #default="{ record }">
-            <div class="color-editor"><input v-model="record.color" type="color" :aria-label="`${record.dataKey} 色带颜色`" /><a-input v-model:value="record.color" :maxlength="7" /></div>
+      <a-alert
+        type="info"
+        show-icon
+        message="Time 标签最多启用 5 条；停用标签不会删除对应年龄数据。"
+        class="time-alert"
+      />
+      <a-table
+        :data-source="draftHobbyTimeTags"
+        :pagination="false"
+        row-key="id"
+        size="small"
+        :scroll="{ x: 1260 }"
+      >
+        <a-table-column
+          title="顺序"
+          width="70"
+        >
+          <template #default="{ index }">
+            {{ Number(index) + 1 }}
           </template>
         </a-table-column>
-        <a-table-column title="标签 X" width="105"><template #default="{ record }"><a-input-number v-model:value="record.labelX" :min="0" :max="500" /></template></a-table-column>
-        <a-table-column title="标签 Y" width="105"><template #default="{ record }"><a-input-number v-model:value="record.labelY" :min="0" :max="300" /></template></a-table-column>
-        <a-table-column title="缩放" width="110"><template #default="{ record }"><a-input-number v-model:value="record.labelScale" :min="0.5" :max="3" :step="0.1" /></template></a-table-column>
-        <a-table-column title="启用" width="70"><template #default="{ record }"><a-switch v-model:checked="record.enabled" @change="onEnabledChange(draftHobbyTimeTags, record, Boolean($event), MAX_TIME_TAGS, 'Time 标签')" /></template></a-table-column>
-        <a-table-column title="操作" width="135" fixed="right">
+        <a-table-column
+          title="数据键"
+          width="100"
+        >
+          <template #default="{ record }">
+            <a-tag>{{ record.dataKey }}</a-tag>
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="显示名称"
+          width="190"
+        >
+          <template #default="{ record }">
+            <a-input
+              v-model:value="record.name"
+              :maxlength="30"
+              :placeholder="record.dataKey"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="色带颜色"
+          width="210"
+        >
+          <template #default="{ record }">
+            <div class="color-editor">
+              <input
+                v-model="record.color"
+                type="color"
+                :aria-label="`${record.dataKey} 色带颜色`"
+              ><a-input
+                v-model:value="record.color"
+                :maxlength="7"
+              />
+            </div>
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="标签 X"
+          width="105"
+        >
+          <template #default="{ record }">
+            <a-input-number
+              v-model:value="record.labelX"
+              :min="0"
+              :max="500"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="标签 Y"
+          width="105"
+        >
+          <template #default="{ record }">
+            <a-input-number
+              v-model:value="record.labelY"
+              :min="0"
+              :max="300"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="缩放"
+          width="110"
+        >
+          <template #default="{ record }">
+            <a-input-number
+              v-model:value="record.labelScale"
+              :min="0.5"
+              :max="3"
+              :step="0.1"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="启用"
+          width="70"
+        >
+          <template #default="{ record }">
+            <a-switch
+              v-model:checked="record.enabled"
+              @change="onEnabledChange(draftHobbyTimeTags, record, Boolean($event), MAX_TIME_TAGS, 'Time 标签')"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          title="操作"
+          width="135"
+          fixed="right"
+        >
           <template #default="{ index }">
-            <a-space size="small"><a-button size="small" :disabled="Number(index) === 0" @click="move(draftHobbyTimeTags, Number(index), -1)">上移</a-button><a-button size="small" :disabled="Number(index) === draftHobbyTimeTags.length - 1" @click="move(draftHobbyTimeTags, Number(index), 1)">下移</a-button></a-space>
+            <a-space size="small">
+              <a-button
+                size="small"
+                :disabled="Number(index) === 0"
+                @click="move(draftHobbyTimeTags, Number(index), -1)"
+              >
+                上移
+              </a-button><a-button
+                size="small"
+                :disabled="Number(index) === draftHobbyTimeTags.length - 1"
+                @click="move(draftHobbyTimeTags, Number(index), 1)"
+              >
+                下移
+              </a-button>
+            </a-space>
           </template>
         </a-table-column>
       </a-table>
 
       <div class="subsection-head">
         <div><h3>Time 面板数据</h3><p>年龄固定覆盖 -1～27，不允许新增或删除年龄行；五项数据每行应合计为 10。</p></div>
-        <a-tag :color="invalidTimeRows ? 'red' : 'green'">{{ invalidTimeRows ? `${invalidTimeRows} 行合计异常` : '29 行数据完整' }}</a-tag>
+        <a-tag :color="invalidTimeRows ? 'red' : 'green'">
+          {{ invalidTimeRows ? `${invalidTimeRows} 行合计异常` : '29 行数据完整' }}
+        </a-tag>
       </div>
-      <a-alert v-if="invalidTimeRows" type="error" show-icon message="存在合计不为 10 的年龄数据，请调整后再发布。" class="time-alert" />
-      <a-table :data-source="draftHobbyTime" :pagination="false" row-key="age" size="small" :scroll="{ x: 860, y: 560 }" :row-class-name="timeRowClass">
-        <a-table-column title="年龄" data-index="age" width="80" fixed="left" />
-        <a-table-column v-for="key in timeKeys" :key="key" :title="timeTagName(draftHobbyTimeTags, key)" :width="140">
-          <template #default="{ record }"><a-input-number v-model:value="record[key]" :min="0" :max="10" :step="0.1" /></template>
+      <a-alert
+        v-if="invalidTimeRows"
+        type="error"
+        show-icon
+        message="存在合计不为 10 的年龄数据，请调整后再发布。"
+        class="time-alert"
+      />
+      <a-table
+        :data-source="draftHobbyTime"
+        :pagination="false"
+        row-key="age"
+        size="small"
+        :scroll="{ x: 860, y: 560 }"
+        :row-class-name="timeRowClass"
+      >
+        <a-table-column
+          title="年龄"
+          data-index="age"
+          width="80"
+          fixed="left"
+        />
+        <a-table-column
+          v-for="key in timeKeys"
+          :key="key"
+          :title="timeTagName(draftHobbyTimeTags, key)"
+          :width="140"
+        >
+          <template #default="{ record }">
+            <a-input-number
+              v-model:value="record[key]"
+              :min="0"
+              :max="10"
+              :step="0.1"
+            />
+          </template>
         </a-table-column>
-        <a-table-column title="合计" width="100" fixed="right"><template #default="{ record }"><strong :class="{ 'invalid-total': !isValidTimeRow(record) }">{{ timeRowTotal(record) }}</strong></template></a-table-column>
+        <a-table-column
+          title="合计"
+          width="100"
+          fixed="right"
+        >
+          <template #default="{ record }">
+            <strong :class="{ 'invalid-total': !isValidTimeRow(record) }">{{ timeRowTotal(record) }}</strong>
+          </template>
+        </a-table-column>
       </a-table>
 
       <ImageCropperModal

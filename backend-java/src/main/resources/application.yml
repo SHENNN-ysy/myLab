@@ -3,6 +3,13 @@ server:
   forward-headers-strategy: framework
 spring:
   application.name: myblog-api
+  flyway:
+    # 存量库（无 flyway_schema_history）首次启动时以 V1 为基线标记已应用，不重复执行基线脚本；
+    # 全新空库则完整执行 V1__baseline.sql 完成初始化。后续变更一律新增 V2__xxx.sql。
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    validate-on-migrate: true
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:myblog}
     username: ${DB_USER:postgres}

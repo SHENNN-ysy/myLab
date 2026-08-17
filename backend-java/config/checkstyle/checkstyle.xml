@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!-- Pragmatic rule set for MyBlog backend: catches real problems without
+     enforcing a strict visual style. -->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="error"/>
+
+    <!-- MagicNumber baseline: grandfathered literals live in suppressions.xml. -->
+    <module name="SuppressionFilter">
+        <property name="file" value="${checkstyle.suppressions.file}"/>
+    </module>
+
+    <module name="FileTabCharacter"/>
+    <module name="NewlineAtEndOfFile"/>
+    <module name="LineLength">
+        <property name="max" value="160"/>
+        <property name="ignorePattern" value="^package.*|^import.*|^\s*\*\s*@.*"/>
+    </module>
+
+    <module name="TreeWalker">
+        <!-- imports -->
+        <module name="UnusedImports"/>
+        <module name="RedundantImport"/>
+        <module name="AvoidStarImport"/>
+
+        <!-- common bug patterns -->
+        <module name="EmptyStatement"/>
+        <module name="EqualsHashCode"/>
+        <module name="MissingOverride"/>
+        <module name="StringLiteralEquality"/>
+        <module name="NoFinalizer"/>
+        <module name="UpperEll"/>
+        <module name="MissingSwitchDefault"/>
+        <module name="FallThrough"/>
+
+        <!-- error handling: empty catch hides failures; suppressions must be
+             logged, a bare comment does not count. -->
+        <module name="EmptyCatchBlock">
+            <property name="commentFormat" value="$^"/>
+        </module>
+
+        <!-- literals other than -1/0/1 must be named constants. -->
+        <module name="MagicNumber">
+            <property name="ignoreNumbers" value="-1, 0, 1"/>
+        </module>
+
+        <!-- braces and statement structure -->
+        <!-- Single-line statements (e.g. `if (x) return;`) are an accepted
+             style in this codebase; blocks spanning lines must use braces. -->
+        <module name="NeedBraces">
+            <property name="allowSingleLineStatement" value="true"/>
+        </module>
+        <module name="OneStatementPerLine"/>
+        <module name="MultipleVariableDeclarations"/>
+
+        <!-- naming conventions (standard Java camelCase defaults) -->
+        <module name="TypeName"/>
+        <module name="MethodName"/>
+        <module name="ParameterName"/>
+        <!-- Lombok @Slf4j generates a `log` constant; allow it. -->
+        <module name="ConstantName">
+            <property name="format" value="^(log|[A-Z][A-Z0-9]*(_[A-Z0-9]+)*)$"/>
+        </module>
+        <module name="MemberName"/>
+    </module>
+</module>

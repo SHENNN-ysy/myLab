@@ -19,7 +19,7 @@ FROM ${NGINX_IMAGE}
 # 安装时区数据，使 TZ 环境变量生效（容器日志时间与宿主机一致）
 RUN apk add --no-cache tzdata
 RUN rm /etc/nginx/conf.d/default.conf
-COPY deploy/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=blog-builder /app/dist /usr/share/nginx/blog
 COPY --from=admin-builder /app/dist /usr/share/nginx/admin
 # 初始内容资源使用站内相对 URL。后台域名也需要能够预览这些资源，

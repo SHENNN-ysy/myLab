@@ -9,87 +9,292 @@
               <HistoryOutlined />
               历史版本
             </a-button>
-            <a-tag color="blue">{{ currentCards.length }} 张已发布卡片</a-tag>
+            <a-tag color="blue">
+              {{ currentCards.length }} 张已发布卡片
+            </a-tag>
           </a-space>
         </div>
       </template>
 
       <a-spin :spinning="loading">
-      <a-tabs v-model:active-key="activePanel">
-        <a-tab-pane key="current" tab="当前内容">
-          <a-alert type="info" show-icon message="当前内容为只读视图" description="本面板展示后端当前已发布的 MyLab 版本。" class="panel-tip" />
-          <div class="tag-cloud">
-            <a-tag v-for="tag in currentTags" :key="tag.id">{{ tag.name }}</a-tag>
-          </div>
-          <div class="card-grid">
-            <article v-for="card in currentCards" :key="card.postKey" class="lab-card">
-              <img v-if="card.image" :src="card.image" :alt="card.title" />
-              <div class="lab-card-body">
-                <div class="card-meta">
-                  <a-tag :color="card.cardType === 'PROJECT' ? 'blue' : 'cyan'">{{ card.cardType === 'PROJECT' ? '项目' : '文章' }}</a-tag>
-                  <span>{{ card.date }}</span>
+        <a-tabs v-model:active-key="activePanel">
+          <a-tab-pane
+            key="current"
+            tab="当前内容"
+          >
+            <a-alert
+              type="info"
+              show-icon
+              message="当前内容为只读视图"
+              description="本面板展示后端当前已发布的 MyLab 版本。"
+              class="panel-tip"
+            />
+            <div class="tag-cloud">
+              <a-tag
+                v-for="tag in currentTags"
+                :key="tag.id"
+              >
+                {{ tag.name }}
+              </a-tag>
+            </div>
+            <div class="card-grid">
+              <article
+                v-for="card in currentCards"
+                :key="card.postKey"
+                class="lab-card"
+              >
+                <img
+                  v-if="card.image"
+                  :src="card.image"
+                  :alt="card.title"
+                >
+                <div class="lab-card-body">
+                  <div class="card-meta">
+                    <a-tag :color="card.cardType === 'PROJECT' ? 'blue' : 'cyan'">
+                      {{ card.cardType === 'PROJECT' ? '项目' : '文章' }}
+                    </a-tag>
+                    <span>{{ card.date }}</span>
+                  </div>
+                  <h3>{{ card.title }}</h3>
+                  <p>{{ card.summary }}</p>
+                  <a-space
+                    wrap
+                    size="small"
+                  >
+                    <a-tag
+                      v-for="tag in cardTagNames(card, currentTags)"
+                      :key="tag"
+                    >
+                      {{ tag }}
+                    </a-tag>
+                  </a-space>
                 </div>
-                <h3>{{ card.title }}</h3>
-                <p>{{ card.summary }}</p>
-                <a-space wrap size="small"><a-tag v-for="tag in cardTagNames(card, currentTags)" :key="tag">{{ tag }}</a-tag></a-space>
-              </div>
-            </article>
-          </div>
-        </a-tab-pane>
+              </article>
+            </div>
+          </a-tab-pane>
 
-        <a-tab-pane key="draft" tab="草稿内容">
-          <div class="draft-toolbar">
-            <a-alert type="info" show-icon message="标签为全局数据，卡片为版本数据" description="保存会同步标签并保存 MyLab 草稿；发布后公开接口切换为新版本。" />
-            <a-space><a-button :loading="saving" @click="saveDraft">保存草稿</a-button><a-button type="primary" :loading="publishing" @click="publishDraft">发布</a-button></a-space>
-          </div>
+          <a-tab-pane
+            key="draft"
+            tab="草稿内容"
+          >
+            <div class="draft-toolbar">
+              <a-alert
+                type="info"
+                show-icon
+                message="标签为全局数据，卡片为版本数据"
+                description="保存会同步标签并保存 MyLab 草稿；发布后公开接口切换为新版本。"
+              />
+              <a-space>
+                <a-button
+                  :loading="saving"
+                  @click="saveDraft"
+                >
+                  保存草稿
+                </a-button><a-button
+                  type="primary"
+                  :loading="publishing"
+                  @click="publishDraft"
+                >
+                  发布
+                </a-button>
+              </a-space>
+            </div>
 
-          <CollectionHeader :title="`MyLab 卡片（${draftCards.length} 张）`" @add="addCard" />
-          <a-collapse accordion>
-            <a-collapse-panel v-for="(card, index) in draftCards" :key="card.postKey" :header="card.title || `卡片 ${index + 1}`">
-              <template #extra>
-                <span class="row-actions">
-                  <button :disabled="index === 0" @click.stop="moveCard(index, -1)">上移</button>
-                  <button :disabled="index === draftCards.length - 1" @click.stop="moveCard(index, 1)">下移</button>
-                  <button class="danger" @click.stop="removeCard(card.postKey)">删除</button>
-                </span>
-              </template>
-              <a-row :gutter="16">
-                <a-col :xs="24" :md="8"><a-form-item label="稳定标识"><a-input v-model:value="card.postKey" /></a-form-item></a-col>
-                <a-col :xs="12" :md="8"><a-form-item label="类型"><a-select v-model:value="card.cardType" :options="cardTypeOptions" @change="normalizeCardType(card)" /></a-form-item></a-col>
-                <a-col :xs="12" :md="8"><a-form-item label="发布日期"><a-input v-model:value="card.date" type="date" /></a-form-item></a-col>
-                <a-col :span="24"><a-form-item label="标题"><a-input v-model:value="card.title" /></a-form-item></a-col>
-                <a-col :span="24"><a-form-item label="摘要"><a-textarea v-model:value="card.summary" :rows="3" /></a-form-item></a-col>
-                <a-col :xs="24" :md="12"><a-form-item label="标签"><a-select v-model:value="card.tagIds" mode="multiple" :options="tagOptions" placeholder="从标签管理列表中选择" /></a-form-item></a-col>
-                <a-col :xs="24" :md="12"><a-form-item label="OSS 封面资源"><OssImageResourcePicker v-model="card.imageResource" directory="mylab-post" /></a-form-item></a-col>
-                <a-col :span="24"><a-form-item label="MyLab 详情 Markdown 正文"><OssDocumentResourcePicker v-model="card.contentResource" directory="mylab" /></a-form-item></a-col>
-                <template v-if="card.cardType === 'PROJECT'">
-                  <a-col :xs="24" :md="6"><a-form-item label="首页项目排序"><a-input-number v-model:value="card.projectShowOrder" :min="0" /></a-form-item></a-col>
-                  <a-col :xs="24" :md="18"><a-form-item label="首页项目侧边栏正文"><a-textarea v-model:value="card.projectContents" :rows="5" /></a-form-item></a-col>
+            <CollectionHeader
+              :title="`MyLab 卡片（${draftCards.length} 张）`"
+              @add="addCard"
+            />
+            <a-collapse accordion>
+              <a-collapse-panel
+                v-for="(card, index) in draftCards"
+                :key="card.postKey"
+                :header="card.title || `卡片 ${index + 1}`"
+              >
+                <template #extra>
+                  <span class="row-actions">
+                    <button
+                      :disabled="index === 0"
+                      @click.stop="moveCard(index, -1)"
+                    >上移</button>
+                    <button
+                      :disabled="index === draftCards.length - 1"
+                      @click.stop="moveCard(index, 1)"
+                    >下移</button>
+                    <button
+                      class="danger"
+                      @click.stop="removeCard(card.postKey)"
+                    >删除</button>
+                  </span>
                 </template>
-                <a-col :span="24"><a-switch v-model:checked="card.enabled" /> 启用</a-col>
-              </a-row>
-            </a-collapse-panel>
-          </a-collapse>
+                <a-row :gutter="16">
+                  <a-col
+                    :xs="24"
+                    :md="8"
+                  >
+                    <a-form-item label="稳定标识">
+                      <a-input v-model:value="card.postKey" />
+                    </a-form-item>
+                  </a-col>
+                  <a-col
+                    :xs="12"
+                    :md="8"
+                  >
+                    <a-form-item label="类型">
+                      <a-select
+                        v-model:value="card.cardType"
+                        :options="cardTypeOptions"
+                        @change="normalizeCardType(card)"
+                      />
+                    </a-form-item>
+                  </a-col>
+                  <a-col
+                    :xs="12"
+                    :md="8"
+                  >
+                    <a-form-item label="发布日期">
+                      <a-input
+                        v-model:value="card.date"
+                        type="date"
+                      />
+                    </a-form-item>
+                  </a-col>
+                  <a-col :span="24">
+                    <a-form-item label="标题">
+                      <a-input v-model:value="card.title" />
+                    </a-form-item>
+                  </a-col>
+                  <a-col :span="24">
+                    <a-form-item label="摘要">
+                      <a-textarea
+                        v-model:value="card.summary"
+                        :rows="3"
+                      />
+                    </a-form-item>
+                  </a-col>
+                  <a-col
+                    :xs="24"
+                    :md="12"
+                  >
+                    <a-form-item label="标签">
+                      <a-select
+                        v-model:value="card.tagIds"
+                        mode="multiple"
+                        :options="tagOptions"
+                        placeholder="从标签管理列表中选择"
+                      />
+                    </a-form-item>
+                  </a-col>
+                  <a-col
+                    :xs="24"
+                    :md="12"
+                  >
+                    <a-form-item label="OSS 封面资源">
+                      <OssImageResourcePicker
+                        v-model="card.imageResource"
+                        directory="mylab-post"
+                      />
+                    </a-form-item>
+                  </a-col>
+                  <a-col :span="24">
+                    <a-form-item label="MyLab 详情 Markdown 正文">
+                      <OssDocumentResourcePicker
+                        v-model="card.contentResource"
+                        directory="mylab"
+                      />
+                    </a-form-item>
+                  </a-col>
+                  <template v-if="card.cardType === 'PROJECT'">
+                    <a-col
+                      :xs="24"
+                      :md="6"
+                    >
+                      <a-form-item label="首页项目排序">
+                        <a-input-number
+                          v-model:value="card.projectShowOrder"
+                          :min="0"
+                        />
+                      </a-form-item>
+                    </a-col>
+                    <a-col
+                      :xs="24"
+                      :md="18"
+                    >
+                      <a-form-item label="首页项目侧边栏正文">
+                        <a-textarea
+                          v-model:value="card.projectContents"
+                          :rows="5"
+                        />
+                      </a-form-item>
+                    </a-col>
+                  </template>
+                  <a-col :span="24">
+                    <a-switch v-model:checked="card.enabled" /> 启用
+                  </a-col>
+                </a-row>
+              </a-collapse-panel>
+            </a-collapse>
 
-          <CollectionHeader :title="`标签管理（${draftTags.length} 个）`" @add="addTag" />
-          <a-table :data-source="draftTags" :pagination="false" row-key="id" size="small" class="tag-table">
-            <a-table-column title="排序" width="70"><template #default="{ index }">{{ Number(index) + 1 }}</template></a-table-column>
-            <a-table-column title="标签名称">
-              <template #default="{ record }"><a-input v-model:value="record.name" :maxlength="30" placeholder="输入标签名称" @blur="commitTagName(record)" /></template>
-            </a-table-column>
-            <a-table-column title="引用卡片" width="100"><template #default="{ record }">{{ tagUsage(record.id) }}</template></a-table-column>
-            <a-table-column title="操作" width="210">
-              <template #default="{ record, index }">
-                <span class="row-actions">
-                  <button :disabled="Number(index) === 0" @click="moveTag(Number(index), -1)">上移</button>
-                  <button :disabled="Number(index) === draftTags.length - 1" @click="moveTag(Number(index), 1)">下移</button>
-                  <button class="danger" @click="removeTag(record)">删除</button>
-                </span>
-              </template>
-            </a-table-column>
-          </a-table>
-        </a-tab-pane>
-      </a-tabs>
+            <CollectionHeader
+              :title="`标签管理（${draftTags.length} 个）`"
+              @add="addTag"
+            />
+            <a-table
+              :data-source="draftTags"
+              :pagination="false"
+              row-key="id"
+              size="small"
+              class="tag-table"
+            >
+              <a-table-column
+                title="排序"
+                width="70"
+              >
+                <template #default="{ index }">
+                  {{ Number(index) + 1 }}
+                </template>
+              </a-table-column>
+              <a-table-column title="标签名称">
+                <template #default="{ record }">
+                  <a-input
+                    v-model:value="record.name"
+                    :maxlength="30"
+                    placeholder="输入标签名称"
+                    @blur="commitTagName(record)"
+                  />
+                </template>
+              </a-table-column>
+              <a-table-column
+                title="引用卡片"
+                width="100"
+              >
+                <template #default="{ record }">
+                  {{ tagUsage(record.id) }}
+                </template>
+              </a-table-column>
+              <a-table-column
+                title="操作"
+                width="210"
+              >
+                <template #default="{ record, index }">
+                  <span class="row-actions">
+                    <button
+                      :disabled="Number(index) === 0"
+                      @click="moveTag(Number(index), -1)"
+                    >上移</button>
+                    <button
+                      :disabled="Number(index) === draftTags.length - 1"
+                      @click="moveTag(Number(index), 1)"
+                    >下移</button>
+                    <button
+                      class="danger"
+                      @click="removeTag(record)"
+                    >删除</button>
+                  </span>
+                </template>
+              </a-table-column>
+            </a-table>
+          </a-tab-pane>
+        </a-tabs>
       </a-spin>
     </a-card>
 

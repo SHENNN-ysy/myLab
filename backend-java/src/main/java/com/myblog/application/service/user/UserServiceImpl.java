@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -24,6 +25,10 @@ import java.util.UUID;
  */
 @Service
 public class UserServiceImpl implements UserService {
+
+    // 与 users 表 users_role_check 约束保持一致，服务层先拦截非法角色，
+    // 避免约束冲突冒泡成 500。
+    private static final Set<String> ALLOWED_ROLES = Set.of("viewer", "editor", "admin", "superadmin");
 
     private final UserRepository users;
     private final AuthService auth;
@@ -65,7 +70,9 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setId(UUID.randomUUID());
         user.setUsername(username);
-        user.setRole(Objects.requireNonNullElse(command.role(), "viewer"));
+        String role = Objects.requireNonNullElse(command.role(), "viewer");
+        requireValidRole(role);
+        user.setRole(role);
         user.setPasswordHash(auth.hash(password));
         user.setIsActive(true);
         OffsetDateTime now = OffsetDateTime.now();
@@ -87,6 +94,7 @@ public class UserServiceImpl implements UserService {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
         if (command.role() != null) {
+            requireValidRole(command.role());
             user.setRole(command.role());
         }
         if (command.isActive() != null) {
@@ -116,5 +124,11 @@ public class UserServiceImpl implements UserService {
     private UserOutVO toOut(User user) {
         return new UserOutVO(user.getId(), user.getUsername(), user.getRole(), user.getIsActive(),
                 user.getLastLoginAt(), user.getCreatedAt(), user.getUpdatedAt());
+    }
+
+    private static void requireValidRole(String role) {
+        if (!ALLOWED_ROLES.contains(role)) {
+            throw new ValidationException("role 只允许 viewer、editor、admin 或 superadmin");
+        }
     }
 }

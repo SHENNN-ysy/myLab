@@ -10,7 +10,10 @@
     @keydown.space.prevent="selectPost"
   >
     <!-- 头图：加载完成前 / 未配图时显示骨架占位 -->
-    <div class="lab-card-media" :class="{ 'is-loaded': imageLoaded }">
+    <div
+      class="lab-card-media"
+      :class="{ 'is-loaded': imageLoaded }"
+    >
       <img
         v-if="post.image"
         :src="post.image"
@@ -18,7 +21,7 @@
         loading="lazy"
         decoding="async"
         @load="imageLoaded = true"
-      />
+      >
     </div>
     <div class="lab-card-body">
       <div class="lab-card-date">
@@ -34,26 +37,59 @@
         >
           <path d="M8 2v4" />
           <path d="M16 2v4" />
-          <rect width="18" height="18" x="3" y="4" rx="2" />
+          <rect
+            width="18"
+            height="18"
+            x="3"
+            y="4"
+            rx="2"
+          />
           <path d="M3 10h18" />
         </svg>
         <time :datetime="post.date">{{ post.date }}</time>
       </div>
-      <h3 class="lab-card-title">{{ post.title }}</h3>
+      <h3 class="lab-card-title">
+        {{ post.title }}
+      </h3>
       <div class="lab-card-tags">
-        <span v-for="tag in displayedTags" :key="tag" class="lab-card-tag">#{{ tag }}</span>
+        <span
+          v-for="tag in displayedTags"
+          :key="tag"
+          class="lab-card-tag"
+        >#{{ tag }}</span>
       </div>
-      <p class="lab-card-summary">{{ post.summary }}</p>
-      <div class="lab-card-engagement" aria-label="内容统计">
+      <p class="lab-card-summary">
+        {{ post.summary }}
+      </p>
+      <div
+        class="lab-card-engagement"
+        aria-label="内容统计"
+      >
         <span title="浏览量">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
             <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-            <circle cx="12" cy="12" r="3" />
+            <circle
+              cx="12"
+              cy="12"
+              r="3"
+            />
           </svg>
           {{ formatNumber(engagement.view_count) }}
         </span>
         <span title="点赞数">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
             <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
           </svg>
           {{ formatNumber(engagement.like_count) }}

@@ -1,12 +1,28 @@
 <template>
   <div class="account-security">
     <a-row :gutter="20">
-      <a-col :xs="24" :lg="9">
-        <a-card title="当前账号" :bordered="false">
-          <a-descriptions :column="1" bordered size="small">
-            <a-descriptions-item label="用户名">{{ currentUser?.username || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="角色">{{ roleText }}</a-descriptions-item>
-            <a-descriptions-item label="账号 ID">{{ currentUser?.id || '-' }}</a-descriptions-item>
+      <a-col
+        :xs="24"
+        :lg="9"
+      >
+        <a-card
+          title="当前账号"
+          :bordered="false"
+        >
+          <a-descriptions
+            :column="1"
+            bordered
+            size="small"
+          >
+            <a-descriptions-item label="用户名">
+              {{ currentUser?.username || '-' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="角色">
+              {{ roleText }}
+            </a-descriptions-item>
+            <a-descriptions-item label="账号 ID">
+              {{ currentUser?.id || '-' }}
+            </a-descriptions-item>
           </a-descriptions>
           <a-alert
             class="account-tip"
@@ -17,19 +33,56 @@
         </a-card>
       </a-col>
 
-      <a-col :xs="24" :lg="15">
-        <a-card title="修改密码" :bordered="false">
-          <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" class="password-form" @finish="submit">
-            <a-form-item label="原密码" name="oldPassword">
-              <a-input-password v-model:value="form.oldPassword" autocomplete="current-password" />
+      <a-col
+        :xs="24"
+        :lg="15"
+      >
+        <a-card
+          title="修改密码"
+          :bordered="false"
+        >
+          <a-form
+            ref="formRef"
+            :model="form"
+            :rules="rules"
+            layout="vertical"
+            class="password-form"
+            @finish="submit"
+          >
+            <a-form-item
+              label="原密码"
+              name="oldPassword"
+            >
+              <a-input-password
+                v-model:value="form.oldPassword"
+                autocomplete="current-password"
+              />
             </a-form-item>
-            <a-form-item label="新密码" name="newPassword">
-              <a-input-password v-model:value="form.newPassword" autocomplete="new-password" />
+            <a-form-item
+              label="新密码"
+              name="newPassword"
+            >
+              <a-input-password
+                v-model:value="form.newPassword"
+                autocomplete="new-password"
+              />
             </a-form-item>
-            <a-form-item label="确认新密码" name="confirmPassword">
-              <a-input-password v-model:value="form.confirmPassword" autocomplete="new-password" />
+            <a-form-item
+              label="确认新密码"
+              name="confirmPassword"
+            >
+              <a-input-password
+                v-model:value="form.confirmPassword"
+                autocomplete="new-password"
+              />
             </a-form-item>
-            <a-button type="primary" html-type="submit" :loading="submitting">更新密码</a-button>
+            <a-button
+              type="primary"
+              html-type="submit"
+              :loading="submitting"
+            >
+              更新密码
+            </a-button>
           </a-form>
         </a-card>
       </a-col>

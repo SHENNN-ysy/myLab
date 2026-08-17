@@ -6,8 +6,12 @@
         <div class="section-header">
           <span class="section-num">04</span>
           <div class="section-title-group">
-            <h2 class="section-title">{{ section.title }}<em>{{ section.highlight }}</em></h2>
-            <p class="section-desc">{{ section.description }}</p>
+            <h2 class="section-title">
+              {{ section.title }}<em>{{ section.highlight }}</em>
+            </h2>
+            <p class="section-desc">
+              {{ section.description }}
+            </p>
           </div>
         </div>
       </RevealOnScroll>
@@ -57,8 +61,13 @@
                 :style="{ left: hobby.position.x + '%', top: hobby.position.y + '%' }"
                 @click="openHobbyModal(hobby.id)"
               >
-                <div class="marker-tip" :class="{ 'is-flipped': hobby.position.y < 40 }">
-                  <div class="marker-tip-title">{{ hobby.tip.title }}</div>
+                <div
+                  class="marker-tip"
+                  :class="{ 'is-flipped': hobby.position.y < 40 }"
+                >
+                  <div class="marker-tip-title">
+                    {{ hobby.tip.title }}
+                  </div>
                   <div class="marker-tip-row">
                     <span>坐标</span>
                     <strong>{{ hobby.tip.coords }}</strong>
@@ -71,7 +80,11 @@
                 <div class="marker-pulse" />
                 <div class="marker-pin">
                   <span class="marker-dot">
-                    <img v-if="hobby.isSelf" src="/assets/404.png" alt="" />
+                    <img
+                      v-if="hobby.isSelf"
+                      src="/assets/404.png"
+                      alt=""
+                    >
                   </span>
                   <span class="marker-stem" />
                 </div>
@@ -82,10 +95,23 @@
       </div>
     </div>
 
-    <ProjectModal v-model="isModalOpen" direction="left">
+    <ProjectModal
+      v-model="isModalOpen"
+      direction="left"
+    >
       <div class="modal-body hobby-modal-body">
-        <h2 class="modal-title stagger-item-left" :style="{ animationDelay: staggerDelay(1) }">{{ selectedHobbyDetail?.title }}</h2>
-        <p class="modal-desc stagger-item-left" :style="{ animationDelay: staggerDelay(2) }">{{ selectedHobbyDetail?.desc }}</p>
+        <h2
+          class="modal-title stagger-item-left"
+          :style="{ animationDelay: staggerDelay(1) }"
+        >
+          {{ selectedHobbyDetail?.title }}
+        </h2>
+        <p
+          class="modal-desc stagger-item-left"
+          :style="{ animationDelay: staggerDelay(2) }"
+        >
+          {{ selectedHobbyDetail?.desc }}
+        </p>
         <p
           v-for="(paragraph, index) in selectedHobbyDetail?.paragraphs"
           :key="paragraph"
@@ -94,7 +120,10 @@
         >
           {{ paragraph }}
         </p>
-        <div class="photo-wall-wrapper stagger-item-left" :style="{ animationDelay: staggerDelay(8) }">
+        <div
+          class="photo-wall-wrapper stagger-item-left"
+          :style="{ animationDelay: staggerDelay(8) }"
+        >
           <h4>照片墙</h4>
           <div class="modal-photos">
             <div
@@ -107,13 +136,36 @@
               @click="openLightbox(index)"
               @keydown.enter.prevent="openLightbox(index)"
             >
-              <img :src="image" :alt="`${selectedHobbyDetail?.title} 照片 ${index + 1}`" loading="lazy" />
+              <img
+                :src="image"
+                :alt="`${selectedHobbyDetail?.title} 照片 ${index + 1}`"
+                loading="lazy"
+              >
             </div>
-            <div v-if="!selectedHobbyDetail?.images?.length" v-for="height in skeletonHeights" :key="height" class="modal-photo photo-skeleton" :style="{ height: height + 'px' }" aria-hidden="true" />
+            <template v-if="!selectedHobbyDetail?.images?.length">
+              <div
+                v-for="height in skeletonHeights"
+                :key="height"
+                class="modal-photo photo-skeleton"
+                :style="{ height: height + 'px' }"
+                aria-hidden="true"
+              />
+            </template>
           </div>
-          <p v-if="!selectedHobbyDetail?.images?.length" class="modal-photos-hint">照片墙正在整理中 · 稍后补上这一组日常记录</p>
+          <p
+            v-if="!selectedHobbyDetail?.images?.length"
+            class="modal-photos-hint"
+          >
+            照片墙正在整理中 · 稍后补上这一组日常记录
+          </p>
         </div>
-        <button class="modal-cta stagger-item-left" :style="{ animationDelay: staggerDelay(9) }" @click="openFootprintLink">{{ selectedHobbyDetail?.cta }} →</button>
+        <button
+          class="modal-cta stagger-item-left"
+          :style="{ animationDelay: staggerDelay(9) }"
+          @click="openFootprintLink"
+        >
+          {{ selectedHobbyDetail?.cta }} →
+        </button>
       </div>
     </ProjectModal>
 
@@ -126,13 +178,21 @@
         aria-label="照片预览"
         @click="closeLightbox"
       >
-        <button class="photo-lightbox-close" aria-label="关闭预览" @click.stop="closeLightbox">×</button>
+        <button
+          class="photo-lightbox-close"
+          aria-label="关闭预览"
+          @click.stop="closeLightbox"
+        >
+          ×
+        </button>
         <img
           class="photo-lightbox-image"
           :src="selectedHobbyDetail?.images?.[lightboxIndex]"
           :alt="`${selectedHobbyDetail?.title} 照片 ${lightboxIndex + 1}`"
-        />
-        <p class="photo-lightbox-counter">{{ lightboxIndex + 1 }} / {{ selectedHobbyDetail?.images?.length }}</p>
+        >
+        <p class="photo-lightbox-counter">
+          {{ lightboxIndex + 1 }} / {{ selectedHobbyDetail?.images?.length }}
+        </p>
       </div>
     </Teleport>
   </section>

@@ -12,9 +12,23 @@
       }"
       aria-hidden="false"
     >
-      <div class="modal-backdrop" @click="close" />
-      <div class="modal-shell" role="dialog" aria-modal="true">
-        <button class="modal-close" type="button" aria-label="关闭" @click="close">&times;</button>
+      <div
+        class="modal-backdrop"
+        @click="close"
+      />
+      <div
+        class="modal-shell"
+        role="dialog"
+        aria-modal="true"
+      >
+        <button
+          class="modal-close"
+          type="button"
+          aria-label="关闭"
+          @click="close"
+        >
+          &times;
+        </button>
         <div class="modal-content">
           <slot />
         </div>

@@ -25,12 +25,15 @@
         loading="eager"
         decoding="async"
         @error="onAvatarError"
-      />
+      >
       <span class="nav-logo-label">shennn</span>
     </a>
 
     <ul class="nav-links">
-      <li v-for="item in navLinks" :key="item.label">
+      <li
+        v-for="item in navLinks"
+        :key="item.label"
+      >
         <a
           :href="item.path ?? item.hash"
           class="nav-hover-btn"
@@ -60,8 +63,14 @@
   </nav>
 
   <!-- Mobile drawer：Teleport 到 body，避免被父级 transform 影响 -->
-  <Teleport to="body" v-if="drawerMounted">
-    <div class="nav-mobile-root" :aria-hidden="!drawerVisible">
+  <Teleport
+    v-if="drawerMounted"
+    to="body"
+  >
+    <div
+      class="nav-mobile-root"
+      :aria-hidden="!drawerVisible"
+    >
       <button
         type="button"
         class="nav-mobile-backdrop"

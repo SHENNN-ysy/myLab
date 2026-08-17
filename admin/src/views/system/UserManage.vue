@@ -11,11 +11,27 @@
           placeholder="筛选当前页用户名"
           allow-clear
         />
-        <a-tooltip v-if="!isSuperadmin" title="只有超级管理员可以创建账号">
-          <a-button type="primary" disabled>新建用户</a-button>
+        <a-tooltip
+          v-if="!isSuperadmin"
+          title="只有超级管理员可以创建账号"
+        >
+          <a-button
+            type="primary"
+            disabled
+          >
+            新建用户
+          </a-button>
         </a-tooltip>
-        <a-button v-else type="primary" @click="open()">新建用户</a-button>
-        <a-button @click="load">刷新</a-button>
+        <a-button
+          v-else
+          type="primary"
+          @click="open()"
+        >
+          新建用户
+        </a-button>
+        <a-button @click="load">
+          刷新
+        </a-button>
       </div>
     </template>
 
@@ -26,47 +42,105 @@
       :pagination="pagination"
       @change="handleTableChange"
     >
-      <a-table-column title="用户名" data-index="username" />
+      <a-table-column
+        title="用户名"
+        data-index="username"
+      />
       <a-table-column title="角色">
-        <template #default="{ record }"><a-tag>{{ displayRole(record.role) }}</a-tag></template>
+        <template #default="{ record }">
+          <a-tag>{{ displayRole(record.role) }}</a-tag>
+        </template>
       </a-table-column>
       <a-table-column title="状态">
         <template #default="{ record }">
-          <a-tag :color="record.isActive ? 'green' : 'red'">{{ record.isActive ? '启用' : '停用' }}</a-tag>
+          <a-tag :color="record.isActive ? 'green' : 'red'">
+            {{ record.isActive ? '启用' : '停用' }}
+          </a-tag>
         </template>
       </a-table-column>
       <a-table-column title="最后登录">
-        <template #default="{ record }">{{ formatTime(record.lastLoginAt) }}</template>
+        <template #default="{ record }">
+          {{ formatTime(record.lastLoginAt) }}
+        </template>
       </a-table-column>
       <a-table-column title="创建时间">
-        <template #default="{ record }">{{ formatTime(record.createdAt) }}</template>
+        <template #default="{ record }">
+          {{ formatTime(record.createdAt) }}
+        </template>
       </a-table-column>
-      <a-table-column title="操作" :width="230">
+      <a-table-column
+        title="操作"
+        :width="230"
+      >
         <template #default="{ record }">
           <a-space>
-            <a-button type="link" :disabled="!canEdit(record)" @click="open(record)">编辑</a-button>
-            <a-button type="link" :disabled="!canEdit(record)" @click="toggle(record)">
+            <a-button
+              type="link"
+              :disabled="!canEdit(record)"
+              @click="open(record)"
+            >
+              编辑
+            </a-button>
+            <a-button
+              type="link"
+              :disabled="!canEdit(record)"
+              @click="toggle(record)"
+            >
               {{ record.isActive ? '停用' : '启用' }}
             </a-button>
-            <a-button type="link" danger :disabled="!canDelete(record)" @click="remove(record)">删除</a-button>
+            <a-button
+              type="link"
+              danger
+              :disabled="!canDelete(record)"
+              @click="remove(record)"
+            >
+              删除
+            </a-button>
           </a-space>
         </template>
       </a-table-column>
     </a-table>
 
-    <a-modal v-model:open="visible" :title="editingId ? '编辑用户' : '新建用户'" :confirm-loading="submitting" @ok="submit">
+    <a-modal
+      v-model:open="visible"
+      :title="editingId ? '编辑用户' : '新建用户'"
+      :confirm-loading="submitting"
+      @ok="submit"
+    >
       <a-form layout="vertical">
-        <a-form-item label="用户名" required>
-          <a-input v-model:value="form.username" :disabled="Boolean(editingId)" :maxlength="64" />
+        <a-form-item
+          label="用户名"
+          required
+        >
+          <a-input
+            v-model:value="form.username"
+            :disabled="Boolean(editingId)"
+            :maxlength="64"
+          />
         </a-form-item>
-        <a-form-item label="角色" required>
-          <a-select v-model:value="form.role" :options="roleOptions" />
+        <a-form-item
+          label="角色"
+          required
+        >
+          <a-select
+            v-model:value="form.role"
+            :options="roleOptions"
+          />
         </a-form-item>
-        <a-form-item v-if="editingId" label="状态">
+        <a-form-item
+          v-if="editingId"
+          label="状态"
+        >
           <a-switch v-model:checked="form.isActive" />
         </a-form-item>
-        <a-form-item :label="editingId ? '重置密码（留空不修改）' : '初始密码'" :required="!editingId">
-          <a-input-password v-model:value="form.password" :maxlength="64" />
+        <a-form-item
+          :label="editingId ? '重置密码（留空不修改）' : '初始密码'"
+          :required="!editingId"
+        >
+          <a-input-password
+            v-model:value="form.password"
+            :maxlength="64"
+          />
         </a-form-item>
       </a-form>
     </a-modal>

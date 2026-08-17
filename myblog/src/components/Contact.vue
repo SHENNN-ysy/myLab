@@ -9,8 +9,17 @@
               <span class="runtime-text">已运行 <span class="runtime-num">{{ days }}</span>天 <span class="runtime-num">{{ pad(hours) }}</span>小时 <span class="runtime-num">{{ pad(minutes) }}</span>分钟 <span class="runtime-num">{{ pad(seconds) }}</span>秒</span>
             </div>
             <div class="social-row">
-              <a v-if="support.github_enabled" :href="support.github_url" target="_blank" rel="noopener" class="social-btn">
-                <svg viewBox="0 0 19 19" aria-hidden="true">
+              <a
+                v-if="support.github_enabled"
+                :href="support.github_url"
+                target="_blank"
+                rel="noopener"
+                class="social-btn"
+              >
+                <svg
+                  viewBox="0 0 19 19"
+                  aria-hidden="true"
+                >
                   <path
                     fill="currentColor"
                     fill-rule="evenodd"
@@ -25,7 +34,10 @@
                 class="social-btn email-panel"
                 :title="emailDisplay"
               >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
                   <path
                     d="M4.75 6.75h14.5v10.5H4.75z"
                     fill="none"
@@ -51,7 +63,11 @@
             </div>
           </div>
 
-          <div v-if="statistics" class="stats-grid" aria-label="全站统计">
+          <div
+            v-if="statistics"
+            class="stats-grid"
+            aria-label="全站统计"
+          >
             <div class="stat-card">
               <span class="stat-label">访问数</span>
               <span class="stat-value">{{ formatNumber(statistics.visit_count) }}</span>
@@ -67,8 +83,18 @@
           </div>
         </div>
 
-        <p v-if="support.icp_enabled && support.icp_number" class="icp-note">2026 &copy; shennn的个人空间 · 备案号 {{ support.icp_number }}</p>
-        <p v-if="support.cloud_enabled && support.cloud_provider" class="cloud-note">由 <strong>{{ support.cloud_provider }}</strong> 提供云服务</p>
+        <p
+          v-if="support.icp_enabled && support.icp_number"
+          class="icp-note"
+        >
+          2026 &copy; shennn的个人空间 · 备案号 {{ support.icp_number }}
+        </p>
+        <p
+          v-if="support.cloud_enabled && support.cloud_provider"
+          class="cloud-note"
+        >
+          由 <strong>{{ support.cloud_provider }}</strong> 提供云服务
+        </p>
       </div>
     </div>
   </section>

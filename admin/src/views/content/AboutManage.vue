@@ -21,152 +21,291 @@
       </template>
 
       <a-spin :spinning="loading">
-      <a-tabs v-model:active-key="activePanel">
-        <a-tab-pane key="current" tab="当前内容">
-          <a-alert
-            type="info"
-            show-icon
-            message="当前内容为只读视图"
-            description="内容来自博客前台现有的关于我页面，不能在当前内容面板中修改。"
-            class="panel-tip"
-          />
+        <a-tabs v-model:active-key="activePanel">
+          <a-tab-pane
+            key="current"
+            tab="当前内容"
+          >
+            <a-alert
+              type="info"
+              show-icon
+              message="当前内容为只读视图"
+              description="内容来自博客前台现有的关于我页面，不能在当前内容面板中修改。"
+              class="panel-tip"
+            />
 
-          <section class="section-card current-profile">
-            <div class="section-title">
-              <div><span>个人资料</span><small>头像与个人简介</small></div>
-            </div>
-            <div class="profile-preview">
-              <img :src="currentContent.profile.avatar" :alt="currentContent.profile.avatarAlt" />
-              <div>
-                <h3>{{ currentContent.profile.title }}</h3>
-                <p>{{ currentContent.profile.intro }}</p>
-                <ul>
-                  <li v-for="item in currentContent.profile.bullets" :key="item">{{ item }}</li>
-                </ul>
-                <p>{{ currentContent.profile.outro }}</p>
+            <section class="section-card current-profile">
+              <div class="section-title">
+                <div><span>个人资料</span><small>头像与个人简介</small></div>
               </div>
-            </div>
-          </section>
-
-          <section class="section-card">
-            <div class="section-title">
-              <div><span>{{ currentContent.ingredients.title }}</span><small>{{ currentContent.ingredients.description }}</small></div>
-              <a-tag>{{ currentContent.bubbles.length }} 个文字气泡</a-tag>
-            </div>
-            <div class="bubble-preview-grid">
-              <div
-                v-for="bubble in currentContent.bubbles"
-                :key="bubble.id"
-                class="bubble-preview"
-                :class="`is-${bubble.size}`"
-                :style="bubbleStyle(bubble)"
-              >
-                {{ bubble.text }}
+              <div class="profile-preview">
+                <img
+                  :src="currentContent.profile.avatar"
+                  :alt="currentContent.profile.avatarAlt"
+                >
+                <div>
+                  <h3>{{ currentContent.profile.title }}</h3>
+                  <p>{{ currentContent.profile.intro }}</p>
+                  <ul>
+                    <li
+                      v-for="item in currentContent.profile.bullets"
+                      :key="item"
+                    >
+                      {{ item }}
+                    </li>
+                  </ul>
+                  <p>{{ currentContent.profile.outro }}</p>
+                </div>
               </div>
-            </div>
-          </section>
-        </a-tab-pane>
+            </section>
 
-        <a-tab-pane key="draft" tab="草稿内容">
-          <div class="draft-toolbar">
-            <a-alert type="info" show-icon message="草稿通过后端版本接口保存" description="头像使用 OSS 资源；保存草稿后可发布为新的当前版本。" />
-            <a-space>
-              <a-button :loading="saving" @click="saveDraft">保存草稿</a-button>
-              <a-button type="primary" :loading="publishing" @click="publishDraft">发布</a-button>
-            </a-space>
-          </div>
+            <section class="section-card">
+              <div class="section-title">
+                <div><span>{{ currentContent.ingredients.title }}</span><small>{{ currentContent.ingredients.description }}</small></div>
+                <a-tag>{{ currentContent.bubbles.length }} 个文字气泡</a-tag>
+              </div>
+              <div class="bubble-preview-grid">
+                <div
+                  v-for="bubble in currentContent.bubbles"
+                  :key="bubble.id"
+                  class="bubble-preview"
+                  :class="`is-${bubble.size}`"
+                  :style="bubbleStyle(bubble)"
+                >
+                  {{ bubble.text }}
+                </div>
+              </div>
+            </section>
+          </a-tab-pane>
 
-          <section class="section-card">
-            <div class="section-title">
-              <div><span>个人资料</span><small>头像、图片说明和个人简介</small></div>
+          <a-tab-pane
+            key="draft"
+            tab="草稿内容"
+          >
+            <div class="draft-toolbar">
+              <a-alert
+                type="info"
+                show-icon
+                message="草稿通过后端版本接口保存"
+                description="头像使用 OSS 资源；保存草稿后可发布为新的当前版本。"
+              />
+              <a-space>
+                <a-button
+                  :loading="saving"
+                  @click="saveDraft"
+                >
+                  保存草稿
+                </a-button>
+                <a-button
+                  type="primary"
+                  :loading="publishing"
+                  @click="publishDraft"
+                >
+                  发布
+                </a-button>
+              </a-space>
             </div>
-            <a-row :gutter="20">
-              <a-col :xs="24" :lg="8">
-                <a-form-item label="头像资源">
-                  <OssImageResourcePicker v-model="draftContent.profile.avatarResource" directory="icon" />
-                </a-form-item>
-                <a-form-item label="头像说明">
-                  <a-input v-model:value="draftContent.profile.avatarAlt" :maxlength="100" />
-                </a-form-item>
-              </a-col>
-              <a-col :xs="24" :lg="16">
-                <a-form-item label="面板标题">
-                  <a-input v-model:value="draftContent.profile.title" :maxlength="50" />
-                </a-form-item>
-                <a-form-item label="简介首段">
-                  <a-textarea v-model:value="draftContent.profile.intro" :rows="3" :maxlength="500" show-count />
-                </a-form-item>
-                <a-form-item label="简介条目（固定 3 条）">
-                  <div class="bullet-list">
-                    <div v-for="(_, index) in draftContent.profile.bullets" :key="index" class="bullet-row">
-                      <a-input v-model:value="draftContent.profile.bullets[index]" :maxlength="300" />
+
+            <section class="section-card">
+              <div class="section-title">
+                <div><span>个人资料</span><small>头像、图片说明和个人简介</small></div>
+              </div>
+              <a-row :gutter="20">
+                <a-col
+                  :xs="24"
+                  :lg="8"
+                >
+                  <a-form-item label="头像资源">
+                    <OssImageResourcePicker
+                      v-model="draftContent.profile.avatarResource"
+                      directory="icon"
+                    />
+                  </a-form-item>
+                  <a-form-item label="头像说明">
+                    <a-input
+                      v-model:value="draftContent.profile.avatarAlt"
+                      :maxlength="100"
+                    />
+                  </a-form-item>
+                </a-col>
+                <a-col
+                  :xs="24"
+                  :lg="16"
+                >
+                  <a-form-item label="面板标题">
+                    <a-input
+                      v-model:value="draftContent.profile.title"
+                      :maxlength="50"
+                    />
+                  </a-form-item>
+                  <a-form-item label="简介首段">
+                    <a-textarea
+                      v-model:value="draftContent.profile.intro"
+                      :rows="3"
+                      :maxlength="500"
+                      show-count
+                    />
+                  </a-form-item>
+                  <a-form-item label="简介条目（固定 3 条）">
+                    <div class="bullet-list">
+                      <div
+                        v-for="(_, index) in draftContent.profile.bullets"
+                        :key="index"
+                        class="bullet-row"
+                      >
+                        <a-input
+                          v-model:value="draftContent.profile.bullets[index]"
+                          :maxlength="300"
+                        />
+                      </div>
                     </div>
-                  </div>
-                </a-form-item>
-                <a-form-item label="简介结尾">
-                  <a-textarea v-model:value="draftContent.profile.outro" :rows="3" :maxlength="500" show-count />
-                </a-form-item>
-              </a-col>
-            </a-row>
-          </section>
+                  </a-form-item>
+                  <a-form-item label="简介结尾">
+                    <a-textarea
+                      v-model:value="draftContent.profile.outro"
+                      :rows="3"
+                      :maxlength="500"
+                      show-count
+                    />
+                  </a-form-item>
+                </a-col>
+              </a-row>
+            </section>
 
-          <section class="section-card bubble-section">
-            <div class="section-title">
-              <div><span>我的成分</span><small>气泡按列表顺序参与前台布局</small></div>
-              <a-button type="primary" @click="openBubbleForm()">
-                <PlusOutlined /> 新增气泡
-              </a-button>
-            </div>
+            <section class="section-card bubble-section">
+              <div class="section-title">
+                <div><span>我的成分</span><small>气泡按列表顺序参与前台布局</small></div>
+                <a-button
+                  type="primary"
+                  @click="openBubbleForm()"
+                >
+                  <PlusOutlined /> 新增气泡
+                </a-button>
+              </div>
 
-            <a-row :gutter="16" class="ingredients-heading-form">
-              <a-col :xs="24" :md="8">
-                <a-form-item label="面板标题">
-                  <a-input v-model:value="draftContent.ingredients.title" :maxlength="50" />
-                </a-form-item>
-              </a-col>
-              <a-col :xs="24" :md="16">
-                <a-form-item label="面板说明">
-                  <a-input v-model:value="draftContent.ingredients.description" :maxlength="200" />
-                </a-form-item>
-              </a-col>
-            </a-row>
+              <a-row
+                :gutter="16"
+                class="ingredients-heading-form"
+              >
+                <a-col
+                  :xs="24"
+                  :md="8"
+                >
+                  <a-form-item label="面板标题">
+                    <a-input
+                      v-model:value="draftContent.ingredients.title"
+                      :maxlength="50"
+                    />
+                  </a-form-item>
+                </a-col>
+                <a-col
+                  :xs="24"
+                  :md="16"
+                >
+                  <a-form-item label="面板说明">
+                    <a-input
+                      v-model:value="draftContent.ingredients.description"
+                      :maxlength="200"
+                    />
+                  </a-form-item>
+                </a-col>
+              </a-row>
 
-            <a-table :data-source="draftContent.bubbles" :pagination="false" row-key="id" size="small" :scroll="{ x: 820 }">
-              <a-table-column title="排序" width="76">
-                <template #default="{ index }">{{ Number(index) + 1 }}</template>
-              </a-table-column>
-              <a-table-column title="预览" width="110">
-                <template #default="{ record }">
-                  <div class="bubble-preview table-bubble" :style="bubbleStyle(record)">{{ record.text }}</div>
-                </template>
-              </a-table-column>
-              <a-table-column title="气泡文字" data-index="text" />
-              <a-table-column title="大小" width="90">
-                <template #default="{ record }"><a-tag :color="record.size === 'big' ? 'blue' : 'cyan'">{{ record.size === 'big' ? '大' : '中' }}</a-tag></template>
-              </a-table-column>
-              <a-table-column title="背景 / 文字 / 发光" width="190">
-                <template #default="{ record }">
-                  <div class="color-values">
-                    <span><i :style="{ background: record.backgroundColor }" />{{ record.backgroundColor }}</span>
-                    <span><i :style="{ background: record.textColor }" />{{ record.textColor }}</span>
-                    <span><i :style="{ background: record.glowColor }" />{{ record.glowColor }}</span>
-                  </div>
-                </template>
-              </a-table-column>
-              <a-table-column title="操作" width="210" fixed="right">
-                <template #default="{ record, index }">
-                  <a-space size="small">
-                    <a-button type="link" :disabled="Number(index) === 0" @click="moveBubble(Number(index), -1)">上移</a-button>
-                    <a-button type="link" :disabled="Number(index) === draftContent.bubbles.length - 1" @click="moveBubble(Number(index), 1)">下移</a-button>
-                    <a-button type="link" @click="openBubbleForm(record)">编辑</a-button>
-                    <a-button type="link" danger @click="removeBubble(record.id)">删除</a-button>
-                  </a-space>
-                </template>
-              </a-table-column>
-            </a-table>
-          </section>
-        </a-tab-pane>
-      </a-tabs>
+              <a-table
+                :data-source="draftContent.bubbles"
+                :pagination="false"
+                row-key="id"
+                size="small"
+                :scroll="{ x: 820 }"
+              >
+                <a-table-column
+                  title="排序"
+                  width="76"
+                >
+                  <template #default="{ index }">
+                    {{ Number(index) + 1 }}
+                  </template>
+                </a-table-column>
+                <a-table-column
+                  title="预览"
+                  width="110"
+                >
+                  <template #default="{ record }">
+                    <div
+                      class="bubble-preview table-bubble"
+                      :style="bubbleStyle(record)"
+                    >
+                      {{ record.text }}
+                    </div>
+                  </template>
+                </a-table-column>
+                <a-table-column
+                  title="气泡文字"
+                  data-index="text"
+                />
+                <a-table-column
+                  title="大小"
+                  width="90"
+                >
+                  <template #default="{ record }">
+                    <a-tag :color="record.size === 'big' ? 'blue' : 'cyan'">
+                      {{ record.size === 'big' ? '大' : '中' }}
+                    </a-tag>
+                  </template>
+                </a-table-column>
+                <a-table-column
+                  title="背景 / 文字 / 发光"
+                  width="190"
+                >
+                  <template #default="{ record }">
+                    <div class="color-values">
+                      <span><i :style="{ background: record.backgroundColor }" />{{ record.backgroundColor }}</span>
+                      <span><i :style="{ background: record.textColor }" />{{ record.textColor }}</span>
+                      <span><i :style="{ background: record.glowColor }" />{{ record.glowColor }}</span>
+                    </div>
+                  </template>
+                </a-table-column>
+                <a-table-column
+                  title="操作"
+                  width="210"
+                  fixed="right"
+                >
+                  <template #default="{ record, index }">
+                    <a-space size="small">
+                      <a-button
+                        type="link"
+                        :disabled="Number(index) === 0"
+                        @click="moveBubble(Number(index), -1)"
+                      >
+                        上移
+                      </a-button>
+                      <a-button
+                        type="link"
+                        :disabled="Number(index) === draftContent.bubbles.length - 1"
+                        @click="moveBubble(Number(index), 1)"
+                      >
+                        下移
+                      </a-button>
+                      <a-button
+                        type="link"
+                        @click="openBubbleForm(record)"
+                      >
+                        编辑
+                      </a-button>
+                      <a-button
+                        type="link"
+                        danger
+                        @click="removeBubble(record.id)"
+                      >
+                        删除
+                      </a-button>
+                    </a-space>
+                  </template>
+                </a-table-column>
+              </a-table>
+            </section>
+          </a-tab-pane>
+        </a-tabs>
       </a-spin>
     </a-card>
 
@@ -177,30 +316,83 @@
       cancel-text="取消"
       @ok="submitBubble"
     >
-      <a-form ref="bubbleFormRef" :model="bubbleForm" :rules="bubbleRules" layout="vertical">
-        <a-form-item label="气泡文字" name="text">
-          <a-input v-model:value="bubbleForm.text" :maxlength="30" show-count placeholder="例如：技术探索者" />
+      <a-form
+        ref="bubbleFormRef"
+        :model="bubbleForm"
+        :rules="bubbleRules"
+        layout="vertical"
+      >
+        <a-form-item
+          label="气泡文字"
+          name="text"
+        >
+          <a-input
+            v-model:value="bubbleForm.text"
+            :maxlength="30"
+            show-count
+            placeholder="例如：技术探索者"
+          />
         </a-form-item>
-        <a-form-item label="气泡大小" name="size">
-          <a-radio-group v-model:value="bubbleForm.size" button-style="solid">
-            <a-radio-button value="big">大</a-radio-button>
-            <a-radio-button value="mid">中</a-radio-button>
+        <a-form-item
+          label="气泡大小"
+          name="size"
+        >
+          <a-radio-group
+            v-model:value="bubbleForm.size"
+            button-style="solid"
+          >
+            <a-radio-button value="big">
+              大
+            </a-radio-button>
+            <a-radio-button value="mid">
+              中
+            </a-radio-button>
           </a-radio-group>
         </a-form-item>
         <div class="color-form-grid">
-          <a-form-item label="背景色" name="backgroundColor">
-            <div class="color-input"><input v-model="bubbleForm.backgroundColor" type="color" /><a-input v-model:value="bubbleForm.backgroundColor" /></div>
+          <a-form-item
+            label="背景色"
+            name="backgroundColor"
+          >
+            <div class="color-input">
+              <input
+                v-model="bubbleForm.backgroundColor"
+                type="color"
+              ><a-input v-model:value="bubbleForm.backgroundColor" />
+            </div>
           </a-form-item>
-          <a-form-item label="文字色" name="textColor">
-            <div class="color-input"><input v-model="bubbleForm.textColor" type="color" /><a-input v-model:value="bubbleForm.textColor" /></div>
+          <a-form-item
+            label="文字色"
+            name="textColor"
+          >
+            <div class="color-input">
+              <input
+                v-model="bubbleForm.textColor"
+                type="color"
+              ><a-input v-model:value="bubbleForm.textColor" />
+            </div>
           </a-form-item>
-          <a-form-item label="发光色" name="glowColor">
-            <div class="color-input"><input v-model="bubbleForm.glowColor" type="color" /><a-input v-model:value="bubbleForm.glowColor" /></div>
+          <a-form-item
+            label="发光色"
+            name="glowColor"
+          >
+            <div class="color-input">
+              <input
+                v-model="bubbleForm.glowColor"
+                type="color"
+              ><a-input v-model:value="bubbleForm.glowColor" />
+            </div>
           </a-form-item>
         </div>
         <div class="modal-preview">
           <span>效果预览</span>
-          <div class="bubble-preview" :class="`is-${bubbleForm.size}`" :style="bubbleStyle(bubbleForm)">{{ bubbleForm.text || '气泡文字' }}</div>
+          <div
+            class="bubble-preview"
+            :class="`is-${bubbleForm.size}`"
+            :style="bubbleStyle(bubbleForm)"
+          >
+            {{ bubbleForm.text || '气泡文字' }}
+          </div>
         </div>
       </a-form>
     </a-modal>

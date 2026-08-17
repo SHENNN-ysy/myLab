@@ -9,6 +9,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,6 +25,7 @@ import java.util.List;
  * 是否拦截由后续授权规则决定。
  */
 @Component
+@Slf4j
 public class JwtFilter extends OncePerRequestFilter {
 
     private final TokenService tokens; // 令牌解析与校验
@@ -49,8 +51,9 @@ public class JwtFilter extends OncePerRequestFilter {
                             List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase())));
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
-            } catch (Exception ignored) {
-                // 令牌无效/过期/已吊销时静默放行，请求以匿名身份继续
+            } catch (Exception e) {
+                // 令牌无效/过期/已吊销时放行，请求以匿名身份继续
+                log.warn("token rejected, continue as anonymous, err={}", e.toString());
             }
         }
         chain.doFilter(req, res);

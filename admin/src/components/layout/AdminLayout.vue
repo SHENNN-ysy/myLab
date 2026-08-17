@@ -4,7 +4,10 @@
     <Sidebar :is-collapse="isSidebarCollapse" />
 
     <!-- 主内容区 -->
-    <div class="main-container" :class="{ 'is-collapse': isSidebarCollapse }">
+    <div
+      class="main-container"
+      :class="{ 'is-collapse': isSidebarCollapse }"
+    >
       <!-- 顶栏 -->
       <div class="header">
         <div class="header-left">
@@ -19,9 +22,14 @@
 
           <a-breadcrumb separator="/">
             <a-breadcrumb-item>
-              <router-link to="/">首页</router-link>
+              <router-link to="/">
+                首页
+              </router-link>
             </a-breadcrumb-item>
-            <a-breadcrumb-item v-for="item in breadcrumbs" :key="item.path">
+            <a-breadcrumb-item
+              v-for="item in breadcrumbs"
+              :key="item.path"
+            >
               {{ item.title }}
             </a-breadcrumb-item>
           </a-breadcrumb>
@@ -56,7 +64,10 @@
       <!-- 页面内容 -->
       <div class="content-wrapper">
         <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
+          <transition
+            name="fade"
+            mode="out-in"
+          >
             <component :is="Component" />
           </transition>
         </router-view>

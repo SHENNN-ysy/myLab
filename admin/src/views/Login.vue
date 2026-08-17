@@ -2,9 +2,17 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <img src="/favicon.svg" alt="logo" class="login-logo" />
-        <h1 class="login-title">MyBlog</h1>
-        <p class="login-subtitle">管理后台</p>
+        <img
+          src="/favicon.svg"
+          alt="logo"
+          class="login-logo"
+        >
+        <h1 class="login-title">
+          MyBlog
+        </h1>
+        <p class="login-subtitle">
+          管理后台
+        </p>
       </div>
 
       <a-form

@@ -5,8 +5,12 @@
         <div class="section-header">
           <span class="section-num">03</span>
           <div class="section-title-group">
-            <h2 class="section-title">{{ section.title }}<em>{{ section.highlight }}</em></h2>
-            <p class="section-desc">{{ section.description }}</p>
+            <h2 class="section-title">
+              {{ section.title }}<em>{{ section.highlight }}</em>
+            </h2>
+            <p class="section-desc">
+              {{ section.description }}
+            </p>
           </div>
         </div>
       </RevealOnScroll>
@@ -18,13 +22,21 @@
           :delay="(index % 3) + 1"
         >
           <div>
-            <LabCard :post="project" :navigate="false" :tag-limit="3" @select="openModal" />
+            <LabCard
+              :post="project"
+              :navigate="false"
+              :tag-limit="3"
+              @select="openModal"
+            />
           </div>
         </RevealOnScroll>
       </div>
     </div>
 
-    <ProjectModal v-model="isModalOpen" direction="right">
+    <ProjectModal
+      v-model="isModalOpen"
+      direction="right"
+    >
       <div
         v-if="selectedProject"
         class="modal-hero-wrap stagger-item-right"
@@ -36,35 +48,68 @@
           :src="selectedProjectHero"
           :alt="selectedProjectTitle"
           @load="modalHeroLoaded = true"
-        />
+        >
       </div>
 
-      <div v-if="selectedProject" class="modal-body">
-        <div v-if="selectedProject.tags.length" class="modal-meta stagger-item-right">
-          <span v-for="tag in selectedProject.tags.slice(0, 3)" :key="tag" class="project-tag">#{{ tag }}</span>
+      <div
+        v-if="selectedProject"
+        class="modal-body"
+      >
+        <div
+          v-if="selectedProject.tags.length"
+          class="modal-meta stagger-item-right"
+        >
+          <span
+            v-for="tag in selectedProject.tags.slice(0, 3)"
+            :key="tag"
+            class="project-tag"
+          >#{{ tag }}</span>
         </div>
-        <h2 class="modal-title stagger-item-right">{{ selectedProjectTitle }}</h2>
-        <p class="modal-desc stagger-item-right">{{ selectedProjectSummary }}</p>
-        <p v-for="paragraph in selectedProjectParagraphs" :key="paragraph" class="stagger-item-right">{{ paragraph }}</p>
+        <h2 class="modal-title stagger-item-right">
+          {{ selectedProjectTitle }}
+        </h2>
+        <p class="modal-desc stagger-item-right">
+          {{ selectedProjectSummary }}
+        </p>
+        <p
+          v-for="paragraph in selectedProjectParagraphs"
+          :key="paragraph"
+          class="stagger-item-right"
+        >
+          {{ paragraph }}
+        </p>
 
         <template v-if="selectedProjectTechnologies.length">
-          <h4 class="stagger-item-right">技术栈</h4>
+          <h4 class="stagger-item-right">
+            技术栈
+          </h4>
           <div class="modal-tech stagger-item-right">
-            <span v-for="tech in selectedProjectTechnologies" :key="tech">{{ tech }}</span>
+            <span
+              v-for="tech in selectedProjectTechnologies"
+              :key="tech"
+            >{{ tech }}</span>
           </div>
         </template>
 
-        <div v-if="selectedProject.projectImages?.length" class="modal-gallery stagger-item-right">
+        <div
+          v-if="selectedProject.projectImages?.length"
+          class="modal-gallery stagger-item-right"
+        >
           <img
             v-for="(image, index) in selectedProject.projectImages"
             :key="image"
             :src="image"
             :alt="`${selectedProjectTitle} 项目图片 ${index + 1}`"
             loading="lazy"
-          />
+          >
         </div>
 
-        <button class="modal-cta stagger-item-right" @click="viewProject">查看项目 →</button>
+        <button
+          class="modal-cta stagger-item-right"
+          @click="viewProject"
+        >
+          查看项目 →
+        </button>
       </div>
     </ProjectModal>
   </section>

@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!-- Baseline for the MagicNumber rule: pre-existing literals are grandfathered
+     per (file, value); any NEW magic number in any file is still reported.
+     Clean up entries as the corresponding code gets refactored. -->
+<suppressions>
+    <suppress files="AsyncConfig.java" message=".*'100'.*"/>
+    <suppress files="AsyncConfig.java" message=".*'15'.*"/>
+    <suppress files="AsyncConfig.java" message=".*'2'.*"/>
+    <suppress files="AuthController.java" message=".*'7'.*"/>
+    <suppress files="AuthDtos.java" message=".*'3'.*"/>
+    <suppress files="AuthDtos.java" message=".*'64'.*"/>
+    <suppress files="AuthDtos.java" message=".*'8'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'0.001'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'0.5'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'10'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'100'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'27'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'29'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'3'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'300'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'5'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'500'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'6'.*"/>
+    <suppress files="ContentModuleServiceImpl.java" message=".*'8'.*"/>
+    <suppress files="EngagementService.java" message=".*'100'.*"/>
+    <suppress files="EngagementSnapshotJob.java" message=".*'119'.*"/>
+    <suppress files="EngagementSnapshotJob.java" message=".*'60_000'.*"/>
+    <suppress files="FileServiceImpl.java" message=".*'1024L'.*"/>
+    <suppress files="FileServiceImpl.java" message=".*'3600'.*"/>
+    <suppress files="FileServiceImpl.java" message=".*'7'.*"/>
+    <suppress files="HobbiesCodec.java" message=".*'-2'.*"/>
+    <suppress files="JdbcEngagementStatsRepository.java" message=".*'2'.*"/>
+    <suppress files="JdbcEngagementStatsRepository.java" message=".*'3'.*"/>
+    <suppress files="JdbcEngagementStatsRepository.java" message=".*'4'.*"/>
+    <suppress files="JsonSnapshots.java" message=".*'2'.*"/>
+    <suppress files="JwtFilter.java" message=".*'7'.*"/>
+    <suppress files="JwtService.java" message=".*'60'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'10001'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'10004'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'10005'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'10006'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'10007'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'10008'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'10009'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'10010'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'10011'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'13003'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'13005'.*"/>
+    <suppress files="OpenApiConfig.java" message=".*'20001'.*"/>
+    <suppress files="OssObjectStorageAdapter.java" message=".*'3600'.*"/>
+    <suppress files="PublicEngagementController.java" message=".*'72'.*"/>
+    <suppress files="RateLimitFilter.java" message=".*'429'.*"/>
+    <suppress files="RedisEngagementStore.java" message=".*'120'.*"/>
+    <suppress files="RedisEngagementStore.java" message=".*'2'.*"/>
+    <suppress files="RedisEngagementStore.java" message=".*'3'.*"/>
+    <suppress files="RedisEngagementStore.java" message=".*'50'.*"/>
+    <suppress files="SecurityConfig.java" message=".*'401'.*"/>
+    <suppress files="SecurityConfig.java" message=".*'403'.*"/>
+    <suppress files="SystemService.java" message=".*'10.0'.*"/>
+    <suppress files="SystemService.java" message=".*'1000'.*"/>
+    <suppress files="UserServiceImpl.java" message=".*'3'.*"/>
+    <suppress files="UserServiceImpl.java" message=".*'8'.*"/>
+    <suppress files="VisitorIdentityService.java" message=".*'32'.*"/>
+</suppressions>

@@ -13,7 +13,10 @@
     :class="{ 'is-over-content': overContent }"
     aria-hidden="true"
   >
-    <div ref="sphereRef" class="scroll-sphere" />
+    <div
+      ref="sphereRef"
+      class="scroll-sphere"
+    />
   </div>
 </template>
 

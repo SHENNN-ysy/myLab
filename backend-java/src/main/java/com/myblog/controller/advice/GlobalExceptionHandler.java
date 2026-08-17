@@ -79,7 +79,9 @@ public class GlobalExceptionHandler {
         // 两类异常的取值方式不同，分别提取缺失参数名
         String name = exception instanceof MissingServletRequestParameterException parameter
                 ? parameter.getParameterName()
-                : ((MissingServletRequestPartException) exception).getRequestPartName();
+                : exception instanceof MissingServletRequestPartException part
+                ? part.getRequestPartName()
+                : "unknown";
         return response(ErrorCode.MISSING_REQUEST_PARAMETER, "缺少参数：" + name);
     }
 

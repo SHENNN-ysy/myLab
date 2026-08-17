@@ -3,7 +3,6 @@ package com.myblog.starter.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myblog.common.constant.SecurityConstant;
 import com.myblog.common.enumeration.ErrorCode;
-import com.myblog.common.json.JacksonObjectMapper;
 import com.myblog.common.properties.AppProperties;
 import com.myblog.common.result.Result;
 import com.myblog.infrastructure.security.JwtFilter;

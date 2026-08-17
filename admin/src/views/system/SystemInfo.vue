@@ -4,7 +4,10 @@
       <template #title>
         <div class="card-header">
           <span>系统信息</span>
-          <a-button @click="refreshAll" :loading="loading">
+          <a-button
+            :loading="loading"
+            @click="refreshAll"
+          >
             <template #icon>
               <ReloadOutlined />
             </template>
@@ -32,9 +35,15 @@
       </div>
 
       <!-- 信息网格 -->
-      <a-row :gutter="20" class="info-grid">
+      <a-row
+        :gutter="20"
+        class="info-grid"
+      >
         <!-- 服务器 -->
-        <a-col :xs="24" :sm="12">
+        <a-col
+          :xs="24"
+          :sm="12"
+        >
           <div class="info-section">
             <div class="section-header">
               <DesktopOutlined class="icon-orange" />
@@ -66,7 +75,10 @@
         </a-col>
 
         <!-- CPU -->
-        <a-col :xs="24" :sm="12">
+        <a-col
+          :xs="24"
+          :sm="12"
+        >
           <div class="info-section">
             <div class="section-header">
               <CloudServerOutlined class="icon-blue" />
@@ -99,7 +111,10 @@
         </a-col>
 
         <!-- 内存 -->
-        <a-col :xs="24" :sm="12">
+        <a-col
+          :xs="24"
+          :sm="12"
+        >
           <div class="info-section">
             <div class="section-header">
               <CreditCardOutlined class="icon-green" />
@@ -138,7 +153,10 @@
         </a-col>
 
         <!-- 磁盘 -->
-        <a-col :xs="24" :sm="12">
+        <a-col
+          :xs="24"
+          :sm="12"
+        >
           <div class="info-section">
             <div class="section-header">
               <FolderOpenOutlined class="icon-red" />

@@ -21,64 +21,125 @@
       </template>
 
       <a-spin :spinning="loading">
-      <a-tabs v-model:active-key="activePanel">
-        <a-tab-pane key="current" tab="当前内容">
-          <a-alert
-            type="info"
-            show-icon
-            message="当前内容为只读视图"
-            description="以下顺序与博客前台 WELCOME 轮播保持一致，不能在当前内容面板中修改。"
-            class="panel-tip"
-          />
+        <a-tabs v-model:active-key="activePanel">
+          <a-tab-pane
+            key="current"
+            tab="当前内容"
+          >
+            <a-alert
+              type="info"
+              show-icon
+              message="当前内容为只读视图"
+              description="以下顺序与博客前台 WELCOME 轮播保持一致，不能在当前内容面板中修改。"
+              class="panel-tip"
+            />
 
-          <div class="image-grid">
-            <article v-for="item in currentImages" :key="item.position" class="image-card readonly-card">
-              <div class="preview-wrap">
-                <img :src="item.url" :alt="item.alt" />
-                <span class="position-badge">{{ item.position }}</span>
-              </div>
-              <div class="image-meta">
-                <strong>轮播位置 {{ item.position }}</strong>
-                <span>{{ item.alt }}</span>
-                <code>{{ item.resource?.name || 'OSS 图片资源' }}</code>
-              </div>
-            </article>
-          </div>
-        </a-tab-pane>
-
-        <a-tab-pane key="draft" tab="草稿内容">
-          <div class="draft-toolbar">
-            <a-alert type="info" show-icon message="草稿通过后端版本接口保存" description="保存会创建或更新草稿；发布后当前内容面板立即切换为新版本。" />
-            <a-space>
-              <a-button :loading="saving" @click="saveDraft">保存草稿</a-button>
-              <a-button type="primary" :loading="publishing" @click="publishDraft">发布</a-button>
-            </a-space>
-          </div>
-
-          <div class="image-grid">
-            <article v-for="(item, index) in draftImages" :key="item.rowId || item.position" class="image-card">
-              <div class="slot-head">
-                <div>
-                  <span class="position-label">位置 {{ index + 1 }}</span>
-                  <small>固定六张，不可增删</small>
+            <div class="image-grid">
+              <article
+                v-for="item in currentImages"
+                :key="item.position"
+                class="image-card readonly-card"
+              >
+                <div class="preview-wrap">
+                  <img
+                    :src="item.url"
+                    :alt="item.alt"
+                  >
+                  <span class="position-badge">{{ item.position }}</span>
                 </div>
-                <a-space size="small">
-                  <a-button size="small" :disabled="index === 0" @click="move(index, -1)">上移</a-button>
-                  <a-button size="small" :disabled="index === draftImages.length - 1" @click="move(index, 1)">下移</a-button>
-                </a-space>
-              </div>
+                <div class="image-meta">
+                  <strong>轮播位置 {{ item.position }}</strong>
+                  <span>{{ item.alt }}</span>
+                  <code>{{ item.resource?.name || 'OSS 图片资源' }}</code>
+                </div>
+              </article>
+            </div>
+          </a-tab-pane>
 
-              <OssImageResourcePicker v-model="item.resource" directory="hero" />
-              <a-form-item label="图片说明" class="alt-field">
-                <a-input v-model:value="item.alt" :maxlength="100" placeholder="用于图片替代文本" />
-              </a-form-item>
-              <a-form-item label="图片焦点" class="alt-field">
-                <a-input v-model:value="item.objectPosition" placeholder="例如 50% 50%" />
-              </a-form-item>
-            </article>
-          </div>
-        </a-tab-pane>
-      </a-tabs>
+          <a-tab-pane
+            key="draft"
+            tab="草稿内容"
+          >
+            <div class="draft-toolbar">
+              <a-alert
+                type="info"
+                show-icon
+                message="草稿通过后端版本接口保存"
+                description="保存会创建或更新草稿；发布后当前内容面板立即切换为新版本。"
+              />
+              <a-space>
+                <a-button
+                  :loading="saving"
+                  @click="saveDraft"
+                >
+                  保存草稿
+                </a-button>
+                <a-button
+                  type="primary"
+                  :loading="publishing"
+                  @click="publishDraft"
+                >
+                  发布
+                </a-button>
+              </a-space>
+            </div>
+
+            <div class="image-grid">
+              <article
+                v-for="(item, index) in draftImages"
+                :key="item.rowId || item.position"
+                class="image-card"
+              >
+                <div class="slot-head">
+                  <div>
+                    <span class="position-label">位置 {{ index + 1 }}</span>
+                    <small>固定六张，不可增删</small>
+                  </div>
+                  <a-space size="small">
+                    <a-button
+                      size="small"
+                      :disabled="index === 0"
+                      @click="move(index, -1)"
+                    >
+                      上移
+                    </a-button>
+                    <a-button
+                      size="small"
+                      :disabled="index === draftImages.length - 1"
+                      @click="move(index, 1)"
+                    >
+                      下移
+                    </a-button>
+                  </a-space>
+                </div>
+
+                <OssImageResourcePicker
+                  v-model="item.resource"
+                  directory="hero"
+                />
+                <a-form-item
+                  label="图片说明"
+                  class="alt-field"
+                >
+                  <a-input
+                    v-model:value="item.alt"
+                    :maxlength="100"
+                    placeholder="用于图片替代文本"
+                  />
+                </a-form-item>
+                <a-form-item
+                  label="图片焦点"
+                  class="alt-field"
+                >
+                  <a-input
+                    v-model:value="item.objectPosition"
+                    placeholder="例如 50% 50%"
+                  />
+                </a-form-item>
+              </article>
+            </div>
+          </a-tab-pane>
+        </a-tabs>
       </a-spin>
     </a-card>
 

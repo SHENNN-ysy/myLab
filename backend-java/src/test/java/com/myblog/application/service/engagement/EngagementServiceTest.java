@@ -103,4 +103,125 @@ class EngagementServiceTest {
         assertThat(service.engagement(List.of("post-a", "post-a"))).hasSize(1);
         verify(store).engagement(List.of("post-a"));
     }
+
+    @Test
+    void batchRejectsEmptyKeyList() {
+        assertThatThrownBy(() -> service.engagement(List.of()))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void batchRejectsNullOrMalformedKey() {
+        assertThatThrownBy(() -> service.engagement(java.util.Arrays.asList("post-a", null)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.engagement(List.of("bad key!")))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void batchRejectsMoreThanHundredKeys() {
+        List<String> keys = java.util.stream.IntStream.range(0, 101)
+                .mapToObj(index -> "post-" + index)
+                .toList();
+
+        assertThatThrownBy(() -> service.engagement(keys))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void registerViewDelegatesToStoreForPublishedPost() {
+        EngagementDtos.EngagementView view = view("post-a", 5, 1, false);
+        when(repository.publishedPostExists("post-a")).thenReturn(true);
+        when(store.registerView(eq("visitor"), eq("post-a"), any())).thenReturn(view);
+
+        assertThat(service.registerView("visitor", "post-a")).isEqualTo(view);
+    }
+
+    @Test
+    void registerViewRejectsUnpublishedPost() {
+        when(repository.publishedPostExists("draft-post")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.registerView("visitor", "draft-post"))
+                .isInstanceOf(NotFoundException.class);
+        verify(store, never()).registerView(eq("visitor"), eq("draft-post"), any());
+    }
+
+    @Test
+    void likeDelegatesToStoreForPublishedPost() {
+        EngagementDtos.EngagementView view = view("post-a", 5, 2, true);
+        when(repository.publishedPostExists("post-a")).thenReturn(true);
+        when(store.like(eq("visitor"), eq("post-a"), any())).thenReturn(view);
+
+        assertThat(service.like("visitor", "post-a")).isEqualTo(view);
+    }
+
+    @Test
+    void likeRejectsMalformedPostKey() {
+        assertThatThrownBy(() -> service.like("visitor", "bad key!"))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void unlikeDelegatesToStoreForPublishedPost() {
+        EngagementDtos.EngagementView view = view("post-a", 5, 1, false);
+        when(repository.publishedPostExists("post-a")).thenReturn(true);
+        when(store.unlike("visitor", "post-a")).thenReturn(view);
+
+        assertThat(service.unlike("visitor", "post-a")).isEqualTo(view);
+    }
+
+    @Test
+    void registerVisitDelegatesToStore() {
+        EngagementDtos.SiteStatisticsView statistics =
+                new EngagementDtos.SiteStatisticsView(10, 20, 3, OffsetDateTime.now());
+        when(store.registerVisit(eq("visitor"), any())).thenReturn(statistics);
+
+        assertThat(service.registerVisit("visitor")).isEqualTo(statistics);
+    }
+
+    @Test
+    void siteStatisticsPrefersRedisRealtimeValue() {
+        EngagementDtos.SiteStatisticsView realtime =
+                new EngagementDtos.SiteStatisticsView(10, 20, 3, OffsetDateTime.now());
+        when(store.siteStatistics()).thenReturn(realtime);
+
+        assertThat(service.siteStatistics()).isEqualTo(realtime);
+        verify(repository, never()).findSiteStatistics();
+    }
+
+    @Test
+    void adminSummaryRequiresAdmin() {
+        CurrentUser viewer = new CurrentUser(UUID.randomUUID(), "guest", "viewer");
+
+        assertThatThrownBy(() -> service.adminSummary(viewer))
+                .isInstanceOf(com.myblog.common.exception.ForbiddenException.class);
+    }
+
+    @Test
+    void adminSummaryReturnsSiteStatistics() {
+        EngagementDtos.SiteStatisticsView realtime =
+                new EngagementDtos.SiteStatisticsView(10, 20, 3, OffsetDateTime.now());
+        when(store.siteStatistics()).thenReturn(realtime);
+
+        assertThat(service.adminSummary(admin)).isEqualTo(realtime);
+    }
+
+    @Test
+    void trendKeepsDatabaseSnapshotForTodayWhenRedisIsUnavailable() {
+        LocalDate today = LocalDate.now(EngagementService.BUSINESS_ZONE);
+        EngagementDtos.DailyStatisticsView todaySnapshot =
+                new EngagementDtos.DailyStatisticsView(today, 7, 9, 1);
+        when(repository.findDailyStatistics(today.minusDays(6), today)).thenReturn(List.of(todaySnapshot));
+        when(store.dailyStatistics(today)).thenThrow(new EngagementUnavailableException());
+
+        EngagementDtos.AnalyticsTrendView result = service.trends(admin, 7);
+
+        assertThat(result.items()).hasSize(7);
+        assertThat(result.items().getLast()).isEqualTo(todaySnapshot);
+    }
+
+    private EngagementDtos.EngagementView view(String postKey, long views, long likes, boolean liked) {
+        return new EngagementDtos.EngagementView(postKey, views, likes, liked,
+                new EngagementDtos.SiteStatisticsView(10, 20, 3, OffsetDateTime.now()));
+    }
 }

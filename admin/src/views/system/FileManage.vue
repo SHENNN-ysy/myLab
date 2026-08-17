@@ -5,13 +5,31 @@
         <div class="card-header">
           <span>文件资源</span>
           <div class="header-actions">
-            <a-input v-model:value="searchKeyword" placeholder="筛选当前页文件名" allow-clear style="width: 210px">
-              <template #prefix><SearchOutlined /></template>
+            <a-input
+              v-model:value="searchKeyword"
+              placeholder="筛选当前页文件名"
+              allow-clear
+              style="width: 210px"
+            >
+              <template #prefix>
+                <SearchOutlined />
+              </template>
             </a-input>
-            <a-select v-model:value="filterType" placeholder="筛选当前页类型" allow-clear style="width: 150px">
-              <a-select-option value="image">图片</a-select-option>
-              <a-select-option value="pdf">PDF</a-select-option>
-              <a-select-option value="text">Markdown / 文本</a-select-option>
+            <a-select
+              v-model:value="filterType"
+              placeholder="筛选当前页类型"
+              allow-clear
+              style="width: 150px"
+            >
+              <a-select-option value="image">
+                图片
+              </a-select-option>
+              <a-select-option value="pdf">
+                PDF
+              </a-select-option>
+              <a-select-option value="text">
+                Markdown / 文本
+              </a-select-option>
             </a-select>
             <a-select
               v-model:value="filterDirectory"
@@ -27,8 +45,13 @@
               :options="resourceDirectoryOptions"
               aria-label="上传目标目录"
             />
-            <a-button type="primary" @click="triggerUpload">
-              <template #icon><UploadOutlined /></template>
+            <a-button
+              type="primary"
+              @click="triggerUpload"
+            >
+              <template #icon>
+                <UploadOutlined />
+              </template>
               上传文件
             </a-button>
             <input
@@ -38,8 +61,12 @@
               :accept="acceptedTypes"
               class="hidden-input"
               @change="handleUpload"
-            />
-            <a-button @click="loadData"><template #icon><ReloadOutlined /></template>刷新</a-button>
+            >
+            <a-button @click="loadData">
+              <template #icon>
+                <ReloadOutlined />
+              </template>刷新
+            </a-button>
           </div>
         </div>
       </template>
@@ -51,17 +78,38 @@
         message="删除前后端会检查所有草稿、线上和历史版本；存在引用时将返回冲突。"
       />
 
-      <a-row :gutter="16" class="stat-row">
-        <a-col :xs="24" :sm="12">
+      <a-row
+        :gutter="16"
+        class="stat-row"
+      >
+        <a-col
+          :xs="24"
+          :sm="12"
+        >
           <div class="stat-item">
             <FileOutlined class="stat-icon icon-blue" />
-            <div><div class="stat-value">{{ total }}</div><div class="stat-label">资源总数</div></div>
+            <div>
+              <div class="stat-value">
+                {{ total }}
+              </div><div class="stat-label">
+                资源总数
+              </div>
+            </div>
           </div>
         </a-col>
-        <a-col :xs="24" :sm="12">
+        <a-col
+          :xs="24"
+          :sm="12"
+        >
           <div class="stat-item">
             <DatabaseOutlined class="stat-icon icon-orange" />
-            <div><div class="stat-value">{{ currentPageSizeText }}</div><div class="stat-label">当前页占用</div></div>
+            <div>
+              <div class="stat-value">
+                {{ currentPageSizeText }}
+              </div><div class="stat-label">
+                当前页占用
+              </div>
+            </div>
           </div>
         </a-col>
       </a-row>
@@ -76,8 +124,19 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'preview'">
-            <a-image v-if="isImage(record) && record.url" :src="record.url" :width="50" :height="50" class="file-thumb" />
-            <div v-else class="file-icon"><component :is="getFileIcon(record.mimeType)" /></div>
+            <a-image
+              v-if="isImage(record) && record.url"
+              :src="record.url"
+              :width="50"
+              :height="50"
+              class="file-thumb"
+            />
+            <div
+              v-else
+              class="file-icon"
+            >
+              <component :is="getFileIcon(record.mimeType)" />
+            </div>
           </template>
           <template v-else-if="column.key === 'name'">
             <div class="file-name">
@@ -93,12 +152,29 @@
           <template v-else-if="column.key === 'directory'">
             <a-tag>{{ directoryLabel(record.directory) }}</a-tag>
           </template>
-          <template v-else-if="column.key === 'size'">{{ formatFileSize(record.size) }}</template>
-          <template v-else-if="column.key === 'createdAt'">{{ formatTime(record.createdAt) }}</template>
+          <template v-else-if="column.key === 'size'">
+            {{ formatFileSize(record.size) }}
+          </template>
+          <template v-else-if="column.key === 'createdAt'">
+            {{ formatTime(record.createdAt) }}
+          </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
-              <a-button type="link" size="small" @click="copyAccessUrl(record)">复制访问地址</a-button>
-              <a-button type="link" danger size="small" @click="handleDelete(record)">删除</a-button>
+              <a-button
+                type="link"
+                size="small"
+                @click="copyAccessUrl(record)"
+              >
+                复制访问地址
+              </a-button>
+              <a-button
+                type="link"
+                danger
+                size="small"
+                @click="handleDelete(record)"
+              >
+                删除
+              </a-button>
             </a-space>
           </template>
         </template>

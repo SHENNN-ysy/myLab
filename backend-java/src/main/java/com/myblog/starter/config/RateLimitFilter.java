@@ -9,6 +9,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -29,6 +30,7 @@ import java.time.Duration;
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
+@Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final StringRedisTemplate redis; // 限流计数存储
@@ -78,8 +80,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         Result.fail(ErrorCode.RATE_LIMIT_EXCEEDED, null));
                 return;
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
             // 尽力而为：Redis 故障时放行，避免存储抖动拖垮全站可用性
+            log.warn("rate limit check failed, fail open, key={}, err={}", key, e.toString());
         }
         chain.doFilter(req, res);
     }

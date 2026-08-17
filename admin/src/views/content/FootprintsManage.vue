@@ -13,44 +13,144 @@
   >
     <template #current>
       <div class="content-grid">
-        <a-card v-for="item in currentFootprints" :key="item.id" size="small" :title="item.title">
-          <template #extra><a-tag>{{ item.city }}</a-tag></template>
+        <a-card
+          v-for="item in currentFootprints"
+          :key="item.id"
+          size="small"
+          :title="item.title"
+        >
+          <template #extra>
+            <a-tag>{{ item.city }}</a-tag>
+          </template>
           <p>{{ item.summary }}</p>
-          <div class="multiline">{{ item.contents }}</div>
-          <div v-if="item.photos.some(photo => photo.resource?.url)" class="photo-wall current-photo-wall">
-            <img v-for="photo in item.photos.filter(photo => photo.resource?.url)" :key="photo.id" :src="photo.resource?.url" :alt="`${item.city}足迹照片`" />
+          <div class="multiline">
+            {{ item.contents }}
           </div>
-          <a-empty v-else :image="false" description="前台当前未配置照片墙图片" class="photo-empty" />
+          <div
+            v-if="item.photos.some(photo => photo.resource?.url)"
+            class="photo-wall current-photo-wall"
+          >
+            <img
+              v-for="photo in item.photos.filter(photo => photo.resource?.url)"
+              :key="photo.id"
+              :src="photo.resource?.url"
+              :alt="`${item.city}足迹照片`"
+            >
+          </div>
+          <a-empty
+            v-else
+            :image="false"
+            description="前台当前未配置照片墙图片"
+            class="photo-empty"
+          />
         </a-card>
       </div>
     </template>
 
     <template #draft>
-      <CollectionHeader :title="`城市足迹（已启用 ${enabledCount(draftFootprints)}/${MAX_FOOTPRINTS}，共 ${draftFootprints.length} 条）`" @add="addFootprint" />
+      <CollectionHeader
+        :title="`城市足迹（已启用 ${enabledCount(draftFootprints)}/${MAX_FOOTPRINTS}，共 ${draftFootprints.length} 条）`"
+        @add="addFootprint"
+      />
       <a-collapse accordion>
-        <a-collapse-panel v-for="(item, index) in draftFootprints" :key="item.id" :header="item.title || item.city || `足迹 ${index + 1}`">
-          <template #extra><ListActions :index="Number(index)" :length="draftFootprints.length" @move="move(draftFootprints, Number(index), $event)" @remove="remove(draftFootprints, item.id)" /></template>
+        <a-collapse-panel
+          v-for="(item, index) in draftFootprints"
+          :key="item.id"
+          :header="item.title || item.city || `足迹 ${index + 1}`"
+        >
+          <template #extra>
+            <ListActions
+              :index="Number(index)"
+              :length="draftFootprints.length"
+              @move="move(draftFootprints, Number(index), $event)"
+              @remove="remove(draftFootprints, item.id)"
+            />
+          </template>
           <a-row :gutter="16">
-            <a-col :xs="24" :md="8"><a-form-item label="城市"><a-input v-model:value="item.city" /></a-form-item></a-col>
-            <a-col :xs="24" :md="16"><a-form-item label="标题"><a-input v-model:value="item.title" /></a-form-item></a-col>
-            <a-col :span="24"><a-form-item label="摘要"><a-textarea v-model:value="item.summary" :rows="2" /></a-form-item></a-col>
-            <a-col :span="24"><a-form-item label="段落内容（空行分段）"><a-textarea v-model:value="item.contents" :rows="7" /></a-form-item></a-col>
+            <a-col
+              :xs="24"
+              :md="8"
+            >
+              <a-form-item label="城市">
+                <a-input v-model:value="item.city" />
+              </a-form-item>
+            </a-col>
+            <a-col
+              :xs="24"
+              :md="16"
+            >
+              <a-form-item label="标题">
+                <a-input v-model:value="item.title" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="24">
+              <a-form-item label="摘要">
+                <a-textarea
+                  v-model:value="item.summary"
+                  :rows="2"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="24">
+              <a-form-item label="段落内容（空行分段）">
+                <a-textarea
+                  v-model:value="item.contents"
+                  :rows="7"
+                />
+              </a-form-item>
+            </a-col>
             <a-col :span="24">
               <a-form-item label="照片墙图片（支持多张）">
                 <div class="photo-editor-list">
-                  <div v-for="(photo, photoIndex) in item.photos" :key="photo.id" class="photo-editor-item">
-                    <OssImageResourcePicker v-model="photo.resource" directory="footstep" />
+                  <div
+                    v-for="(photo, photoIndex) in item.photos"
+                    :key="photo.id"
+                    class="photo-editor-item"
+                  >
+                    <OssImageResourcePicker
+                      v-model="photo.resource"
+                      directory="footstep"
+                    />
                     <a-space size="small">
-                      <a-button size="small" :disabled="photoIndex === 0" @click="movePhoto(item, photoIndex, -1)">上移</a-button>
-                      <a-button size="small" :disabled="photoIndex === item.photos.length - 1" @click="movePhoto(item, photoIndex, 1)">下移</a-button>
-                      <a-button size="small" danger @click="removePhoto(item, photo.id)">删除</a-button>
+                      <a-button
+                        size="small"
+                        :disabled="photoIndex === 0"
+                        @click="movePhoto(item, photoIndex, -1)"
+                      >
+                        上移
+                      </a-button>
+                      <a-button
+                        size="small"
+                        :disabled="photoIndex === item.photos.length - 1"
+                        @click="movePhoto(item, photoIndex, 1)"
+                      >
+                        下移
+                      </a-button>
+                      <a-button
+                        size="small"
+                        danger
+                        @click="removePhoto(item, photo.id)"
+                      >
+                        删除
+                      </a-button>
                     </a-space>
                   </div>
-                  <a-button type="dashed" block @click="addPhoto(item)">新增照片</a-button>
+                  <a-button
+                    type="dashed"
+                    block
+                    @click="addPhoto(item)"
+                  >
+                    新增照片
+                  </a-button>
                 </div>
               </a-form-item>
             </a-col>
-            <a-col :span="24"><a-switch v-model:checked="item.enabled" @change="onEnabledChange(draftFootprints, item, Boolean($event), MAX_FOOTPRINTS, '足迹')" /> 启用</a-col>
+            <a-col :span="24">
+              <a-switch
+                v-model:checked="item.enabled"
+                @change="onEnabledChange(draftFootprints, item, Boolean($event), MAX_FOOTPRINTS, '足迹')"
+              /> 启用
+            </a-col>
           </a-row>
         </a-collapse-panel>
       </a-collapse>

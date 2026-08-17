@@ -1,9 +1,23 @@
 <template>
-  <div class="sidebar" :class="{ 'is-collapse': isCollapse }">
+  <div
+    class="sidebar"
+    :class="{ 'is-collapse': isCollapse }"
+  >
     <div class="sidebar-logo">
-      <img v-if="!isCollapse" src="/favicon.svg" alt="logo" class="logo-img" />
-      <span v-if="!isCollapse" class="logo-text">MyBlog</span>
-      <i v-else class="ri-admin-line logo-icon" />
+      <img
+        v-if="!isCollapse"
+        src="/favicon.svg"
+        alt="logo"
+        class="logo-img"
+      >
+      <span
+        v-if="!isCollapse"
+        class="logo-text"
+      >MyBlog</span>
+      <i
+        v-else
+        class="ri-admin-line logo-icon"
+      />
     </div>
 
     <a-menu
@@ -14,14 +28,20 @@
       :inline-collapsed="isCollapse"
       class="sidebar-menu"
       @click="handleSelect"
-      @openChange="handleOpenChange"
+      @open-change="handleOpenChange"
     >
-      <a-menu-item v-if="canManage" key="/dashboard">
+      <a-menu-item
+        v-if="canManage"
+        key="/dashboard"
+      >
         <DashboardOutlined />
         <span>仪表盘</span>
       </a-menu-item>
 
-      <a-sub-menu v-if="canManage" key="/content">
+      <a-sub-menu
+        v-if="canManage"
+        key="/content"
+      >
         <template #title>
           <FileTextOutlined />
           <span>内容管理</span>
@@ -61,15 +81,24 @@
           <SettingOutlined />
           <span>系统管理</span>
         </template>
-        <a-menu-item v-if="canManage" key="/system/users">
+        <a-menu-item
+          v-if="canManage"
+          key="/system/users"
+        >
           <TeamOutlined />
           <span>用户管理</span>
         </a-menu-item>
-        <a-menu-item v-if="canManage" key="/system/files">
+        <a-menu-item
+          v-if="canManage"
+          key="/system/files"
+        >
           <PictureOutlined />
           <span>文件管理</span>
         </a-menu-item>
-        <a-menu-item v-if="canManage" key="/system/info">
+        <a-menu-item
+          v-if="canManage"
+          key="/system/info"
+        >
           <InfoCircleOutlined />
           <span>系统信息</span>
         </a-menu-item>

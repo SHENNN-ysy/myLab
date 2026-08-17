@@ -7,7 +7,9 @@ COPY pom.xml ./
 COPY docker/maven-settings.xml /root/.m2/settings.xml
 RUN mvn -B -q -s /root/.m2/settings.xml dependency:go-offline
 COPY src ./src
-RUN mvn -B -q -s /root/.m2/settings.xml package -DskipTests
+COPY config ./config
+# 构建镜像时执行全部单元测试（纯单测，不依赖 DB/Redis），测试失败则构建失败、无法部署
+RUN mvn -B -q -s /root/.m2/settings.xml package
 
 FROM ${JRE_IMAGE}
 WORKDIR /app

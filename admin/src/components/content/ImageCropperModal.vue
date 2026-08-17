@@ -12,19 +12,42 @@
   >
     <div class="ratio-bar">
       <span>裁剪比例：</span>
-      <a-radio-group v-model:value="ratio" size="small" @change="applyRatio">
-        <a-radio-button :value="0">自由</a-radio-button>
-        <a-radio-button :value="1">1 : 1</a-radio-button>
-        <a-radio-button :value="4 / 3">4 : 3</a-radio-button>
-        <a-radio-button :value="3 / 4">3 : 4</a-radio-button>
-        <a-radio-button :value="16 / 9">16 : 9</a-radio-button>
+      <a-radio-group
+        v-model:value="ratio"
+        size="small"
+        @change="applyRatio"
+      >
+        <a-radio-button :value="0">
+          自由
+        </a-radio-button>
+        <a-radio-button :value="1">
+          1 : 1
+        </a-radio-button>
+        <a-radio-button :value="4 / 3">
+          4 : 3
+        </a-radio-button>
+        <a-radio-button :value="3 / 4">
+          3 : 4
+        </a-radio-button>
+        <a-radio-button :value="16 / 9">
+          16 : 9
+        </a-radio-button>
       </a-radio-group>
     </div>
     <div class="cropper-stage">
       <!-- key 强制换图时重建 img，保证 @load 再次触发；crossorigin 避免 canvas 被跨域污染 -->
-      <img ref="imageEl" :key="src" :src="src" crossorigin="anonymous" alt="待裁剪图片" @load="initCropper" />
+      <img
+        ref="imageEl"
+        :key="src"
+        :src="src"
+        crossorigin="anonymous"
+        alt="待裁剪图片"
+        @load="initCropper"
+      >
     </div>
-    <p class="tip">拖动选框调整区域，滚轮缩放图片；确认后裁剪结果将作为新图片上传到 OSS 素材库。</p>
+    <p class="tip">
+      拖动选框调整区域，滚轮缩放图片；确认后裁剪结果将作为新图片上传到 OSS 素材库。
+    </p>
   </a-modal>
 </template>
 

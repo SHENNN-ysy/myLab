@@ -24,7 +24,11 @@ public class RedisCacheDiagnostics implements CacheDiagnostics {
     @Override
     public boolean available() {
         try {
-            String reply = redis.getConnectionFactory().getConnection().ping();
+            var factory = redis.getConnectionFactory();
+            if (factory == null) {
+                return false;
+            }
+            String reply = factory.getConnection().ping();
             return "PONG".equalsIgnoreCase(reply);
         } catch (Exception ignored) {
             return false;

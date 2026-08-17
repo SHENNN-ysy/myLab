@@ -15,34 +15,82 @@
       </template>
     </a-alert>
 
-    <a-row :gutter="20" class="metric-cards">
-      <a-col v-for="metric in metrics" :key="metric.key" :xs="24" :sm="8">
-        <a-card :loading="analyticsLoading" class="metric-card">
-          <a-statistic :title="metric.title" :value="metric.value">
-            <template #prefix><component :is="metric.icon" :style="{ color: metric.color }" /></template>
+    <a-row
+      :gutter="20"
+      class="metric-cards"
+    >
+      <a-col
+        v-for="metric in metrics"
+        :key="metric.key"
+        :xs="24"
+        :sm="8"
+      >
+        <a-card
+          :loading="analyticsLoading"
+          class="metric-card"
+        >
+          <a-statistic
+            :title="metric.title"
+            :value="metric.value"
+          >
+            <template #prefix>
+              <component
+                :is="metric.icon"
+                :style="{ color: metric.color }"
+              />
+            </template>
           </a-statistic>
           <small>更新时间：{{ summary ? formatTime(summary.snapshot_at) : '暂无数据' }}</small>
         </a-card>
       </a-col>
     </a-row>
 
-    <a-card class="trend-card" title="全站数据趋势">
+    <a-card
+      class="trend-card"
+      title="全站数据趋势"
+    >
       <template #extra>
-        <a-segmented v-model:value="trendDays" :options="trendOptions" :disabled="trendLoading" />
+        <a-segmented
+          v-model:value="trendDays"
+          :options="trendOptions"
+          :disabled="trendLoading"
+        />
       </template>
       <a-spin :spinning="trendLoading">
-        <div ref="chartElement" class="trend-chart" role="img" aria-label="全站访问、内容浏览和新增点赞趋势图" />
+        <div
+          ref="chartElement"
+          class="trend-chart"
+          role="img"
+          aria-label="全站访问、内容浏览和新增点赞趋势图"
+        />
       </a-spin>
-      <p class="trend-note">统计时区：{{ trend?.timezone || 'Asia/Shanghai' }}；点赞曲线为每日新增点赞。</p>
+      <p class="trend-note">
+        统计时区：{{ trend?.timezone || 'Asia/Shanghai' }}；点赞曲线为每日新增点赞。
+      </p>
     </a-card>
 
     <a-spin :spinning="contentLoading">
-      <a-row :gutter="20" class="module-cards">
-        <a-col v-for="module in modules" :key="module.module_key" :xs="24" :sm="12" :lg="8">
-          <a-card hoverable class="module-card" @click="router.push(`/content/${module.module_key}`)">
+      <a-row
+        :gutter="20"
+        class="module-cards"
+      >
+        <a-col
+          v-for="module in modules"
+          :key="module.module_key"
+          :xs="24"
+          :sm="12"
+          :lg="8"
+        >
+          <a-card
+            hoverable
+            class="module-card"
+            @click="router.push(`/content/${module.module_key}`)"
+          >
             <div class="module-head">
               <strong>{{ moduleNames[module.module_key] }}</strong>
-              <a-tag :color="statusColor(module.status)">{{ statusText(module.status) }}</a-tag>
+              <a-tag :color="statusColor(module.status)">
+                {{ statusText(module.status) }}
+              </a-tag>
             </div>
             <p>草稿版本：{{ module.draft_version ?? '无' }}</p>
             <p>线上版本：{{ module.published_version ?? '无' }}</p>
