@@ -13,7 +13,7 @@
 | **数据库** | PostgreSQL 16（Flyway 版本化迁移） |
 | **缓存** | Redis 7（互动计数、令牌黑名单、限流） |
 | **对象存储** | 阿里云 OSS + CDN |
-| **反向代理** | Nginx（多域名站点、静态资源、API 反代） |
+| **反向代理** | Nginx（HTTPS 入口、静态资源、API 反代） |
 | **质量保障** | JUnit 5 + Mockito（240+ 单测）、Checkstyle、SpotBugs、JaCoCo、ArchUnit |
 | **容器化** | Docker + Docker Compose |
 
@@ -25,10 +25,10 @@
 Internet
    │
    ▼
-Nginx (:80)                      ← 按域名分发、静态资源、反向代理
-   ├── 前台域名      → myblog 静态站点（Vue SPA）
-   ├── 管理后台域名   → admin 静态站点（Vue SPA）
-   └── /api/**      → myblog-api   (:8000, Spring Boot)
+Nginx (:443)                     ← HTTPS 入口、静态资源、反向代理（:80 仅 301 跳转）
+   ├── /             → myblog 静态站点（Vue SPA，前台）
+   ├── /admin/**     → admin 静态站点（Vue SPA，后台）
+   └── /api/**       → myblog-api   (:8000, Spring Boot)
                           ├── PostgreSQL  (:5432)
                           ├── Redis       (:6379)
                           └── 阿里云 OSS  （图片/文件，CDN 回源）
@@ -93,8 +93,7 @@ cp .env.example .env
 | `OSS_ENDPOINT` / `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET` / `OSS_BUCKET` | 阿里云 OSS | 是 |
 | `OSS_CDN_DOMAIN` | CDN 域名，留空则直连 OSS | 按需 |
 | `CORS_ORIGINS` | 跨域来源（浏览器访问的源，逗号分隔） | 是 |
-| `BLOG_DOMAIN` / `ADMIN_DOMAIN` | 前台 / 后台域名 | 是 |
-| `VISITOR_COOKIE_SECURE` | HTTPS 环境保持 `true`，纯 HTTP 本地调试用 `false` | 按需 |
+| `BLOG_DOMAIN` | 主站域名（前台在 `/`，后台在 `/admin/` 路径；www 前缀自动附带） | 是 |
 
 ### 2. 环境要求
 
@@ -177,9 +176,9 @@ curl http://localhost/api/v1/...               # 公开内容接口
 
 | 地址 | 服务 |
 |------|------|
-| `http://<前台域名>` | 博客前台 |
-| `http://<后台域名>` | 管理后台 |
-| `http://<域名>/swagger-ui.html` | API 文档（Swagger UI） |
+| `https://<域名>` | 博客前台 |
+| `https://<域名>/admin/` | 管理后台 |
+| `https://<域名>/swagger-ui.html` | API 文档（Swagger UI） |
 
 ---
 
@@ -215,7 +214,8 @@ docker compose down --volumes            # 停止并删除数据卷（危险，�
 
 | 端口 | 服务 | 用途 |
 |------|------|------|
-| 80 | Nginx (web) | HTTP 入口（前台/后台按域名分发） |
+| 443 | Nginx (web) | HTTPS 入口（前台 `/`，后台 `/admin/`） |
+| 80 | Nginx (web) | 仅 301 跳转 HTTPS |
 | 8000 | myblog-api | Spring Boot API（仅绑定 127.0.0.1） |
 | 15432 | PostgreSQL | 数据库（容器内 5432，避开本机已占用的 5432） |
 | 6379 | Redis | 缓存（仅绑定 127.0.0.1） |

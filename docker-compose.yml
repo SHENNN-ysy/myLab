@@ -1,13 +1,26 @@
 name: myblog
 
-# 2核4G生产部署：Nginx + Java + PostgreSQL + Redis。
-# 图片由Java通过OSS内网上传，并通过CDN域名访问。
-# 数据库 schema 由后端 Flyway 管理（启动时自动执行 db/migration 下的迁移脚本），
-# db 容器不再挂载 docker-entrypoint-initdb.d 初始化脚本。
+# ============================================================
+# MyBlog 生产编排：Nginx + Java + PostgreSQL + Redis（2核4G 规格调优）
+#
+# 架构要点：
+#   - web（nginx）是唯一对外入口：443 提供 HTTPS 服务（前台在 /，后台在 /admin/ 路径），
+#     80 仅做 301 跳转；/api 反向代理到 api 服务
+#   - api（Spring Boot）只监听 127.0.0.1:8000，不直接暴露给公网
+#   - 数据库 schema 由后端 Flyway 管理（启动时自动执行 db/migration 下的迁移脚本），
+#     db 容器不再挂载 docker-entrypoint-initdb.d 初始化脚本
+#   - 图片由 api 通过 OSS 内网上传，并通过 CDN 域名访问
+#
+# 镜像名均可通过环境变量覆盖（API_IMAGE / WEB_IMAGE / POSTGRES_IMAGE /
+# REDIS_IMAGE），CD 流水线借此从本地镜像仓库拉取指定版本。
+# ============================================================
 services:
+  # ---------- PostgreSQL 16 ----------
   db:
     ports:
-      - "127.0.0.1:15432:5432" # 本机 5432 被本地 PostgreSQL 占用，主机侧改映射到 15432
+      # 本机 5432 被本地 PostgreSQL 占用，主机侧改映射到 15432；
+      # 绑定 127.0.0.1 仅允许本机（含 IDE 直连调试）访问
+      - "127.0.0.1:15432:5432"
     image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -15,6 +28,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       TZ: ${TZ:-Asia/Shanghai}
     command:
+      # 小规格服务器的连接数与内存参数调优
       - postgres
       - -c
       - max_connections=30
@@ -25,8 +39,10 @@ services:
       - -c
       - work_mem=4MB
     volumes:
+      # 数据持久化到命名卷，容器重建不丢数据
       - pg_data:/var/lib/postgresql/data
     healthcheck:
+      # 就绪探针：api 依赖此状态，db 健康后才启动
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
@@ -35,18 +51,22 @@ services:
     networks: [blog-net]
     restart: unless-stopped
 
+  # ---------- Redis 7（会话/访客身份/缓存） ----------
   redis:
     ports:
+      # 绑定 127.0.0.1 仅允许本机访问
       - "127.0.0.1:6379:6379"
     image: ${REDIS_IMAGE:-redis:7-alpine}
     command:
       - redis-server
+      # AOF 持久化，每秒刷盘，兼顾性能与数据安全
       - --appendonly
       - "yes"
       - --appendfsync
       - everysec
       - --requirepass
       - ${REDIS_PASSWORD}
+      # 内存上限 + 满后拒绝写入（不淘汰 key），避免静默丢数据
       - --maxmemory
       - 128mb
       - --maxmemory-policy
@@ -62,21 +82,26 @@ services:
     networks: [blog-net]
     restart: unless-stopped
 
+  # ---------- Spring Boot 后端 ----------
   api:
     build:
       context: ./backend-java
       dockerfile: Dockerfile
+    # 镜像名可被 CD 覆盖为 localhost:5000/myblog-api:<tag>
     image: ${API_IMAGE:-myblog-api:latest}
     ports:
+      # 仅本机可直连（调试/健康检查用）；公网流量由 web（nginx）转发
       - "127.0.0.1:8000:8000"
     environment:
       APP_PORT: "8000"
       TZ: ${TZ:-Asia/Shanghai}
+      # 数据库/Redis 通过 compose 内部网络按服务名访问
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
+      # 连接池按小规格服务器收紧
       DB_POOL_SIZE: "5"
       DB_MIN_IDLE: "1"
       REDIS_HOST: redis
@@ -84,8 +109,8 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       ENGAGEMENT_HASH_SECRET: ${ENGAGEMENT_HASH_SECRET}
-      VISITOR_COOKIE_SECURE: ${VISITOR_COOKIE_SECURE:-false}
       CORS_ORIGINS: ${CORS_ORIGINS}
+      # 阿里云 OSS（内网 endpoint 上传，CDN 域名访问）
       OSS_ENDPOINT: ${OSS_ENDPOINT}
       OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID}
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET}
@@ -93,36 +118,68 @@ services:
       OSS_CDN_DOMAIN: ${OSS_CDN_DOMAIN}
       OSS_OBJECT_PREFIX: ${OSS_OBJECT_PREFIX-}
       OSS_MAX_FILE_SIZE_MB: ${OSS_MAX_FILE_SIZE_MB:-10}
+      # 初始管理员（仅在系统无任何用户时创建一次）
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
       INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD}
+      # 容器内日志目录，挂载到宿主机 ./logs 便于查看
       LOG_PATH: "/logs"
     volumes:
       - ./logs:/logs
     depends_on:
+      # 等 db / redis 健康检查通过后再启动，避免启动期连接失败
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
+    healthcheck:
+      # 探测免鉴权健康端点 /api/v1/health（校验应用 + DB + Redis）。
+      # JRE 镜像无 curl/wget，用 bash /dev/tcp 发 HTTP 请求并校验 200 响应行
+      test:
+        - CMD-SHELL
+        - bash -c 'exec 3<>/dev/tcp/localhost/8000 && printf "GET /api/v1/health HTTP/1.0\r\n\r\n" >&3 && head -1 <&3 | grep -q " 200"'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # JVM 启动 + Flyway 迁移耗时较长，宽限 90s 内不计失败
+      start_period: 90s
     mem_limit: 1g
     networks: [blog-net]
     restart: unless-stopped
 
+  # ---------- Nginx（前台 + 后台静态资源 & 反向代理） ----------
   web:
     build:
+      # 多阶段构建：同时编译 myblog（前台）与 admin（后台）两个前端。
+      # 前台部署在 /，后台部署在 /admin/ 路径（见 nginx/default.conf.template）
       context: .
       dockerfile: nginx/Dockerfile
+    # 镜像名可被 CD 覆盖为 localhost:5000/myblog-web:<tag>
     image: ${WEB_IMAGE:-myblog-web:latest}
     environment:
+      # 用于 nginx 配置模板渲染（envsubst），主站域名（www 前缀自动附带）
       BLOG_DOMAIN: ${BLOG_DOMAIN}
-      ADMIN_DOMAIN: ${ADMIN_DOMAIN}
       TZ: ${TZ:-Asia/Shanghai}
     ports:
+      # 80 仅用于 301 跳转 HTTPS，443 为对外服务端口
       - "80:80"
+      - "443:443"
+    volumes:
+      # SSL 证书只读挂载（私钥已 gitignore，部署时放置于 nginx/certs/）
+      - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - api
+    healthcheck:
+      # 直接探测 HTTPS 端口：用 127.0.0.1 而非 localhost（alpine 中 localhost 可能
+      # 解析到 ::1，nginx 只监听 IPv4）；跳过证书校验（证书绑定的是域名而非 IP）
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --no-check-certificate --spider https://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
     mem_limit: 128m
     networks: [blog-net]
     restart: unless-stopped
 
 networks:
+  # 所有服务共用一个内部桥接网络，按服务名互相解析
   blog-net:
     driver: bridge
 

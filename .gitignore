@@ -60,3 +60,6 @@ Thumbs.db
 tmp/
 temp/
 logs/
+
+# SSL 证书与私钥（不入库，部署时放置）
+nginx/certs/

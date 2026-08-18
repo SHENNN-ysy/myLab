@@ -1,0 +1,96 @@
+// ============================================================
+// MyBlog CI 流水线（每次 push 自动触发）
+//
+// Jenkins 侧一次性配置：
+//   1. 新建 Multibranch Pipeline，Branch Source 选 GitHub/Git，
+//      开启 "Discover Branches"（所有分支），Script Path 填 Jenkinsfile.ci
+//   2. 在 GitHub 仓库配置 webhook 指向 Jenkins（/github-webhook/），
+//      任意分支 push 时自动触发对应分支的构建
+//
+// 节点前置条件：
+//   - 安装 Docker，且 jenkins 用户已加入 docker 组
+//   - 后端集成测试基于 Testcontainers，需要访问 /var/run/docker.sock
+// ============================================================
+pipeline {
+    agent none
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    stages {
+        stage('Backend CI') {
+            agent {
+                docker {
+                    // 挂载 docker.sock 供 Testcontainers 起 PG/Redis；
+                    // 挂载 ~/.m2 做 Maven 依赖缓存，避免每次全量下载
+                    image 'maven:3.9-eclipse-temurin-21'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.m2:/root/.m2'
+                    reuseNode true
+                }
+            }
+            steps {
+                dir('backend-java') {
+                    // verify = Checkstyle + 单元测试 + *IT 集成测试 + SpotBugs + JaCoCo
+                    sh 'mvn -B verify'
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: 'backend-java/target/surefire-reports/*.xml, backend-java/target/failsafe-reports/*.xml'
+                    jacoco execPattern: 'backend-java/target/jacoco.exec',
+                           classPattern: 'backend-java/target/classes',
+                           sourcePattern: 'backend-java/src/main/java'
+                }
+            }
+        }
+
+        stage('Frontend CI') {
+            parallel {
+                stage('blog (myblog/)') {
+                    agent {
+                        docker {
+                            image 'node:20-alpine'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        dir('myblog') {
+                            sh 'npm ci --no-audit --no-fund'
+                            sh 'npm run lint'
+                            // build 内含 vue-tsc 类型检查，即编译验证
+                            sh 'npm run build'
+                        }
+                    }
+                }
+                stage('admin (admin/)') {
+                    agent {
+                        docker {
+                            image 'node:20-alpine'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        dir('admin') {
+                            sh 'npm ci --no-audit --no-fund'
+                            sh 'npm run lint'
+                            sh 'npm run build'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'CI 通过：编译、静态检查与全部测试均成功。'
+        }
+        failure {
+            echo 'CI 失败：请根据上方日志修复后重新推送。'
+        }
+    }
+}

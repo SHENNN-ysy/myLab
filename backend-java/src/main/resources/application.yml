@@ -68,7 +68,8 @@ app:
   initial-admin-username: ${INIT_ADMIN_USERNAME:admin}
   initial-admin-password: ${INIT_ADMIN_PASSWORD}
   engagement-hash-secret: ${ENGAGEMENT_HASH_SECRET:${JWT_SECRET}}
-  visitor-cookie-secure: ${VISITOR_COOKIE_SECURE:false}
+  # 生产默认强制 Secure（仅 HTTPS 发送）；本地纯 HTTP 调试由 application-dev.yml 覆盖为 false
+  visitor-cookie-secure: true
 server.tomcat.threads:
   max: ${TOMCAT_MAX_THREADS:50}
   min-spare: ${TOMCAT_MIN_SPARE_THREADS:5}

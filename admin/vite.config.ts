@@ -5,6 +5,8 @@ import { resolve } from 'path'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
+    // 后台部署在主域名的 /admin/ 路径下（与前台同域，共用一张证书）
+    base: '/admin/',
     plugins: [vue()],
     resolve: {
       alias: {

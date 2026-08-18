@@ -34,7 +34,8 @@
 复制根目录 `.env.example` 为 `.env`，至少替换：
 
 - PostgreSQL、Redis、JWT和初始管理员密码；
-- `BLOG_DOMAIN`、`ADMIN_DOMAIN`；
+- `BLOG_DOMAIN`：主站域名（前台在 `/`，后台在 `/admin/` 路径，www 前缀自动附带）；
+- `CORS_ORIGINS`：改为 `https://<域名>,https://www.<域名>`；
 - `OSS_ENDPOINT`：使用同地域内网Endpoint；
 - RAM用户的 `OSS_ACCESS_KEY_ID` 与 `OSS_ACCESS_KEY_SECRET`；
 - `OSS_BUCKET`、`OSS_CDN_DOMAIN`。
@@ -59,6 +60,13 @@ docker compose up -d --build
 docker compose ps
 ```
 
-生产环境只启动 Nginx、Java API、PostgreSQL 和 Redis。PostgreSQL与Redis没有公网端口映射。
+生产环境只启动 Nginx、Java API、PostgreSQL 和 Redis。PostgreSQL 与 Redis 只绑定 127.0.0.1，无公网暴露。
 
-当前Nginx容器监听HTTP 80端口。HTTPS可以在阿里云负载均衡/CDN侧终止，或在服务器外层补充证书挂载与443监听。
+Nginx 容器监听 443（HTTPS 服务）与 80（仅 301 跳转 HTTPS）。SSL 证书需手动放置到服务器仓库目录的 `nginx/certs/`（该目录已 gitignore，不会随代码分发）：
+
+```bash
+nginx/certs/shennn.top.pem  # 含中间证书的完整链
+nginx/certs/shennn.top.key  # 私钥，权限建议 600
+```
+
+证书续期后替换这两个文件并执行 `docker compose restart web` 即可。

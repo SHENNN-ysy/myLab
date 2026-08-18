@@ -1,6 +1,35 @@
+# ============================================================
+# MyBlog 站点配置（容器启动时由官方 nginx 镜像的 envsubst 按环境变量渲染，
+# 仅替换环境中已定义的变量，nginx 自身的 $host/$uri 等变量不受影响）
+#
+# 架构：单一域名 HTTPS 入口
+#   - https://${BLOG_DOMAIN}/        前台博客 SPA
+#   - https://${BLOG_DOMAIN}/admin/  后台管理 SPA（vite base = /admin/）
+#   - https://${BLOG_DOMAIN}/api/    反向代理到 api:8000
+# 证书：nginx/certs/ 下的 shennn.top 证书（覆盖 shennn.top / www.shennn.top），
+#       以只读方式挂载到 /etc/nginx/certs/；续期后替换文件并重启 web 容器即可
+# ============================================================
+
+# HTTP 全量 301 跳转 HTTPS
 server {
     listen 80;
-    server_name ${BLOG_DOMAIN};
+    server_name ${BLOG_DOMAIN} www.${BLOG_DOMAIN};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${BLOG_DOMAIN} www.${BLOG_DOMAIN};
+
+    # SSL 证书（含中间证书的完整链）与私钥
+    ssl_certificate     /etc/nginx/certs/shennn.top.pem;
+    ssl_certificate_key /etc/nginx/certs/shennn.top.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
     root /usr/share/nginx/blog;
     index index.html;
     client_max_body_size 12m;
@@ -10,6 +39,8 @@ server {
     resolver 127.0.0.11 valid=10s ipv6=off;
     set $api_upstream api:8000;
 
+    # API 反向代理。X-Forwarded-Proto 透传后，后端能识别 HTTPS 请求
+    # （Spring forward-headers-strategy=framework），访客 Cookie 自动带 Secure
     location /api/ {
         proxy_pass http://$api_upstream;
         proxy_set_header Host $host;
@@ -20,51 +51,29 @@ server {
         proxy_read_timeout 30s;
     }
 
+    # 后台构建产物带 hash 的静态资源，长缓存（须放在 /admin/ 之前，最长前缀优先匹配）
+    location /admin/assets/ {
+        alias /usr/share/nginx/admin/assets/;
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # 后台管理 SPA：history 路由回退到 /admin/index.html
+    location /admin/ {
+        alias /usr/share/nginx/admin/;
+        index index.html;
+        try_files $uri $uri/ /admin/index.html;
+    }
+
+    # 前台带 hash 的静态资源，长缓存
     location /assets/ {
         try_files $uri =404;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
-
-
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-
-server {
-    listen 80;
-    server_name ${ADMIN_DOMAIN};
-    root /usr/share/nginx/admin;
-    index index.html;
-    client_max_body_size 12m;
-
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
-    resolver 127.0.0.11 valid=10s ipv6=off;
-    set $api_upstream api:8000;
-
-    location /api/ {
-        proxy_pass http://$api_upstream;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 30s;
-    }
-
-    location /assets/ {
-        try_files $uri =404;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-
-
-
+    # 前台 SPA：history 路由回退到 index.html
     location / {
         try_files $uri $uri/ /index.html;
     }

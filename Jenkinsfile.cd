@@ -1,0 +1,115 @@
+// ============================================================
+// MyBlog CD 流水线（手动触发）
+//
+// Jenkins 侧一次性配置：
+//   1. 新建普通 Pipeline 作业，Definition 选
+//      "Pipeline script from SCM"，Script Path 填 Jenkinsfile.cd
+//   2. 通过 "Build with Parameters" 手动触发，可指定 IMAGE_TAG
+//
+// 节点前置条件（Jenkins 与部署目标为同一台机器）：
+//   - 安装 Docker 与 Docker Compose v2，jenkins 用户已加入 docker 组
+//   - 本地镜像仓库 localhost:5000 已启动（registry 容器）
+//   - 仓库目录下已按 .env.example 配置好 .env（compose 自动读取）
+//   - docker 对 localhost 仓库默认允许 HTTP，无需 insecure-registries
+// ============================================================
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'IMAGE_TAG',
+               defaultValue: '',
+               description: '镜像标签，留空则使用构建号（BUILD_NUMBER）')
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    environment {
+        REGISTRY = 'localhost:5000'
+        // 参数留空时回退到构建号
+        TAG = "${params.IMAGE_TAG?.trim() ? params.IMAGE_TAG.trim() : env.BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Build Images') {
+            steps {
+                // 后端镜像构建期内会执行全部单元测试，测试失败则构建失败
+                sh 'docker compose build api web'
+            }
+        }
+
+        stage('Tag & Push to Local Registry') {
+            steps {
+                sh """
+                    docker tag myblog-api:latest  ${REGISTRY}/myblog-api:${TAG}
+                    docker tag myblog-api:latest  ${REGISTRY}/myblog-api:latest
+                    docker tag myblog-web:latest  ${REGISTRY}/myblog-web:${TAG}
+                    docker tag myblog-web:latest  ${REGISTRY}/myblog-web:latest
+
+                    docker push ${REGISTRY}/myblog-api:${TAG}
+                    docker push ${REGISTRY}/myblog-api:latest
+                    docker push ${REGISTRY}/myblog-web:${TAG}
+                    docker push ${REGISTRY}/myblog-web:latest
+                """
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                // 通过 API_IMAGE / WEB_IMAGE 覆盖 compose 默认镜像名，
+                // 从本地仓库拉取刚推送的镜像并重建 api/web 容器；db/redis 不受影响
+                sh """
+                    API_IMAGE=${REGISTRY}/myblog-api:${TAG} \\
+                    WEB_IMAGE=${REGISTRY}/myblog-web:${TAG} \\
+                    docker compose up -d
+                """
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                // 以 compose 健康检查为准（api 探测 /api/v1/health，web 探测 80 端口），
+                // 轮询容器 Health.Status 直到 healthy；超时则判定部署失败
+                sh '''
+                    for svc in api web; do
+                        ok=false
+                        for i in $(seq 1 30); do
+                            cid=$(docker compose ps -q "$svc")
+                            status=$(docker inspect --format '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo unknown)
+                            if [ "$status" = "healthy" ]; then
+                                echo "$svc 已就绪 (healthy)"
+                                ok=true
+                                break
+                            fi
+                            echo "等待 $svc 健康检查通过（当前: $status）... ($i/30)"
+                            sleep 5
+                        done
+                        if [ "$ok" != "true" ]; then
+                            echo "健康检查失败: $svc"
+                            docker compose ps
+                            exit 1
+                        fi
+                    done
+                    docker compose ps
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "部署成功：${REGISTRY}/myblog-api:${TAG} 与 ${REGISTRY}/myblog-web:${TAG} 已上线。"
+        }
+        failure {
+            echo """部署失败。如需回滚，执行：
+  API_IMAGE=${REGISTRY}/myblog-api:<上一个TAG> WEB_IMAGE=${REGISTRY}/myblog-web:<上一个TAG> docker compose up -d"""
+        }
+        cleanup {
+            // 清理构建过程中产生的悬空镜像
+            sh 'docker image prune -f || true'
+        }
+    }
+}

@@ -5,7 +5,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
 const router = createRouter({
-  history: createWebHistory(),
+  // 与 vite.config.ts 的 base 保持一致：后台部署在主域名的 /admin/ 路径下
+  history: createWebHistory('/admin/'),
   routes: [
     {
       path: '/login',
