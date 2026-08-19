@@ -69,4 +69,4 @@ nginx/certs/shennn.top.pem  # 含中间证书的完整链
 nginx/certs/shennn.top.key  # 私钥，权限建议 600
 ```
 
-证书续期后替换这两个文件并执行 `docker compose restart web` 即可。
+证书续期后替换这两个文件并执行 `docker compose restart nginx` 即可。

@@ -144,7 +144,7 @@ interface NavItem {
 
 const navLinks: NavItem[] = [
   { label: '首页', hash: '#hero-cinema' },
-  { label: '关于', hash: '#influencer' },
+  { label: '关于', hash: '#hero-intro' },
   { label: '技能', hash: '#skills' },
   { label: '项目', hash: '#work' },
   { label: '足迹', hash: '#hobbies' },

@@ -1,6 +1,6 @@
 # MyBlog 个人博客
 
-全栈个人博客系统：面向访客的前台博客 + 面向管理员的后台管理系统，前后端分离架构，Docker 容器化部署，Jenkins CI/CD 流水线。
+全栈个人博客系统：面向访客的前台博客 + 面向管理员的后台管理系统，前后端分离架构，Docker 容器化部署，Jenkins CI/CD 流水线。该博客项目会作为我的个人实验项目，以此项目为基础进行一些学习实践。
 ---
 
 ## 技术栈
@@ -13,7 +13,7 @@
 | **数据库** | PostgreSQL 16（Flyway 版本化迁移） |
 | **缓存** | Redis 7（互动计数、令牌黑名单、限流） |
 | **对象存储** | 阿里云 OSS + CDN |
-| **反向代理** | Nginx（HTTPS 入口、静态资源、API 反代） |
+| **反向代理** | Nginx 网关（HTTPS 入口、SSL 终止、反向代理） |
 | **质量保障** | JUnit 5 + Mockito（240+ 单测）、Checkstyle、SpotBugs、JaCoCo、ArchUnit |
 | **容器化** | Docker + Docker Compose |
 
@@ -25,13 +25,13 @@
 Internet
    │
    ▼
-Nginx (:443)                     ← HTTPS 入口、静态资源、反向代理（:80 仅 301 跳转）
-   ├── /             → myblog 静态站点（Vue SPA，前台）
-   ├── /admin/**     → admin 静态站点（Vue SPA，后台）
-   └── /api/**       → myblog-api   (:8000, Spring Boot)
-                          ├── PostgreSQL  (:5432)
-                          ├── Redis       (:6379)
-                          └── 阿里云 OSS  （图片/文件，CDN 回源）
+nginx 网关 (:443 HTTPS, :80 仅 301)   ← SSL 终止 + 反向代理（唯一对外入口）
+   ├── /          → web   容器（myblog 前台静态站点，Vue SPA）
+   ├── /admin/    → admin 容器（后台静态站点，Vue SPA）
+   └── /api/      → backend 容器 (:8000, Spring Boot，仅监听 127.0.0.1)
+                         ├── PostgreSQL  (:5432，宿主机映射 127.0.0.1:15432)
+                         ├── Redis       (:6379，仅监听 127.0.0.1)
+                         └── 阿里云 OSS  （图片/文件，CDN 回源）
 ```
 
 
@@ -65,10 +65,12 @@ MyBlog/
 │       ├── application.yml           # 主配置（占位符走环境变量）
 │       ├── application-dev.yml       # 本地开发配置（含敏感值，已 gitignore）
 │       └── db/migration/             # Flyway 迁移脚本（V1__baseline.sql 起）
-├── nginx/                       # Nginx 反向代理 + SSL + 限流配置
+├── nginx/                       # Nginx 网关配置模板 + SSL 证书（certs/ 已 gitignore）
 ├── scripts/                     # 运维脚本（OSS 静态资源上传、库基线校验）
 ├── docs/                        # API 文档、数据库设计、测试工作流
-├── docker-compose.yml           # 容器编排（db / redis / api / web）
+├── docker-compose.yml           # 容器编排（postgres / redis / backend / frontend-web / frontend-admin / nginx）
+├── Jenkinsfile.ci               # CI 流水线（push 触发：测试 + 静态检查 + 前端构建）
+├── Jenkinsfile.cd               # CD 流水线（手动触发：本机构建镜像并部署）
 └── .env.example                 # 环境变量模板
 ```
 
@@ -114,9 +116,9 @@ cp .env.example .env
 数据库与 Redis 直接用 Docker 容器（不必整套 compose 启动）：
 
 ```bash
-# 1. 启动依赖容器（复用 docker-compose 里的 db / redis 即可）
-docker compose up -d db redis
-#    PostgreSQL 映射到本机 5432，Redis 映射到本机 6379
+# 1. 启动依赖容器（复用 docker-compose 里的 postgres / redis 即可）
+docker compose up -d postgres redis
+#    PostgreSQL 映射到本机 127.0.0.1:15432，Redis 映射到本机 127.0.0.1:6379
 
 # 2. 后端（Java 21 + Maven）：dev profile 自动连上述容器
 #    敏感配置在 backend-java/src/main/resources/application-dev.yml（已 gitignore，需自行创建）
@@ -132,7 +134,7 @@ cd myblog && npm ci && npm run dev
 cd admin && npm ci && npm run dev
 ```
 
-> IDEA 直跑后端：Run Configuration 的 Active profiles 填 `dev` 即可；本地调试前注意停掉 compose 的 api 容器（8000 端口冲突）。
+> IDEA 直跑后端：Run Configuration 的 Active profiles 填 `dev` 即可；本地调试前注意停掉 compose 的 backend 容器（8000 端口冲突）。
 
 ### 测试与质量检查
 
@@ -163,12 +165,13 @@ docker compose up -d --build
 
 - **构建即质量门**：后端镜像构建阶段会执行全部单元测试 + Checkstyle，测试不通过则构建失败，问题代码不会进入线上
 - **数据库初始化**：无需手工执行 SQL。首次启动时后端 Flyway 自动执行 `V1__baseline.sql` 完成建表与初始数据；存量库自动以 V1 为基线接管，后续变更追加 `V2__xxx.sql` 即可
-- 镜像加速：离线/内网环境可先跑 `sync-images-to-local-registry.ps1` 把基础镜像同步到本地 registry（localhost:5000）
+- **SSL 证书**：部署前将证书放置于 `nginx/certs/`（该目录已 gitignore），详见 [deploy/README.md](deploy/README.md)
+- 镜像加速：离线/内网环境可预先 `docker pull` 基础镜像，或通过 Dockerfile 的 build-arg（如 `MAVEN_IMAGE`）指定私有仓库地址
 
 ### 验证部署
 
 ```bash
-curl http://localhost:8000/actuator/health     # 后端健康检查
+curl http://localhost:8000/api/v1/health       # 后端健康检查（应用 + DB + Redis）
 curl http://localhost/api/v1/...               # 公开内容接口
 ```
 
@@ -187,17 +190,17 @@ curl http://localhost/api/v1/...               # 公开内容接口
 ```bash
 # 服务管理
 docker compose ps                        # 查看服务状态
-docker compose logs -f api               # 跟踪后端日志
-docker compose restart api               # 重启后端
+docker compose logs -f backend           # 跟踪后端日志（容器内日志另挂载到宿主机 ./logs/）
+docker compose restart backend           # 重启后端
 
-# 仅更新业务服务（不重建 db / redis）
-docker compose up -d --no-deps --build api web
+# 仅更新业务服务（不重建 postgres / redis；nginx 网关用官方镜像无需构建）
+docker compose up -d --no-deps --build backend frontend-web frontend-admin
 
 # 数据库
-docker exec -it myblog-db-1 psql -U myblog -d myblog           # 进入数据库
-docker exec myblog-db-1 pg_dump -U myblog -d myblog \
+docker exec -it myblog-postgres-1 psql -U myblog -d myblog           # 进入数据库
+docker exec myblog-postgres-1 pg_dump -U myblog -d myblog \
   --no-owner --no-privileges --inserts > backup.sql            # 逻辑备份
-docker exec myblog-db-1 psql -U myblog -d myblog \
+docker exec myblog-postgres-1 psql -U myblog -d myblog \
   -c "SELECT version, description, success FROM flyway_schema_history;"  # 迁移状态
 
 # 静态资源上云（图片同步 OSS，配合 CDN）
@@ -214,9 +217,9 @@ docker compose down --volumes            # 停止并删除数据卷（危险，�
 
 | 端口 | 服务 | 用途 |
 |------|------|------|
-| 443 | Nginx (web) | HTTPS 入口（前台 `/`，后台 `/admin/`） |
-| 80 | Nginx (web) | 仅 301 跳转 HTTPS |
-| 8000 | myblog-api | Spring Boot API（仅绑定 127.0.0.1） |
+| 443 | Nginx (nginx) | HTTPS 入口（前台 `/`，后台 `/admin/`） |
+| 80 | Nginx (nginx) | 仅 301 跳转 HTTPS |
+| 8000 | backend | Spring Boot API（仅绑定 127.0.0.1） |
 | 15432 | PostgreSQL | 数据库（容器内 5432，避开本机已占用的 5432） |
 | 6379 | Redis | 缓存（仅绑定 127.0.0.1） |
 | 5173 / 5174 | Vite Dev Server | 本地开发前台 / 后台 |
@@ -242,6 +245,7 @@ docker compose down --volumes            # 停止并删除数据卷（危险，�
 
 | 文档 | 路径 | 说明 |
 |------|------|------|
+| AI 助手项目说明 | [AGENTS.md](AGENTS.md) | 项目约定、架构规则、常用命令（供 AI 编码助手阅读） |
 | API 接口文档 | [docs/API接口文档.md](docs/API接口文档.md) | 全部 REST 接口定义 |
 | 后端架构说明 | [backend-java/ARCHITECTURE.md](backend-java/ARCHITECTURE.md) | 分层架构与模块职责 |
 | 数据库设计 | [docs/数据库表结构重设计.md](docs/数据库表结构重设计.md) | 版本化内容系统的表设计实践 |

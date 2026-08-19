@@ -17,6 +17,7 @@ import com.myblog.common.exception.ValidationException;
 import com.myblog.common.json.JacksonObjectMapper;
 import com.myblog.common.security.Authorization;
 import com.myblog.common.security.CurrentUser;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ import java.util.UUID;
  * 每个模块同一时刻至多一个草稿（DRAFT）和一个线上版本（PUBLISHED），发布即生成不可变历史版本；
  * 模块内容以 JSON 存储，保存/发布前按模块分别做结构校验，读取时把对象存储 key 转成可访问 URL。
  */
+@Slf4j
 @Service
 public class ContentModuleServiceImpl implements ContentModuleService {
     private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab"); // 支持的内容模块清单
@@ -146,6 +148,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             draft.setUpdatedAt(now);
         }
         releases.replaceData(draft, draftData);
+        log.info("内容草稿已保存：operator={}, module={}, version={}",
+                actor.username(), moduleKey, draft.getVersionNo());
         return view(moduleKey);
     }
 
@@ -163,6 +167,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         Object data = releases.readData(draft);
         validate(moduleKey, data, true);
         releases.publish(draft, releases.findCurrent(moduleKey), actor.id(), OffsetDateTime.now());
+        log.info("内容已发布：operator={}, module={}, version={}",
+                actor.username(), moduleKey, draft.getVersionNo());
         return view(moduleKey);
     }
 
@@ -178,6 +184,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         ContentRelease current = releases.findPublished(moduleKey);
         if (current == null) throw conflict("当前模块没有已发布版本");
         releases.offline(current, OffsetDateTime.now());
+        log.info("内容已下线：operator={}, module={}, version={}",
+                actor.username(), moduleKey, current.getVersionNo());
         return view(moduleKey);
     }
 

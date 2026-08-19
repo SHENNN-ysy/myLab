@@ -13,6 +13,7 @@ import com.myblog.application.port.ObjectStorage;
 import com.myblog.common.security.Authorization;
 import com.myblog.application.model.vo.FileOutVO;
 import com.myblog.application.model.vo.FileReferenceVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ import java.util.UUID;
 /**
  * 文件服务实现：负责上传校验（类型/目录/大小）、对象存储 key 生成与文件记录的生命周期管理。
  */
+@Slf4j
 @Service
 public class FileServiceImpl implements FileService {
 
@@ -115,6 +117,8 @@ public class FileServiceImpl implements FileService {
         record.setCreatedAt(now);
         record.setUpdatedAt(now);
         files.add(record);
+        log.info("文件已上传：operator={}, key={}, name={}, mime={}, size={}B",
+                actor.username(), key, name, contentType, file.size());
         return toVo(record);
     }
 
@@ -155,6 +159,8 @@ public class FileServiceImpl implements FileService {
         record.setUpdatedAt(OffsetDateTime.now());
         files.save(record);
         storage.deleteAsync(record.getObjectKey());
+        log.info("文件已删除：operator={}, key={}, name={}",
+                actor.username(), record.getObjectKey(), record.getOriginalName());
     }
 
     @Override

@@ -557,6 +557,10 @@ const timeSeries = computed(() => {
 }
 
 .game-card img {
+  /* 绝对定位脱离文档流：图片固有尺寸不参与网格行高计算，
+     防止竖版大图把卡片网格撑高、连带拉伸左侧 Time 面板 */
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;

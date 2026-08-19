@@ -1,6 +1,7 @@
 package com.myblog.application.service.auth;
 
 import com.myblog.application.model.entity.User;
+import com.myblog.common.context.RequestContext;
 import com.myblog.common.exception.UnauthorizedException;
 import com.myblog.common.exception.ValidationException;
 import com.myblog.common.enumeration.ErrorCode;
@@ -11,6 +12,7 @@ import com.myblog.common.properties.AppProperties;
 import com.myblog.application.model.vo.AuthResultVO;
 import com.myblog.application.model.vo.TokenPairVO;
 import com.myblog.application.model.vo.UserPublicVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ import java.util.UUID;
 /**
  * 认证服务实现：基于 BCrypt 校验密码，依赖 TokenService 签发令牌。
  */
+@Slf4j
 @Service
 public class AuthServiceImpl implements AuthService {
 
@@ -45,10 +48,12 @@ public class AuthServiceImpl implements AuthService {
         if (user == null
                 || !Boolean.TRUE.equals(user.getIsActive())
                 || !bcrypt.matches(password, user.getPasswordHash())) {
+            log.warn("登录失败：username={}, ip={}", username, RequestContext.getIp());
             throw new UnauthorizedException(ErrorCode.INVALID_CREDENTIALS, null);
         }
         user.setLastLoginAt(OffsetDateTime.now());
         users.save(user);
+        log.info("登录成功：username={}, ip={}", username, RequestContext.getIp());
         return new AuthResultVO(tokens.pair(user), publicUser(user));
     }
 
@@ -100,6 +105,7 @@ public class AuthServiceImpl implements AuthService {
         }
         user.setPasswordHash(bcrypt.encode(newPassword));
         users.save(user);
+        log.info("密码已修改：username={}, ip={}", user.getUsername(), RequestContext.getIp());
     }
 
     @Override

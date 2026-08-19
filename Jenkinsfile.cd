@@ -8,9 +8,8 @@
 //
 // 节点前置条件（Jenkins 与部署目标为同一台机器）：
 //   - 安装 Docker 与 Docker Compose v2，jenkins 用户已加入 docker 组
-//   - 本地镜像仓库 localhost:5000 已启动（registry 容器）
 //   - 仓库目录下已按 .env.example 配置好 .env（compose 自动读取）
-//   - docker 对 localhost 仓库默认允许 HTTP，无需 insecure-registries
+//   - 镜像在 Jenkins 节点本机构建并直接部署，不依赖镜像仓库
 // ============================================================
 pipeline {
     agent any
@@ -28,7 +27,6 @@ pipeline {
     }
 
     environment {
-        REGISTRY = 'localhost:5000'
         // 参数留空时回退到构建号
         TAG = "${params.IMAGE_TAG?.trim() ? params.IMAGE_TAG.trim() : env.BUILD_NUMBER}"
     }
@@ -37,33 +35,30 @@ pipeline {
         stage('Build Images') {
             steps {
                 // 后端镜像构建期内会执行全部单元测试，测试失败则构建失败
-                sh 'docker compose build api web'
+                sh 'docker compose build backend frontend-web frontend-admin'
             }
         }
 
-        stage('Tag & Push to Local Registry') {
+        stage('Tag Images') {
             steps {
+                // 给本机构建的镜像打上版本标签，保留历史 TAG 便于回滚
                 sh """
-                    docker tag myblog-api:latest  ${REGISTRY}/myblog-api:${TAG}
-                    docker tag myblog-api:latest  ${REGISTRY}/myblog-api:latest
-                    docker tag myblog-web:latest  ${REGISTRY}/myblog-web:${TAG}
-                    docker tag myblog-web:latest  ${REGISTRY}/myblog-web:latest
-
-                    docker push ${REGISTRY}/myblog-api:${TAG}
-                    docker push ${REGISTRY}/myblog-api:latest
-                    docker push ${REGISTRY}/myblog-web:${TAG}
-                    docker push ${REGISTRY}/myblog-web:latest
+                    docker tag myblog-api:latest  myblog-api:${TAG}
+                    docker tag myblog-web:latest  myblog-web:${TAG}
+                    docker tag myblog-admin:latest  myblog-admin:${TAG}
                 """
             }
         }
 
         stage('Deploy') {
             steps {
-                // 通过 API_IMAGE / WEB_IMAGE 覆盖 compose 默认镜像名，
-                // 从本地仓库拉取刚推送的镜像并重建 api/web 容器；db/redis 不受影响
+                // 通过 API_IMAGE / WEB_IMAGE / ADMIN_IMAGE 覆盖 compose 默认镜像名，
+                // 直接使用本机刚构建并打好标签的镜像重建 backend/frontend-web/frontend-admin 容器；
+                // nginx 网关使用官方镜像随 compose 一并重建，postgres/redis 不受影响
                 sh """
-                    API_IMAGE=${REGISTRY}/myblog-api:${TAG} \\
-                    WEB_IMAGE=${REGISTRY}/myblog-web:${TAG} \\
+                    API_IMAGE=myblog-api:${TAG} \\
+                    WEB_IMAGE=myblog-web:${TAG} \\
+                    ADMIN_IMAGE=myblog-admin:${TAG} \\
                     docker compose up -d
                 """
             }
@@ -71,10 +66,10 @@ pipeline {
 
         stage('Health Check') {
             steps {
-                // 以 compose 健康检查为准（api 探测 /api/v1/health，web 探测 80 端口），
-                // 轮询容器 Health.Status 直到 healthy；超时则判定部署失败
+                // 以 compose 健康检查为准（backend 探测 /api/v1/health，frontend-web/frontend-admin 探测 /healthz，
+                // nginx 探测 443 端口），轮询容器 Health.Status 直到 healthy；超时则判定部署失败
                 sh '''
-                    for svc in api web; do
+                    for svc in backend frontend-web frontend-admin nginx; do
                         ok=false
                         for i in $(seq 1 30); do
                             cid=$(docker compose ps -q "$svc")
@@ -101,11 +96,11 @@ pipeline {
 
     post {
         success {
-            echo "部署成功：${REGISTRY}/myblog-api:${TAG} 与 ${REGISTRY}/myblog-web:${TAG} 已上线。"
+            echo "部署成功：myblog-api:${TAG}、myblog-web:${TAG} 与 myblog-admin:${TAG} 已上线。"
         }
         failure {
             echo """部署失败。如需回滚，执行：
-  API_IMAGE=${REGISTRY}/myblog-api:<上一个TAG> WEB_IMAGE=${REGISTRY}/myblog-web:<上一个TAG> docker compose up -d"""
+  API_IMAGE=myblog-api:<上一个TAG> WEB_IMAGE=myblog-web:<上一个TAG> ADMIN_IMAGE=myblog-admin:<上一个TAG> docker compose up -d"""
         }
         cleanup {
             // 清理构建过程中产生的悬空镜像

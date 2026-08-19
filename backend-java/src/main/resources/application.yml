@@ -15,8 +15,6 @@ spring:
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:1234}
     hikari:
-      maximum-pool-size: ${DB_POOL_SIZE:5}
-      minimum-idle: ${DB_MIN_IDLE:1}
       connection-timeout: 10000
       validation-timeout: 3000
   data.redis:

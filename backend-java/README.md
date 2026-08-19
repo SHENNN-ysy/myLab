@@ -6,7 +6,7 @@ Java 21 / Spring Boot 单体服务，使用 PostgreSQL、Redis、MyBatis-Plus、
 
 ```powershell
 mvn -f backend-java/pom.xml clean test
-docker compose up -d --build api
+docker compose up -d --build backend
 ```
 
 构建产物为 `backend-java/target/myblog-backend-1.0.0.jar`。

@@ -37,6 +37,12 @@ public class WebFilters implements Filter {
             id = UUID.randomUUID().toString().replace("-", "");
         }
         RequestContext.set(id);
+        // 经反向代理部署时真实客户端 IP 在 X-Forwarded-For 首个地址，直连时退化为 remoteAddr
+        String ip = req.getHeader("X-Forwarded-For");
+        if (ip == null) {
+            ip = req.getRemoteAddr();
+        }
+        RequestContext.setIp(ip.split(",")[0].trim());
         res.setCharacterEncoding(StandardCharsets.UTF_8.name());
         res.setHeader("X-Request-ID", id);
         res.setHeader("X-Content-Type-Options", "nosniff");

@@ -4,19 +4,21 @@ name: myblog
 # MyBlog 生产编排：Nginx + Java + PostgreSQL + Redis（2核4G 规格调优）
 #
 # 架构要点：
-#   - web（nginx）是唯一对外入口：443 提供 HTTPS 服务（前台在 /，后台在 /admin/ 路径），
-#     80 仅做 301 跳转；/api 反向代理到 api 服务
-#   - api（Spring Boot）只监听 127.0.0.1:8000，不直接暴露给公网
+#   - nginx 网关是唯一对外入口：443 提供 HTTPS 服务，80 仅做 301 跳转；
+#     / 反代到 frontend-web（前台 SPA），/admin/ 反代到 frontend-admin（后台 SPA），
+#     /api 反代到 backend
+#   - frontend-web / frontend-admin 各自托管前端静态产物，只在内部网络可达，不暴露主机端口
+#   - backend（Spring Boot）只监听 127.0.0.1:8000，不直接暴露给公网
 #   - 数据库 schema 由后端 Flyway 管理（启动时自动执行 db/migration 下的迁移脚本），
-#     db 容器不再挂载 docker-entrypoint-initdb.d 初始化脚本
-#   - 图片由 api 通过 OSS 内网上传，并通过 CDN 域名访问
+#     postgres 容器不再挂载 docker-entrypoint-initdb.d 初始化脚本
+#   - 图片由 backend 通过 OSS 内网上传，并通过 CDN 域名访问
 #
-# 镜像名均可通过环境变量覆盖（API_IMAGE / WEB_IMAGE / POSTGRES_IMAGE /
-# REDIS_IMAGE），CD 流水线借此从本地镜像仓库拉取指定版本。
+# 镜像名均可通过环境变量覆盖（API_IMAGE / WEB_IMAGE / ADMIN_IMAGE /
+# POSTGRES_IMAGE / REDIS_IMAGE），CD 流水线借此指定本机构建的镜像版本。
 # ============================================================
 services:
   # ---------- PostgreSQL 16 ----------
-  db:
+  postgres:
     ports:
       # 本机 5432 被本地 PostgreSQL 占用，主机侧改映射到 15432；
       # 绑定 127.0.0.1 仅允许本机（含 IDE 直连调试）访问
@@ -42,7 +44,7 @@ services:
       # 数据持久化到命名卷，容器重建不丢数据
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      # 就绪探针：api 依赖此状态，db 健康后才启动
+      # 就绪探针：backend 依赖此状态，postgres 健康后才启动
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
@@ -83,27 +85,24 @@ services:
     restart: unless-stopped
 
   # ---------- Spring Boot 后端 ----------
-  api:
+  backend:
     build:
       context: ./backend-java
       dockerfile: Dockerfile
-    # 镜像名可被 CD 覆盖为 localhost:5000/myblog-api:<tag>
+    # 镜像名可被 CD 覆盖为本机构建的 myblog-api:<tag>
     image: ${API_IMAGE:-myblog-api:latest}
     ports:
-      # 仅本机可直连（调试/健康检查用）；公网流量由 web（nginx）转发
+      # 仅本机可直连（调试/健康检查用）；公网流量由 nginx 网关转发
       - "127.0.0.1:8000:8000"
     environment:
       APP_PORT: "8000"
       TZ: ${TZ:-Asia/Shanghai}
       # 数据库/Redis 通过 compose 内部网络按服务名访问
-      DB_HOST: db
+      DB_HOST: postgres
       DB_PORT: "5432"
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
-      # 连接池按小规格服务器收紧
-      DB_POOL_SIZE: "5"
-      DB_MIN_IDLE: "1"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -126,8 +125,8 @@ services:
     volumes:
       - ./logs:/logs
     depends_on:
-      # 等 db / redis 健康检查通过后再启动，避免启动期连接失败
-      db: { condition: service_healthy }
+      # 等 postgres / redis 健康检查通过后再启动，避免启动期连接失败
+      postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
       # 探测免鉴权健康端点 /api/v1/health（校验应用 + DB + Redis）。
@@ -144,15 +143,48 @@ services:
     networks: [blog-net]
     restart: unless-stopped
 
-  # ---------- Nginx（前台 + 后台静态资源 & 反向代理） ----------
-  web:
+  # ---------- 前台静态站点（myblog/，nginx 托管产物） ----------
+  frontend-web:
     build:
-      # 多阶段构建：同时编译 myblog（前台）与 admin（后台）两个前端。
-      # 前台部署在 /，后台部署在 /admin/ 路径（见 nginx/default.conf.template）
-      context: .
-      dockerfile: nginx/Dockerfile
-    # 镜像名可被 CD 覆盖为 localhost:5000/myblog-web:<tag>
+      context: ./myblog
+      dockerfile: Dockerfile
+    # 镜像名可被 CD 覆盖为本机构建的 myblog-web:<tag>
     image: ${WEB_IMAGE:-myblog-web:latest}
+    depends_on:
+      - backend
+    healthcheck:
+      # 探测容器内 nginx 的 /healthz（见 myblog/nginx.conf）
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    mem_limit: 64m
+    networks: [blog-net]
+    restart: unless-stopped
+
+  # ---------- 后台静态站点（admin/，nginx 托管产物） ----------
+  frontend-admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    # 镜像名可被 CD 覆盖为本机构建的 myblog-admin:<tag>
+    image: ${ADMIN_IMAGE:-myblog-admin:latest}
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    mem_limit: 64m
+    networks: [blog-net]
+    restart: unless-stopped
+
+  # ---------- Nginx 网关（SSL 终止 + 反向代理到 frontend-web/frontend-admin/backend） ----------
+  nginx:
+    image: nginx:1.27-alpine
     environment:
       # 用于 nginx 配置模板渲染（envsubst），主站域名（www 前缀自动附带）
       BLOG_DOMAIN: ${BLOG_DOMAIN}
@@ -162,10 +194,14 @@ services:
       - "80:80"
       - "443:443"
     volumes:
+      # 配置模板：官方 nginx 镜像启动时自动 envsubst 渲染到 conf.d
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       # SSL 证书只读挂载（私钥已 gitignore，部署时放置于 nginx/certs/）
       - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
-      - api
+      - frontend-web
+      - frontend-admin
+      - backend
     healthcheck:
       # 直接探测 HTTPS 端口：用 127.0.0.1 而非 localhost（alpine 中 localhost 可能
       # 解析到 ::1，nginx 只监听 IPv4）；跳过证书校验（证书绑定的是域名而非 IP）

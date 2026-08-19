@@ -1,5 +1,6 @@
 package com.myblog.common.logging;
 
+import com.myblog.common.constant.SecurityConstant;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,10 +42,25 @@ public class TraceIdFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             long cost = System.currentTimeMillis() - start;
-            log.info("{} {} {} {}ms", request.getMethod(), request.getRequestURI(),
-                    response.getStatus(), cost);
+            // 健康检查请求量大（容器探针每 10s 一次），降为 DEBUG，root 级别 INFO 下不写入日志文件
+            if (isHealthCheck(request)) {
+                log.debug("{} {} {} {}ms", request.getMethod(), request.getRequestURI(),
+                        response.getStatus(), cost);
+            } else {
+                log.info("{} {} {} {}ms", request.getMethod(), request.getRequestURI(),
+                        response.getStatus(), cost);
+            }
             MDC.remove(TRACE_ID_KEY); // 必须移除，避免线程池复用时 traceId 串号
         }
+    }
+
+    /**
+     * 健康检查端点：compose 探针打 /api/v1/health，编排/监控探针打 /actuator/health。
+     */
+    private boolean isHealthCheck(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri.startsWith(SecurityConstant.HEALTH_API)
+                || uri.startsWith(SecurityConstant.HEALTH_PREFIX);
     }
 
     /**

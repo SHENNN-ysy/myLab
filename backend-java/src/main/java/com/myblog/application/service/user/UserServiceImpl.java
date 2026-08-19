@@ -12,10 +12,13 @@ import com.myblog.common.result.PageResult;
 import com.myblog.common.security.CurrentUser;
 import com.myblog.common.security.Authorization;
 import com.myblog.application.service.auth.AuthService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -23,6 +26,7 @@ import java.util.UUID;
 /**
  * 用户管理服务实现：创建/删除限定超级管理员，密码统一经 AuthService 哈希后落库。
  */
+@Slf4j
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -79,6 +83,7 @@ public class UserServiceImpl implements UserService {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         users.add(user);
+        log.info("用户已创建：operator={}, username={}, role={}", actor.username(), username, role);
         return toOut(user);
     }
 
@@ -93,18 +98,23 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
+        List<String> changed = new ArrayList<>();
         if (command.role() != null) {
             requireValidRole(command.role());
             user.setRole(command.role());
+            changed.add("role");
         }
         if (command.isActive() != null) {
             user.setIsActive(command.isActive());
+            changed.add("is_active");
         }
         if (command.password() != null) {
             user.setPasswordHash(auth.hash(command.password()));
+            changed.add("password");
         }
         user.setUpdatedAt(OffsetDateTime.now());
         users.save(user);
+        log.info("用户已更新：operator={}, target={}, fields={}", actor.username(), user.getUsername(), changed);
         return toOut(user);
     }
 
@@ -118,6 +128,7 @@ public class UserServiceImpl implements UserService {
         if (!users.remove(id)) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
+        log.info("用户已删除：operator={}, targetId={}", actor.username(), id);
     }
 
     /** 实体转输出视图，剥离密码哈希等敏感字段。 */

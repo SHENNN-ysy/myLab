@@ -1,7 +1,7 @@
 # ============================================================
 # 后端镜像：Maven 构建 + JRE 运行（两阶段）
-# 基础镜像可通过 build-arg 覆盖，便于从本地镜像仓库拉取：
-#   docker build --build-arg MAVEN_IMAGE=localhost:5000/maven:3.9-eclipse-temurin-21 ...
+# 基础镜像可通过 build-arg 覆盖（如离线/内网环境指定私有仓库地址）：
+#   docker build --build-arg MAVEN_IMAGE=<registry>/maven:3.9-eclipse-temurin-21 ...
 # ============================================================
 ARG MAVEN_IMAGE=maven:3.9-eclipse-temurin-21
 ARG JRE_IMAGE=eclipse-temurin:21-jre
