@@ -146,6 +146,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
    - 日志文件：`logs/myblog.log`，按天滚动保留 30 天
 5. **配置**：敏感配置一律走环境变量占位符（`${VAR:默认值}`），不提交真实值；`.env`、`application-dev.yml`、`nginx/certs/` 已 gitignore
 6. **质量门**：改动后端后至少跑 `mvn verify`；`application.service` 行覆盖率 ≥ 99%，新增业务逻辑必须补单测
+7. **注释要求**：生成的代码必须有注释，注释要简洁精准
 
 ### 前端硬性规则
 1. 优先使用既有技术栈组件（后台用 Ant Design Vue），避免自造轮子
