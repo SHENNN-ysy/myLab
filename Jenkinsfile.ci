@@ -10,6 +10,7 @@
 // 节点前置条件：
 //   - 安装 Docker，且 jenkins 用户已加入 docker 组
 //   - 后端集成测试基于 Testcontainers，需要访问 /var/run/docker.sock
+//   - 安装 JUnit 插件与 Coverage 插件（覆盖率报告；JaCoCo 独立插件已 EOL）
 // ============================================================
 pipeline {
     agent none
@@ -24,10 +25,14 @@ pipeline {
         stage('Backend CI') {
             agent {
                 docker {
-                    // 挂载 docker.sock 供 Testcontainers 起 PG/Redis；
-                    // 挂载 ~/.m2 做 Maven 依赖缓存，避免每次全量下载
+                    // 挂载 docker.sock 供 Testcontainers 起 PG/Redis。
+                    // 容器内进程 uid=1000（镜像内 ubuntu 用户，HOME=/home/ubuntu）：
+                    //   --group-add 988 补宿主机 docker 组权限（访问挂载的 sock；
+                    //     GID 以宿主机 getent group docker 为准，迁移机器时需同步修改）
+                    //   .m2 挂到 /home/ubuntu/.m2 才是该用户真实使用的 Maven 缓存路径，
+                    //     避免每次构建全量下载依赖
                     image 'maven:3.9-eclipse-temurin-21'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.m2:/root/.m2'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock -v /data/jenkins/.m2:/home/ubuntu/.m2 --group-add 988'
                     reuseNode true
                 }
             }
@@ -41,9 +46,11 @@ pipeline {
                 always {
                     junit allowEmptyResults: true,
                           testResults: 'backend-java/target/surefire-reports/*.xml, backend-java/target/failsafe-reports/*.xml'
-                    jacoco execPattern: 'backend-java/target/jacoco.exec',
-                           classPattern: 'backend-java/target/classes',
-                           sourcePattern: 'backend-java/src/main/java'
+                    // 覆盖率走 Coverage 插件（JaCoCo 独立插件已 EOL，功能并入其中），
+                    // 解析 verify 阶段生成的 XML 报告
+                    recordCoverage enabledForFailure: true,
+                                   tools: [[parser: 'JACOCO',
+                                            pattern: 'backend-java/target/site/jacoco/jacoco.xml']]
                 }
             }
         }
