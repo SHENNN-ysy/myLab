@@ -27,7 +27,7 @@ Internet
    ▼
 nginx 网关 (:443 HTTPS, :80 仅 301)   ← SSL 终止 + 反向代理（唯一对外入口）
    ├── /          → web   容器（myblog 前台静态站点，Vue SPA）
-   ├── /admin/    → admin 容器（后台静态站点，Vue SPA）
+   ├── ${ADMIN_ROUTE}/ → admin 容器（后台静态站点，Vue SPA）
    └── /api/      → backend 容器 (:8000, Spring Boot，仅监听 127.0.0.1)
                          ├── PostgreSQL  (:5432，宿主机映射 127.0.0.1:15432)
                          ├── Redis       (:6379，仅监听 127.0.0.1)
@@ -95,7 +95,9 @@ cp .env.example .env
 | `OSS_ENDPOINT` / `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET` / `OSS_BUCKET` | 阿里云 OSS | 是 |
 | `OSS_CDN_DOMAIN` | CDN 域名，留空则直连 OSS | 按需 |
 | `CORS_ORIGINS` | 跨域来源（浏览器访问的源，逗号分隔） | 是 |
-| `BLOG_DOMAIN` | 主站域名（前台在 `/`，后台在 `/admin/` 路径；www 前缀自动附带） | 是 |
+| `BLOG_DOMAIN` | 主站域名；www 前缀自动附带 | 是 |
+| `ADMIN_ROUTE` | 管理后台路径前缀，例如 `/admin` | 是 |
+| `JENKINS_ROUTE` | Jenkins 在主站域名下的路径前缀，例如 `/jenkins` | 是 |
 
 ### 2. 环境要求
 
@@ -106,6 +108,12 @@ cp .env.example .env
 | Node.js | 20+ | 前端构建（Docker 多阶段构建内置） |
 | Docker | 24+ | 容器运行时 |
 | Docker Compose | v2 | 容器编排 |
+
+> Jenkins 官方镜像不包含 Docker CLI。不要只把宿主机 `/usr/bin/docker` 挂进 Jenkins
+> 容器，因为 Compose 与 Buildx 是独立 CLI 插件。请使用
+> `deploy/jenkins/Dockerfile` 构建包含完整 Docker 工具链的 Jenkins 节点镜像。
+> Jenkins 不发布主机端口，通过 `myblog-jenkins-proxy` 专用网络由 Nginx 代理到
+> `https://<BLOG_DOMAIN><JENKINS_ROUTE>/`。
 
 ---
 
@@ -180,7 +188,7 @@ curl http://localhost/api/v1/...               # 公开内容接口
 | 地址 | 服务 |
 |------|------|
 | `https://<域名>` | 博客前台 |
-| `https://<域名>/admin/` | 管理后台 |
+| `https://<域名><ADMIN_ROUTE>/` | 管理后台 |
 | `https://<域名>/swagger-ui.html` | API 文档（Swagger UI） |
 
 ---
@@ -217,7 +225,7 @@ docker compose down --volumes            # 停止并删除数据卷（危险，�
 
 | 端口 | 服务 | 用途 |
 |------|------|------|
-| 443 | Nginx (nginx) | HTTPS 入口（前台 `/`，后台 `/admin/`） |
+| 443 | Nginx (nginx) | HTTPS 入口（前台 `/`，后台 `${ADMIN_ROUTE}/`） |
 | 80 | Nginx (nginx) | 仅 301 跳转 HTTPS |
 | 8000 | backend | Spring Boot API（仅绑定 127.0.0.1） |
 | 15432 | PostgreSQL | 数据库（容器内 5432，避开本机已占用的 5432） |

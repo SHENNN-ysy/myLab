@@ -5,7 +5,7 @@
 MyBlog 个人博客系统：面向访客的博客前台 + 面向管理员的后台管理系统，前后端分离，Docker 容器化部署，Jenkins CI/CD。
 
 - **博客前台**：Vue 3 + TypeScript + Vite + GSAP + Tailwind CSS 4（localhost:5173）
-- **管理后台**：Vue 3 + TypeScript + Vite + Ant Design Vue 4 + ECharts 5（localhost:5174，vite base = `/admin/`）
+- **管理后台**：Vue 3 + TypeScript + Vite + Ant Design Vue 4 + ECharts 5（localhost:5174，vite base 由 `ADMIN_ROUTE` 构建）
 - **后端**：Spring Boot 3.5 + Java 21 + MyBatis-Plus，模块化单体 + 端口适配器（localhost:8000）
 
 ```
@@ -108,7 +108,7 @@ starter ────────> application / common / infrastructure
 
 - Vue 3 Composition API + `<script setup>` + TypeScript；`@/` 映射 `src/`
 - 前台（myblog/）：GSAP 动效 + Tailwind CSS 4，七个内容模块展示
-- 后台（admin/）：Ant Design Vue 4 优先，避免自造组件；ECharts 仪表盘；vite base = `/admin/`
+- 后台（admin/）：Ant Design Vue 4 优先，避免自造组件；ECharts 仪表盘；vite base 由 `ADMIN_ROUTE` 注入
 - `npm run build` 内含 vue-tsc 类型检查，即编译验证；提交前至少跑 `lint` + `build`
 
 ## 5. 部署架构（docker-compose.yml）
@@ -116,13 +116,15 @@ starter ────────> application / common / infrastructure
 ```
 Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
              ├── /        → frontend-web   容器（前台静态站点，nginx 托管）
-             ├── /admin/  → frontend-admin 容器（后台静态站点，去前缀反代）
-             └── /api/    → backend        容器（Spring Boot，仅 127.0.0.1:8000）
+             ├── ${ADMIN_ROUTE}/ → frontend-admin 容器（后台静态站点，去前缀反代）
+             ├── /api/    → backend        容器（Spring Boot，仅 127.0.0.1:8000）
                                ├── postgres（PG 16，127.0.0.1:15432）
                                └── redis（Redis 7，127.0.0.1:6379）
+             └── ${JENKINS_ROUTE}/ → Jenkins（专用外部网络，不发布主机端口）
 ```
 
 - web/admin 不暴露主机端口，仅内部网络可达；SSL 证书挂载 `nginx/certs/`
+- 管理后台路径由 `.env` 的 `ADMIN_ROUTE` 同时注入 Vite 构建和 Nginx，修改后必须重建 `frontend-admin` 并重建 Nginx 容器
 - 镜像名可用环境变量覆盖：`API_IMAGE` / `WEB_IMAGE` / `ADMIN_IMAGE` / `POSTGRES_IMAGE` / `REDIS_IMAGE`
 - **不使用镜像仓库**：CD 在 Jenkins 节点本机构建镜像、打 TAG 直接部署
 - 注意：`depends_on` 仅在 `docker compose up` 时生效；服务器重启后 Docker 按 `restart: unless-stopped` 自行拉起容器，backend 可能先于 postgres 启动失败几轮后自愈，属预期行为
@@ -130,6 +132,8 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 ### CI/CD（Jenkins）
 - **Jenkinsfile.ci**：Multibranch，任意分支 push 触发。后端 `mvn verify`（Testcontainers 集成测试需 docker.sock），两个前端并行 `npm ci + lint + build`
 - **Jenkinsfile.cd**：手动触发（参数 IMAGE_TAG，留空用构建号）。流程：`docker compose build backend frontend-web frontend-admin` → 打 TAG → `API_IMAGE/WEB_IMAGE/ADMIN_IMAGE=...:<TAG> docker compose up -d` → 轮询 backend/frontend-web/frontend-admin/nginx 健康检查
+- Jenkins 官方镜像不包含 Docker 工具链；容器化节点使用 `deploy/jenkins/Dockerfile` 安装 Docker CLI、Buildx 与 Compose，不要只挂载宿主机的 Docker 二进制
+- Jenkins 使用 `.env` 的 `JENKINS_ROUTE` 作为控制器 `--prefix`，并通过外部网络 `myblog-jenkins-proxy` 由 Nginx 提供 HTTPS 与 GitHub Webhook 入口
 - 回滚：用上一个 TAG 重新 `up -d`（历史 TAG 镜像保留在本机）
 
 ## 6. 关键约定
@@ -151,7 +155,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 ### 前端硬性规则
 1. 优先使用既有技术栈组件（后台用 Ant Design Vue），避免自造轮子
 2. `build` 即类型检查，类型错误不许绕过（不用 `@ts-ignore` 掩盖）
-3. 后台前端所有资源路径基于 `/admin/` base
+3. 后台前端所有资源路径基于 `ADMIN_ROUTE` 生成的 Vite base
 
 ### 通用约定
 1. 发现经典错误修复后，将原因与对策补充到本文档或 docs/ 相应文档

@@ -5,7 +5,7 @@ name: myblog
 #
 # 架构要点：
 #   - nginx 网关是唯一对外入口：443 提供 HTTPS 服务，80 仅做 301 跳转；
-#     / 反代到 frontend-web（前台 SPA），/admin/ 反代到 frontend-admin（后台 SPA），
+#     / 反代到 frontend-web（前台 SPA），${ADMIN_ROUTE}/ 反代到 frontend-admin（后台 SPA），
 #     /api 反代到 backend
 #   - frontend-web / frontend-admin 各自托管前端静态产物，只在内部网络可达，不暴露主机端口
 #   - backend（Spring Boot）只监听 127.0.0.1:8000，不直接暴露给公网
@@ -123,7 +123,8 @@ services:
       # 容器内日志目录，挂载到宿主机 ./logs 便于查看
       LOG_PATH: "/logs"
     volumes:
-      - ./logs:/logs
+      # 容器化 Jenkins 部署时指向宿主机工作区；本机执行默认使用当前目录
+      - ${HOST_PROJECT_DIR:-.}/logs:/logs
     depends_on:
       # 等 postgres / redis 健康检查通过后再启动，避免启动期连接失败
       postgres: { condition: service_healthy }
@@ -168,6 +169,9 @@ services:
     build:
       context: ./admin
       dockerfile: Dockerfile
+      args:
+        # 后台构建产物的 Vite base，与 Nginx 代理路径保持一致
+        ADMIN_ROUTE: ${ADMIN_ROUTE:-/admin}
     # 镜像名可被 CD 覆盖为本机构建的 myblog-admin:<tag>
     image: ${ADMIN_IMAGE:-myblog-admin:latest}
     depends_on:
@@ -188,6 +192,10 @@ services:
     environment:
       # 用于 nginx 配置模板渲染（envsubst），主站域名（www 前缀自动附带）
       BLOG_DOMAIN: ${BLOG_DOMAIN}
+      # 后台 SPA 与 Jenkins 的可配置路径前缀
+      ADMIN_ROUTE: ${ADMIN_ROUTE:-/admin}
+      # Jenkins 与 Nginx 使用相同的上下文路径，例如 /jenkins
+      JENKINS_ROUTE: ${JENKINS_ROUTE:-/jenkins}
       TZ: ${TZ:-Asia/Shanghai}
     ports:
       # 80 仅用于 301 跳转 HTTPS，443 为对外服务端口
@@ -195,9 +203,9 @@ services:
       - "443:443"
     volumes:
       # 配置模板：官方 nginx 镜像启动时自动 envsubst 渲染到 conf.d
-      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${HOST_PROJECT_DIR:-.}/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       # SSL 证书只读挂载（私钥已 gitignore，部署时放置于 nginx/certs/）
-      - ./nginx/certs:/etc/nginx/certs:ro
+      - ${HOST_PROJECT_DIR:-.}/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - frontend-web
       - frontend-admin
@@ -211,13 +219,19 @@ services:
       retries: 3
       start_period: 10s
     mem_limit: 128m
-    networks: [blog-net]
+    networks:
+      - blog-net
+      - jenkins-proxy
     restart: unless-stopped
 
 networks:
   # 所有服务共用一个内部桥接网络，按服务名互相解析
   blog-net:
     driver: bridge
+  # Jenkins 独立运行，仅通过该外部网络向 Nginx 暴露 8080，不发布宿主机端口
+  jenkins-proxy:
+    name: myblog-jenkins-proxy
+    external: true
 
 volumes:
   pg_data:

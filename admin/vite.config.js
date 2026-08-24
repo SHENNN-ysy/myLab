@@ -1,10 +1,20 @@
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
+// 统一生成带首尾斜杠的 Vite base，非法路径在构建阶段直接失败。
+var normalizeAdminBase = function (route) {
+    var normalizedRoute = route.trim();
+    if (!/^\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(normalizedRoute)) {
+        throw new Error('VITE_ADMIN_ROUTE 必须以 / 开头、不能以 / 结尾，且只能包含路径字符');
+    }
+    return "".concat(normalizedRoute, "/");
+};
 export default defineConfig(function (_a) {
     var mode = _a.mode;
     var env = loadEnv(mode, process.cwd(), '');
+    var adminBase = normalizeAdminBase(process.env.VITE_ADMIN_ROUTE || env.VITE_ADMIN_ROUTE || '/admin');
     return {
+        base: adminBase,
         plugins: [vue()],
         resolve: {
             alias: {

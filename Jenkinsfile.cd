@@ -7,7 +7,8 @@
 //   2. 通过 "Build with Parameters" 手动触发，可指定 IMAGE_TAG
 //
 // 节点前置条件（Jenkins 与部署目标为同一台机器）：
-//   - 安装 Docker 与 Docker Compose v2，jenkins 用户已加入 docker 组
+//   - Jenkins 节点已安装 Docker CLI、Buildx 与 Docker Compose v2
+//   - jenkins 用户可访问宿主机 /var/run/docker.sock
 //   - 仓库目录下已按 .env.example 配置好 .env（compose 自动读取）
 //   - 镜像在 Jenkins 节点本机构建并直接部署，不依赖镜像仓库
 // ============================================================
@@ -29,6 +30,8 @@ pipeline {
     environment {
         // 参数留空时回退到构建号
         TAG = "${params.IMAGE_TAG?.trim() ? params.IMAGE_TAG.trim() : env.BUILD_NUMBER}"
+        // Jenkins Home 在宿主机上的持久化目录，用于换算 Compose bind mount 源路径
+        JENKINS_HOST_HOME = '/data/jenkins'
     }
 
     stages {
@@ -55,12 +58,18 @@ pipeline {
                 // 通过 API_IMAGE / WEB_IMAGE / ADMIN_IMAGE 覆盖 compose 默认镜像名，
                 // 直接使用本机刚构建并打好标签的镜像重建 backend/frontend-web/frontend-admin 容器；
                 // nginx 网关使用官方镜像随 compose 一并重建，postgres/redis 不受影响
-                sh """
-                    API_IMAGE=myblog-api:${TAG} \\
-                    WEB_IMAGE=myblog-web:${TAG} \\
-                    ADMIN_IMAGE=myblog-admin:${TAG} \\
+                sh '''
+                    case "$WORKSPACE" in
+                        "$JENKINS_HOME"/*) ;;
+                        *) echo "WORKSPACE 不在 JENKINS_HOME 下，无法换算宿主机路径" >&2; exit 1 ;;
+                    esac
+                    relative_workspace=${WORKSPACE#"$JENKINS_HOME"}
+                    HOST_PROJECT_DIR="${JENKINS_HOST_HOME}${relative_workspace}" \\
+                    API_IMAGE="myblog-api:${TAG}" \\
+                    WEB_IMAGE="myblog-web:${TAG}" \\
+                    ADMIN_IMAGE="myblog-admin:${TAG}" \\
                     docker compose up -d
-                """
+                '''
             }
         }
 

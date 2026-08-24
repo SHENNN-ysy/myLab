@@ -4,8 +4,8 @@
 // Jenkins 侧一次性配置：
 //   1. 新建 Multibranch Pipeline，Branch Source 选 GitHub/Git，
 //      开启 "Discover Branches"（所有分支），Script Path 填 Jenkinsfile.ci
-//   2. 在 GitHub 仓库配置 webhook 指向 Jenkins（/github-webhook/），
-//      任意分支 push 时自动触发对应分支的构建
+//   2. GitHub webhook 指向 Nginx HTTPS 入口：
+//      https://<BLOG_DOMAIN><JENKINS_ROUTE>/github-webhook/
 //
 // 节点前置条件：
 //   - 安装 Docker，且 jenkins 用户已加入 docker 组

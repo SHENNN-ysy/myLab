@@ -1,6 +1,6 @@
 # ============================================================
 # 后台管理前端（admin/）镜像：vite 构建 + nginx 托管静态产物。
-# 生产部署中由根目录 nginx 网关容器把 /admin/ 反代到本服务（见 docker-compose.yml），
+# 生产部署中由根目录 nginx 网关按 ADMIN_ROUTE 反代到本服务（见 docker-compose.yml），
 # 本服务不直接暴露主机端口；也可单独构建用于本地调试。
 # ============================================================
 
@@ -8,6 +8,10 @@
 FROM node:20-alpine AS builder
 
 WORKDIR /app
+
+# 根目录 .env 通过 Compose build arg 注入，供 Vite 生成正确的资源基础路径。
+ARG ADMIN_ROUTE=/admin
+ENV VITE_ADMIN_ROUTE=$ADMIN_ROUTE
 
 # 利用缓存：先只复制 lock 文件，依赖不变时跳过安装
 COPY package.json package-lock.json* ./

@@ -26,4 +26,5 @@ npm run dev
 npm run build
 ```
 
-接口基础地址由 `VITE_API_BASE_URL` 配置，默认使用 `/api/v1`。登录账号由后端初始化配置提供，不在前端保存演示密码。
+接口基础地址由 `VITE_API_BASE_URL` 配置，默认使用 `/api/v1`。生产访问路径由根目录
+`.env` 的 `ADMIN_ROUTE` 在 Docker 构建时注入，默认 `/admin`。登录账号由后端初始化配置提供，不在前端保存演示密码。

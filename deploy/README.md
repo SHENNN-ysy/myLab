@@ -34,7 +34,9 @@
 复制根目录 `.env.example` 为 `.env`，至少替换：
 
 - PostgreSQL、Redis、JWT和初始管理员密码；
-- `BLOG_DOMAIN`：主站域名（前台在 `/`，后台在 `/admin/` 路径，www 前缀自动附带）；
+- `BLOG_DOMAIN`：主站域名，www 前缀自动附带；
+- `ADMIN_ROUTE`：后台 HTTPS 路径，例如 `/admin`，修改后必须重建 `frontend-admin`；
+- `JENKINS_ROUTE`：Jenkins HTTPS 访问前缀，例如 `/jenkins`，不能与 `/`、`/api` 或 `ADMIN_ROUTE` 重叠；
 - `CORS_ORIGINS`：改为 `https://<域名>,https://www.<域名>`；
 - `OSS_ENDPOINT`：使用同地域内网Endpoint；
 - RAM用户的 `OSS_ACCESS_KEY_ID` 与 `OSS_ACCESS_KEY_SECRET`；
@@ -61,6 +63,10 @@ docker compose ps
 ```
 
 生产环境只启动 Nginx、Java API、PostgreSQL 和 Redis。PostgreSQL 与 Redis 只绑定 127.0.0.1，无公网暴露。
+
+Jenkins 独立运行且不发布主机端口，通过外部网络 `myblog-jenkins-proxy` 接入 Nginx。
+首次部署前执行 `docker network create myblog-jenkins-proxy`，访问地址为
+`https://<BLOG_DOMAIN><JENKINS_ROUTE>/`。
 
 Nginx 容器监听 443（HTTPS 服务）与 80（仅 301 跳转 HTTPS）。SSL 证书需手动放置到服务器仓库目录的 `nginx/certs/`（该目录已 gitignore，不会随代码分发）：
 
