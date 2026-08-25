@@ -1,262 +1,150 @@
 # MyBlog 个人博客
 
-全栈个人博客系统：面向访客的前台博客 + 面向管理员的后台管理系统，前后端分离架构，Docker 容器化部署，Jenkins CI/CD 流水线。该博客项目会作为我的个人实验项目，以此项目为基础进行一些学习实践。
----
+MyBlog 包含访客博客、管理后台和 Spring Boot API，支持本地 Docker 一键部署，也支持 Jenkins + 私有 Registry 的生产 CI/CD。
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| **博客前台** | Vue 3 + TypeScript + Vite + GSAP + Tailwind CSS 4 |
-| **博客后台** | Vue 3 + TypeScript + Vite + Ant Design Vue 4 + ECharts 5 |
-| **后端** | Spring Boot 3.5 + Java 21 + MyBatis-Plus |
-| **数据库** | PostgreSQL 16（Flyway 版本化迁移） |
-| **缓存** | Redis 7（互动计数、令牌黑名单、限流） |
-| **对象存储** | 阿里云 OSS + CDN |
-| **反向代理** | Nginx 网关（HTTPS 入口、SSL 终止、反向代理） |
-| **质量保障** | JUnit 5 + Mockito（240+ 单测）、Checkstyle、SpotBugs、JaCoCo、ArchUnit |
-| **容器化** | Docker + Docker Compose |
+| 模块 | 技术 |
+|---|---|
+| 博客前台 | Vue 3、TypeScript、Vite、GSAP、Tailwind CSS 4 |
+| 管理后台 | Vue 3、TypeScript、Vite、Ant Design Vue 4、ECharts 5 |
+| 后端 | Spring Boot 3.5、Java 21、MyBatis-Plus |
+| 数据与缓存 | PostgreSQL 16、Redis 7、Flyway |
+| 部署 | Docker、Docker Compose、Nginx、Jenkins |
 
----
+## 两种部署方式
 
-## 架构
+| 场景 | 入口 | 构建方式 | Nginx | Registry |
+|---|---|---|---|---|
+| 本地一键部署 | `docker-compose.yml` | 从当前源码构建 | HTTP `:80` | 不需要 |
+| 生产 CI/CD | `deploy/docker-compose.yml` | CI 构建，CD 只拉镜像 | HTTPS `:443` + Jenkins 代理 | `127.0.0.1:5000` |
 
-```
-Internet
-   │
-   ▼
-nginx 网关 (:443 HTTPS, :80 仅 301)   ← SSL 终止 + 反向代理（唯一对外入口）
-   ├── /          → web   容器（myblog 前台静态站点，Vue SPA）
-   ├── ${ADMIN_ROUTE}/ → admin 容器（后台静态站点，Vue SPA）
-   └── /api/      → backend 容器 (:8000, Spring Boot，仅监听 127.0.0.1)
-                         ├── PostgreSQL  (:5432，宿主机映射 127.0.0.1:15432)
-                         ├── Redis       (:6379，仅监听 127.0.0.1)
-                         └── 阿里云 OSS  （图片/文件，CDN 回源）
-```
+两套 Compose 使用不同项目名和 Nginx 配置。根目录方案不依赖 Jenkins、域名、TLS 证书或私有镜像仓库；`deploy/` 下的文件只用于生产环境。
 
+## 本地一键部署
 
----
-
-## 项目结构
-
-```
-MyBlog/
-├── myblog/                      # 博客前台（Vue 3 + GSAP 动效）
-│   └── src/
-│       ├── views/               # 页面组件
-│       ├── components/          # 可复用组件
-│       ├── composables/         # 组合式函数
-│       ├── router/              # 路由
-│       └── utils/               # 工具函数
-├── admin/                       # 管理后台（Vue 3 + Ant Design Vue）
-│   └── src/
-│       ├── api/                 # 后台 API 封装（/api/v1/admin/**）
-│       ├── views/               # 登录、仪表盘、内容/文件/用户管理
-│       ├── components/          # 内容编辑器、图片裁剪等
-│       └── router/              # 路由 + 守卫
-├── backend-java/                # Spring Boot 后端（DDD 风格模块单体）
-│   └── src/main/java/com/myblog/
-│       ├── controller/          # Web 层（公开接口 + /admin 管理接口）
-│       ├── application/         # 业务层（service / port / repository 接口 / model）
-│       ├── infrastructure/      # 适配层（Persistence、Redis、OSS、安全）
-│       ├── starter/             # 装配层（Security、限流、异步等配置）
-│       └── common/              # Result、ErrorCode、常量、属性
-│   └── src/main/resources/
-│       ├── application.yml           # 主配置（占位符走环境变量）
-│       ├── application-dev.yml       # 本地开发配置（含敏感值，已 gitignore）
-│       └── db/migration/             # Flyway 迁移脚本（V1__baseline.sql 起）
-├── nginx/                       # Nginx 网关配置模板 + SSL 证书（certs/ 已 gitignore）
-├── scripts/                     # 运维脚本（OSS 静态资源上传、库基线校验）
-├── docs/                        # API 文档、数据库设计、测试工作流
-├── docker-compose.yml           # 容器编排（postgres / redis / backend / frontend-web / frontend-admin / nginx）
-├── Jenkinsfile.ci               # CI 流水线（push 触发：测试 + 静态检查 + 前端构建）
-├── Jenkinsfile.cd               # CD 流水线（手动触发：本机构建镜像并部署）
-└── .env.example                 # 环境变量模板
-```
-
----
-
-## 准备工作
-
-### 1. 环境变量
+### 1. 准备配置
 
 ```bash
 cp .env.example .env
-# 编辑 .env 填写实际值（.env 已在 .gitignore 中，不会提交）
 ```
 
-| 变量 | 说明 | 必填 |
-|------|------|------|
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | 数据库账号 | 是 |
-| `REDIS_PASSWORD` | Redis 密码（生产必须强密码） | 是 |
-| `JWT_SECRET` | JWT 签名密钥（`openssl rand -hex 32` 生成） | 是 |
-| `ENGAGEMENT_HASH_SECRET` | 访客标识 HMAC 密钥，不设置则沿用 `JWT_SECRET` | 建议 |
-| `INIT_ADMIN_USERNAME` / `INIT_ADMIN_PASSWORD` | 初始管理员（仅在系统无任何用户时创建） | 是 |
-| `OSS_ENDPOINT` / `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET` / `OSS_BUCKET` | 阿里云 OSS | 是 |
-| `OSS_CDN_DOMAIN` | CDN 域名，留空则直连 OSS | 按需 |
-| `CORS_ORIGINS` | 跨域来源（浏览器访问的源，逗号分隔） | 是 |
-| `BLOG_DOMAIN` | 主站域名；www 前缀自动附带 | 是 |
-| `ADMIN_ROUTE` | 管理后台路径前缀，例如 `/admin` | 是 |
-| `JENKINS_ROUTE` | Jenkins 在主站域名下的路径前缀，例如 `/jenkins` | 是 |
+修改 `.env` 中的数据库密码、Redis 密码、JWT 密钥、初始管理员和 OSS 配置。后台路径由 `ADMIN_ROUTE` 控制，默认 `/admin`。
 
-### 2. 环境要求
-
-| 依赖 | 版本 | 说明 |
-|------|------|------|
-| Java | 21+ | 后端编译/运行（Docker 中内置） |
-| Maven | 3.9+ | 后端构建（Docker 中内置） |
-| Node.js | 20+ | 前端构建（Docker 多阶段构建内置） |
-| Docker | 24+ | 容器运行时 |
-| Docker Compose | v2 | 容器编排 |
-
-> Jenkins 官方镜像不包含 Docker CLI。不要只把宿主机 `/usr/bin/docker` 挂进 Jenkins
-> 容器，因为 Compose 与 Buildx 是独立 CLI 插件。请使用
-> `deploy/jenkins/Dockerfile` 构建包含完整 Docker 工具链的 Jenkins 节点镜像。
-> Jenkins 不发布主机端口，通过 `myblog-jenkins-proxy` 专用网络由 Nginx 代理到
-> `https://<BLOG_DOMAIN><JENKINS_ROUTE>/`。
-
----
-
-## 快速开始
-
-### 本地开发
-
-数据库与 Redis 直接用 Docker 容器（不必整套 compose 启动）：
+### 2. 构建并启动
 
 ```bash
-# 1. 启动依赖容器（复用 docker-compose 里的 postgres / redis 即可）
-docker compose up -d postgres redis
-#    PostgreSQL 映射到本机 127.0.0.1:15432，Redis 映射到本机 127.0.0.1:6379
+docker compose up -d --build
+docker compose ps
+```
 
-# 2. 后端（Java 21 + Maven）：dev profile 自动连上述容器
-#    敏感配置在 backend-java/src/main/resources/application-dev.yml（已 gitignore，需自行创建）
+首次启动由 Flyway 自动建表。访问地址：
+
+- 博客前台：`http://localhost/`
+- 管理后台：`http://localhost/admin/`
+- 后端健康检查：`http://localhost/api/v1/health`
+
+本地 Nginx 使用 `nginx/default.conf.template`，只监听 HTTP，不读取生产证书，也不代理 Jenkins。
+
+### 3. 常用命令
+
+```bash
+docker compose logs -f backend
+docker compose up -d --build backend frontend-web frontend-admin
+docker compose down
+```
+
+`docker compose down --volumes` 会删除本地 PostgreSQL 和 Redis 数据，请先备份。
+
+## 本地开发
+
+只启动依赖容器：
+
+```bash
+docker compose up -d postgres redis
+```
+
+分别启动应用：
+
+```bash
+# 后端
 cd backend-java
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
-#    启动时 Flyway 自动执行 db/migration 下的迁移完成建表与初始数据
-#    首次启动自动创建初始管理员（默认 admin / admin123，见 application-dev.yml）
 
-# 3. 前台（端口 5173）
-cd myblog && npm ci && npm run dev
+# 博客前台
+cd myblog
+npm ci
+npm run dev
 
-# 4. 管理后台（端口 5174，/api 自动代理到 :8000）
-cd admin && npm ci && npm run dev
+# 管理后台
+cd admin
+npm ci
+npm run dev
 ```
 
-> IDEA 直跑后端：Run Configuration 的 Active profiles 填 `dev` 即可；本地调试前注意停掉 compose 的 backend 容器（8000 端口冲突）。
+端口为后端 `8000`、前台 `5173`、后台 `5174`、PostgreSQL `15432`、Redis `6379`。
 
-### 测试与质量检查
+## 测试
 
 ```bash
 cd backend-java
-mvn test        # 单元测试（240+，纯单测不依赖 DB/Redis）
-mvn verify      # 完整质量门：单测 + Checkstyle + SpotBugs + JaCoCo 覆盖率
+mvn test
+mvn verify
+
+cd ../myblog
+npm ci && npm run lint && npm run build
+
+cd ../admin
+npm ci && npm run lint && npm run build
 ```
 
-覆盖率报告：`backend-java/target/site/jacoco/index.html`。核心业务层（`application.service`）行覆盖率 ≥ 99%，分层依赖约束由 ArchUnit 守护。
+`mvn verify` 包含单元测试、Testcontainers 集成测试、Checkstyle、SpotBugs、JaCoCo 和 ArchUnit。
 
----
+## 生产 CI/CD
 
-## 服务器部署
+生产环境不执行根目录的一键部署命令。完整流程为：
 
-### Docker Compose 一键部署（推荐）
-
-```bash
-# 1. 拉取项目
-cd /data && git clone <repo-url> myblog && cd myblog
-
-# 2. 配置环境变量
-cp .env.example .env && vim .env
-
-# 3. 构建并启动全部服务
-docker compose up -d --build
+```text
+Git push
+  → CI 质量门与集成测试
+  → master 构建三个镜像
+  → 推送本机 Registry
+  → CD 校验并拉取指定 tag
+  → deploy/docker-compose.yml 无构建部署
 ```
 
-- **构建即质量门**：后端镜像构建阶段会执行全部单元测试 + Checkstyle，测试不通过则构建失败，问题代码不会进入线上
-- **数据库初始化**：无需手工执行 SQL。首次启动时后端 Flyway 自动执行 `V1__baseline.sql` 完成建表与初始数据；存量库自动以 V1 为基线接管，后续变更追加 `V2__xxx.sql` 即可
-- **SSL 证书**：部署前将证书放置于 `nginx/certs/`（该目录已 gitignore），详见 [deploy/README.md](deploy/README.md)
-- 镜像加速：离线/内网环境可预先 `docker pull` 基础镜像，或通过 Dockerfile 的 build-arg（如 `MAVEN_IMAGE`）指定私有仓库地址
+从空白服务器开始的 Docker、Registry、Jenkins、域名、证书、Webhook、Job 和首次发布步骤见 [生产部署指南](deploy/README.md)。流水线行为和保留策略见 [CI/CD 设计](docs/CI-CD.md)。
 
-### 验证部署
+## 项目结构
 
-```bash
-curl http://localhost:8000/api/v1/health       # 后端健康检查（应用 + DB + Redis）
-curl http://localhost/api/v1/...               # 公开内容接口
+```text
+MyBlog/
+├── myblog/                         # 博客前台
+├── admin/                          # 管理后台
+├── backend-java/                   # Spring Boot 后端
+├── nginx/
+│   └── default.conf.template       # 本地 HTTP 网关
+├── deploy/
+│   ├── docker-compose.yml          # 生产 image-only 编排
+│   ├── .env.example                # 生产配置模板
+│   ├── nginx/                      # 生产 HTTPS 网关
+│   ├── registry/                   # 私有 Registry
+│   ├── jenkins/                    # Jenkins 镜像与编排
+│   └── images/                     # CI 运行镜像 Dockerfile
+├── docker-compose.yml              # 本地一键部署
+├── Jenkinsfile.ci
+├── Jenkinsfile.cd
+└── Jenkinsfile.registry-cleanup
 ```
 
-浏览器访问：
+## 文档
 
-| 地址 | 服务 |
-|------|------|
-| `https://<域名>` | 博客前台 |
-| `https://<域名><ADMIN_ROUTE>/` | 管理后台 |
-| `https://<域名>/swagger-ui.html` | API 文档（Swagger UI） |
-
----
-
-## 运维命令
-
-```bash
-# 服务管理
-docker compose ps                        # 查看服务状态
-docker compose logs -f backend           # 跟踪后端日志（容器内日志另挂载到宿主机 ./logs/）
-docker compose restart backend           # 重启后端
-
-# 仅更新业务服务（不重建 postgres / redis；nginx 网关用官方镜像无需构建）
-docker compose up -d --no-deps --build backend frontend-web frontend-admin
-
-# 数据库
-docker exec -it myblog-postgres-1 psql -U myblog -d myblog           # 进入数据库
-docker exec myblog-postgres-1 pg_dump -U myblog -d myblog \
-  --no-owner --no-privileges --inserts > backup.sql            # 逻辑备份
-docker exec myblog-postgres-1 psql -U myblog -d myblog \
-  -c "SELECT version, description, success FROM flyway_schema_history;"  # 迁移状态
-
-# 静态资源上云（图片同步 OSS，配合 CDN）
-pwsh scripts/upload-static-assets-to-oss.ps1 -Bucket <bucket>
-
-# 空间维护
-docker image prune -f                    # 清理无用镜像
-docker compose down --volumes            # 停止并删除数据卷（危险，先备份）
-```
-
----
-
-## 端口速查
-
-| 端口 | 服务 | 用途 |
-|------|------|------|
-| 443 | Nginx (nginx) | HTTPS 入口（前台 `/`，后台 `${ADMIN_ROUTE}/`） |
-| 80 | Nginx (nginx) | 仅 301 跳转 HTTPS |
-| 8000 | backend | Spring Boot API（仅绑定 127.0.0.1） |
-| 15432 | PostgreSQL | 数据库（容器内 5432，避开本机已占用的 5432） |
-| 6379 | Redis | 缓存（仅绑定 127.0.0.1） |
-| 5173 / 5174 | Vite Dev Server | 本地开发前台 / 后台 |
-
----
-
-## 核心功能
-
-### 博客前台
-- 七个内容模块展示：首页轮播、关于我（气泡/要点）、技能图谱、足迹地图、爱好时间轴、Vibe 工具、MyLab 帖子
-- 互动：浏览 / 点赞 / 访问实时计数走 Redis（Lua 保证原子性），定时快照落 PG，Redis 故障自动降级读快照
-- 匿名访客隐私：访客标识经 HMAC 哈希，明细只存 Redis（72h TTL），不落库
-
-### 管理后台
-- 版本化内容管理：草稿编辑 → 发布 → 归档/下线，发布内容只读，历史版本可恢复；草稿保存带乐观锁防并发覆盖
-- 图片裁剪上传（cropperjs）、文件素材库（OSS 预签名 URL 分发）
-- 用户管理（创建/停用/重置密码）、访问统计仪表盘（ECharts）
-- JWT 双令牌认证（access + refresh），Redis jti 黑名单支持吊销，退出即失效；登录与全局双级限流
-
----
-
-## 文档导航
-
-| 文档 | 路径 | 说明 |
-|------|------|------|
-| AI 助手项目说明 | [AGENTS.md](AGENTS.md) | 项目约定、架构规则、常用命令（供 AI 编码助手阅读） |
-| API 接口文档 | [docs/API接口文档.md](docs/API接口文档.md) | 全部 REST 接口定义 |
-| 后端架构说明 | [backend-java/ARCHITECTURE.md](backend-java/ARCHITECTURE.md) | 分层架构与模块职责 |
-| 数据库设计 | [docs/数据库表结构重设计.md](docs/数据库表结构重设计.md) | 版本化内容系统的表设计实践 |
-| 部署说明 | [deploy/README.md](deploy/README.md) | Nginx 配置与部署细节 |
-| 测试工作流 | [docs/测试工作流.md](docs/测试工作流.md) | 测试约定与流程 |
-| 环境变量模板 | [.env.example](.env.example) | 全部配置项说明 |
+| 文档 | 说明 |
+|---|---|
+| [deploy/README.md](deploy/README.md) | 从空白服务器开始的生产部署指南 |
+| [docs/CI-CD.md](docs/CI-CD.md) | CI/CD 阶段、版本、校验、清理与回滚 |
+| [docs/测试工作流.md](docs/测试工作流.md) | 本地与流水线测试要求 |
+| [backend-java/ARCHITECTURE.md](backend-java/ARCHITECTURE.md) | 后端分层架构 |
+| [docs/API接口文档.md](docs/API接口文档.md) | REST API |
+| [.env.example](.env.example) | 本地一键部署配置模板 |
+| [deploy/.env.example](deploy/.env.example) | 生产 CI/CD 配置模板 |

@@ -1,0 +1,187 @@
+# ============================================================
+# MyBlog 生产网关配置（容器启动时由官方 nginx 镜像的 envsubst 按环境变量渲染，
+# 仅替换环境中已定义的变量，nginx 自身的 $host/$uri 等变量不受影响）
+#
+# 架构：单一域名 HTTPS 入口，纯反向代理（静态资源由各前端容器自行托管）
+#   - https://${BLOG_DOMAIN}/        反代到 frontend-web 容器（前台博客 SPA）
+#   - https://${BLOG_DOMAIN}${ADMIN_ROUTE}/  反代到 frontend-admin 容器
+#   - https://${BLOG_DOMAIN}/api/    反代到 backend:8000
+#   - https://${BLOG_DOMAIN}${JENKINS_ROUTE}/  反代到独立 Jenkins 容器
+# 证书：deploy/nginx/certs/ 下由 TLS_CERT_FILE / TLS_KEY_FILE 指定的文件。
+#
+# 注：本文件由 conf.d 机制包含在 http {} 上下文中，
+#     因此 limit_req_zone / map 等 http 级指令可直接写在 server 块之外
+# ============================================================
+
+# ============================================================
+# DDoS 防护：限流配置（http 级）
+# 基于客户端 IP 的请求速率限制（$binary_remote_addr 比 $remote_addr 省内存）
+# zone=名称:内存大小  rate=速率（r/s 每秒，r/m 每分钟）
+# ============================================================
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=login_limit:10m rate=3r/m;
+limit_req_zone $binary_remote_addr zone=static_limit:10m rate=50r/s;
+# 单 IP 并发连接数限制
+limit_conn_zone $binary_remote_addr zone=conn_per_ip:10m;
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+# 超限返回 429 Too Many Requests（而非默认 503）
+limit_req_status 429;
+limit_conn_status 429;
+
+# HTTP 全量 301 跳转 HTTPS
+server {
+    listen 80;
+    server_name ${BLOG_DOMAIN} www.${BLOG_DOMAIN};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${BLOG_DOMAIN} www.${BLOG_DOMAIN};
+
+    # SSL 证书（含中间证书的完整链）与私钥
+    ssl_certificate     /etc/nginx/certs/${TLS_CERT_FILE};
+    ssl_certificate_key /etc/nginx/certs/${TLS_KEY_FILE};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # 安全响应头
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    client_max_body_size 12m;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+
+    # 走 Docker 内嵌 DNS 解析上游容器，容器重建换 IP 后仍能解析；
+    # proxy_pass 使用变量时可避免上游未就绪导致 nginx 启动失败
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $api_upstream backend:8000;
+    set $web_upstream frontend-web:80;
+    set $admin_upstream frontend-admin:80;
+    set $jenkins_upstream jenkins:8080;
+
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # ========================================================
+    # 登录接口（严格限流，防暴力破解 / 撞库）
+    # 匹配优先级高于 /api/（nginx 按最长前缀匹配）
+    # ========================================================
+    location /api/v1/auth/login {
+        # 每分钟最多 3 次，瞬时允许 5 次突发
+        limit_req zone=login_limit burst=5 nodelay;
+        limit_conn conn_per_ip 5;
+
+        proxy_pass http://$api_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        client_max_body_size 1m;
+    }
+
+    # API 反向代理。X-Forwarded-Proto 透传后，后端能识别 HTTPS 请求
+    # （Spring forward-headers-strategy=framework），访客 Cookie 自动带 Secure
+    location /api/ {
+        # 通用 API 限流：10 req/s + 20 突发；单 IP 最多 10 并发连接
+        limit_req zone=api_limit burst=20 nodelay;
+        limit_conn conn_per_ip 10;
+
+        proxy_pass http://$api_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+
+    # Jenkins 使用与控制器 --prefix 一致的上下文路径，通过专用 Docker 网络访问
+    location = ${JENKINS_ROUTE} {
+        return 308 ${JENKINS_ROUTE}/;
+    }
+
+    location ${JENKINS_ROUTE}/ {
+        limit_conn conn_per_ip 20;
+
+        proxy_pass http://$jenkins_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Prefix ${JENKINS_ROUTE};
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_redirect off;
+        proxy_buffering off;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 90s;
+        proxy_send_timeout 90s;
+    }
+
+    # 后台管理 SPA：去掉可配置前缀后反代到 frontend-admin 容器（容器内站点托管在根路径），
+    # SPA history 路由的回退由 frontend-admin 容器自身的 nginx 配置处理
+    location = ${ADMIN_ROUTE} {
+        return 308 ${ADMIN_ROUTE}/;
+    }
+
+    location ${ADMIN_ROUTE}/ {
+        # 静态资源限流（宽松，浏览器可能批量加载）
+        limit_req zone=static_limit burst=100 nodelay;
+        limit_conn conn_per_ip 20;
+
+        rewrite ^${ADMIN_ROUTE}/?(.*)$ /$1 break;
+        proxy_pass http://$admin_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+
+    # 前台 SPA：原样反代到 frontend-web 容器
+    location / {
+        # 页面浏览限流（宽松，浏览器首屏会并发加载多个静态文件）
+        limit_req zone=static_limit burst=100 nodelay;
+        limit_conn conn_per_ip 20;
+
+        proxy_pass http://$web_upstream$request_uri;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+
+    # ========================================================
+    # 限流错误页（429 Too Many Requests），返回 JSON 而非默认 HTML
+    # ========================================================
+    error_page 429 = @rate_limited;
+    location @rate_limited {
+        default_type application/json;
+        return 429 '{"code":429,"message":"请求过于频繁，请稍后再试"}';
+    }
+}

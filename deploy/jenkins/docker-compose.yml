@@ -1,0 +1,31 @@
+name: myblog-jenkins
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: myblog-jenkins:lts
+    container_name: jenkins
+    environment:
+      JENKINS_OPTS: --prefix=${JENKINS_ROUTE:-/jenkins}
+      DOCKER_GID: ${DOCKER_GID}
+      TZ: ${TZ:-Asia/Shanghai}
+    group_add:
+      - ${DOCKER_GID:?DOCKER_GID must match /var/run/docker.sock}
+    volumes:
+      - ${JENKINS_DATA_DIR:-/data/jenkins}:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DEPLOY_CONFIG_DIR:-/opt/myblog/deploy}:/opt/myblog/deploy:ro
+    networks:
+      - cicd
+      - jenkins-proxy
+    restart: unless-stopped
+
+networks:
+  cicd:
+    name: myblog-cicd
+    external: true
+  jenkins-proxy:
+    name: myblog-jenkins-proxy
+    external: true

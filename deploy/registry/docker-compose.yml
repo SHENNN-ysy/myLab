@@ -1,0 +1,30 @@
+name: myblog-registry
+
+services:
+  registry:
+    image: registry:2
+    container_name: myblog-registry
+    environment:
+      # reg 删除 manifest 后，垃圾回收才能释放无引用层。
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      OTEL_TRACES_EXPORTER: none
+    ports:
+      # Registry 仅供本机 Docker Engine 推拉，不暴露公网。
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ${REGISTRY_DATA_DIR:-/data/registry}:/var/lib/registry
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:5000/v2/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - cicd
+    restart: unless-stopped
+
+networks:
+  cicd:
+    name: myblog-cicd
+    external: true

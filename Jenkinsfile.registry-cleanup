@@ -1,0 +1,68 @@
+// Registry 定时维护：保留最近 5 个 release tag，并额外保护当前成功部署版本。
+pipeline {
+    agent any
+
+    parameters {
+        booleanParam(name: 'DRY_RUN',
+                     defaultValue: false,
+                     description: '仅输出保留/删除计划，不实际删除')
+    }
+
+    triggers {
+        cron('TZ=Asia/Shanghai\n30 3 * * *')
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    environment {
+        REGISTRY_API_HOST = 'registry:5000'
+        REGISTRY_HOST = '127.0.0.1:5000'
+        REGISTRY_CONTAINER = 'myblog-registry'
+        REGISTRY_KEEP_TAGS = '5'
+        REGISTRY_LOCK = '/var/jenkins_home/locks/myblog-registry.lock'
+        DEPLOY_STATE_FILE = '/var/jenkins_home/deploy-state/myblog-current-release'
+        REGISTRY_COMPOSE_FILE = 'deploy/registry/docker-compose.yml'
+        REGISTRY_ENV_FILE = '/opt/myblog/deploy/.env'
+    }
+
+    stages {
+        stage('Cleanup Registry') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p "$(dirname "$REGISTRY_LOCK")"
+                    (
+                        flock -x 9
+                        configured_keep_tags=$(sed -n 's/^REGISTRY_KEEP_TAGS=//p' "$REGISTRY_ENV_FILE" | tail -n 1 | tr -d '\r')
+                        configured_dry_run=$(sed -n 's/^REGISTRY_CLEANUP_DRY_RUN=//p' "$REGISTRY_ENV_FILE" | tail -n 1 | tr -d '\r')
+                        configured_dry_run=${configured_dry_run:-true}
+                        case "$configured_dry_run" in
+                            true|false) ;;
+                            *) echo "REGISTRY_CLEANUP_DRY_RUN 只能为 true 或 false" >&2; exit 1 ;;
+                        esac
+                        effective_dry_run=false
+                        if [ "$configured_dry_run" = "true" ] || [ "$DRY_RUN" = "true" ]; then
+                            effective_dry_run=true
+                        fi
+                        REGISTRY_KEEP_TAGS="${configured_keep_tags:-$REGISTRY_KEEP_TAGS}" \
+                        DRY_RUN="$effective_dry_run" \
+                        sh scripts/registry-cleanup.sh
+                    ) 9>"$REGISTRY_LOCK"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Registry 清理任务完成；实际模式同时受 Job 参数和 deploy/.env 控制。"
+        }
+        failure {
+            echo 'Registry 清理失败；安全校验未通过时不会进入删除阶段。'
+        }
+    }
+}

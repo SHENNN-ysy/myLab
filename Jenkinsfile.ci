@@ -1,16 +1,6 @@
 // ============================================================
-// MyBlog CI 流水线（每次 push 自动触发）
-//
-// Jenkins 侧一次性配置：
-//   1. 新建 Multibranch Pipeline，Branch Source 选 GitHub/Git，
-//      开启 "Discover Branches"（所有分支），Script Path 填 Jenkinsfile.ci
-//   2. GitHub webhook 指向 Nginx HTTPS 入口：
-//      https://<BLOG_DOMAIN><JENKINS_ROUTE>/github-webhook/
-//
-// 节点前置条件：
-//   - 安装 Docker，且 jenkins 用户已加入 docker 组
-//   - 后端集成测试基于 Testcontainers，需要访问 /var/run/docker.sock
-//   - 安装 JUnit 插件与 Coverage 插件（覆盖率报告；JaCoCo 独立插件已 EOL）
+// MyBlog CI：所有分支执行质量门，仅 master 构建并推送可部署镜像。
+// Jenkins 节点需能访问 docker.sock，并通过 myblog-cicd 网络访问 registry:5000。
 // ============================================================
 pipeline {
     agent none
@@ -21,33 +11,56 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '20'))
     }
 
+    environment {
+        REGISTRY_HOST = '127.0.0.1:5000'
+        REGISTRY_API_HOST = 'registry:5000'
+        REGISTRY_LOCK = '/var/jenkins_home/locks/myblog-registry.lock'
+        DEPLOY_ENV_FILE = '/opt/myblog/deploy/.env'
+    }
+
     stages {
+        stage('Prepare') {
+            agent any
+            steps {
+                script {
+                    env.ADMIN_ROUTE = sh(
+                        returnStdout: true,
+                        script: '''
+                            set -eu
+                            route=$(sed -n 's/^ADMIN_ROUTE=//p' "$DEPLOY_ENV_FILE" | tail -n 1 | tr -d '\\r')
+                            route=${route:-/admin}
+                            printf '%s' "$route" | grep -Eq '^/[A-Za-z0-9._~-]+(/[A-Za-z0-9._~-]+)*$' || {
+                                echo "ADMIN_ROUTE 格式错误: $route" >&2
+                                exit 1
+                            }
+                            printf '%s' "$route"
+                        '''
+                    ).trim()
+                }
+            }
+        }
+
         stage('Backend CI') {
             agent {
                 docker {
-                    // 挂载 docker.sock 供 Testcontainers 起 PG/Redis。
-                    // 容器内进程 uid=1000（镜像内 ubuntu 用户，HOME=/home/ubuntu）：
-                    //   --group-add 988 补宿主机 docker 组权限（访问挂载的 sock；
-                    //     GID 以宿主机 getent group docker 为准，迁移机器时需同步修改）
-                    //   .m2 挂到 /home/ubuntu/.m2 才是该用户真实使用的 Maven 缓存路径，
-                    //     避免每次构建全量下载依赖
+                    // Testcontainers 通过宿主机 Docker 启动真实 PostgreSQL 与 Redis。
                     image 'maven:3.9-eclipse-temurin-21'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock -v /data/jenkins/.m2:/home/ubuntu/.m2 --group-add 988'
+                    args "-v /var/run/docker.sock:/var/run/docker.sock -v /data/jenkins/.m2:/home/ubuntu/.m2 --group-add ${env.DOCKER_GID}"
                     reuseNode true
                 }
             }
             steps {
                 dir('backend-java') {
-                    // verify = Checkstyle + 单元测试 + *IT 集成测试 + SpotBugs + JaCoCo
+                    // verify 包含 Checkstyle、单测、*IT 集成测试、SpotBugs 与 JaCoCo。
                     sh 'mvn -B verify'
                 }
+                stash name: 'backend-artifact',
+                      includes: 'backend-java/target/myblog-backend-*.jar'
             }
             post {
                 always {
                     junit allowEmptyResults: true,
                           testResults: 'backend-java/target/surefire-reports/*.xml, backend-java/target/failsafe-reports/*.xml'
-                    // 覆盖率走 Coverage 插件（JaCoCo 独立插件已 EOL，功能并入其中），
-                    // 解析 verify 阶段生成的 XML 报告
                     recordCoverage enabledForFailure: true,
                                    tools: [[parser: 'JACOCO',
                                             pattern: 'backend-java/target/site/jacoco/jacoco.xml']]
@@ -68,11 +81,12 @@ pipeline {
                         dir('myblog') {
                             sh 'npm ci --no-audit --no-fund'
                             sh 'npm run lint'
-                            // build 内含 vue-tsc 类型检查，即编译验证
                             sh 'npm run build'
                         }
+                        stash name: 'web-artifact', includes: 'myblog/dist/**'
                     }
                 }
+
                 stage('admin (admin/)') {
                     agent {
                         docker {
@@ -83,21 +97,127 @@ pipeline {
                     steps {
                         dir('admin') {
                             sh 'npm ci --no-audit --no-fund'
-                            sh 'npm run lint'
-                            sh 'npm run build'
+                            sh 'VITE_ADMIN_ROUTE="$ADMIN_ROUTE" npm run lint'
+                            sh 'VITE_ADMIN_ROUTE="$ADMIN_ROUTE" npm run build'
                         }
+                        stash name: 'admin-artifact', includes: 'admin/dist/**'
                     }
                 }
+            }
+        }
+
+        stage('Build Images') {
+            when {
+                branch 'master'
+            }
+            agent any
+            steps {
+                unstash 'backend-artifact'
+                unstash 'web-artifact'
+                unstash 'admin-artifact'
+                script {
+                    env.RELEASE_TAG = sh(
+                        returnStdout: true,
+                        script: 'printf "%s-%s" "$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)" "$(git rev-parse --short=7 HEAD)"'
+                    ).trim()
+                    env.RELEASE_CREATED = sh(
+                        returnStdout: true,
+                        script: 'date -u +%Y-%m-%dT%H:%M:%SZ'
+                    ).trim()
+                    env.RELEASE_REVISION = sh(
+                        returnStdout: true,
+                        script: 'git rev-parse HEAD'
+                    ).trim()
+                }
+                sh '''
+                    set -eu
+                    rm -rf .ci-image-context
+                    mkdir -p .ci-image-context/backend .ci-image-context/web .ci-image-context/admin
+
+                    backend_jar=$(find backend-java/target -maxdepth 1 -type f -name 'myblog-backend-*.jar' ! -name '*.original' | head -n 1)
+                    test -n "$backend_jar"
+                    cp "$backend_jar" .ci-image-context/backend/app.jar
+                    cp -R myblog/dist .ci-image-context/web/dist
+                    cp myblog/nginx.conf .ci-image-context/web/nginx.conf
+                    cp -R admin/dist .ci-image-context/admin/dist
+                    cp admin/nginx.conf .ci-image-context/admin/nginx.conf
+
+                    docker build \
+                      --build-arg OCI_VERSION="$RELEASE_TAG" \
+                      --build-arg OCI_REVISION="$RELEASE_REVISION" \
+                      --build-arg OCI_CREATED="$RELEASE_CREATED" \
+                      -f deploy/images/backend.Dockerfile \
+                      -t "$REGISTRY_HOST/myblog-api:$RELEASE_TAG" \
+                      .ci-image-context/backend
+
+                    docker build \
+                      --build-arg OCI_VERSION="$RELEASE_TAG" \
+                      --build-arg OCI_REVISION="$RELEASE_REVISION" \
+                      --build-arg OCI_CREATED="$RELEASE_CREATED" \
+                      -f deploy/images/web.Dockerfile \
+                      -t "$REGISTRY_HOST/myblog-web:$RELEASE_TAG" \
+                      .ci-image-context/web
+
+                    docker build \
+                      --build-arg OCI_VERSION="$RELEASE_TAG" \
+                      --build-arg OCI_REVISION="$RELEASE_REVISION" \
+                      --build-arg OCI_CREATED="$RELEASE_CREATED" \
+                      --build-arg ADMIN_ROUTE="$ADMIN_ROUTE" \
+                      -f deploy/images/admin.Dockerfile \
+                      -t "$REGISTRY_HOST/myblog-admin:$RELEASE_TAG" \
+                      .ci-image-context/admin
+                '''
+            }
+            post {
+                always {
+                    sh 'rm -rf .ci-image-context || true'
+                }
+            }
+        }
+
+        stage('Push Images') {
+            when {
+                branch 'master'
+            }
+            agent any
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p "$(dirname "$REGISTRY_LOCK")"
+                    (
+                        flock -x 9
+                        docker push "$REGISTRY_HOST/myblog-api:$RELEASE_TAG"
+                        docker push "$REGISTRY_HOST/myblog-web:$RELEASE_TAG"
+                        docker push "$REGISTRY_HOST/myblog-admin:$RELEASE_TAG"
+
+                        reg -f digest "$REGISTRY_API_HOST/myblog-api:$RELEASE_TAG"
+                        reg -f digest "$REGISTRY_API_HOST/myblog-web:$RELEASE_TAG"
+                        reg -f digest "$REGISTRY_API_HOST/myblog-admin:$RELEASE_TAG"
+                    ) 9>"$REGISTRY_LOCK"
+
+                    cat > release.env <<EOF
+RELEASE_TAG=$RELEASE_TAG
+RELEASE_REVISION=$RELEASE_REVISION
+RELEASE_CREATED=$RELEASE_CREATED
+EOF
+                '''
+                archiveArtifacts artifacts: 'release.env', fingerprint: true
             }
         }
     }
 
     post {
         success {
-            echo 'CI 通过：编译、静态检查与全部测试均成功。'
+            script {
+                if (env.BRANCH_NAME == 'master') {
+                    echo "CI 通过，可部署镜像版本：${env.RELEASE_TAG}"
+                } else {
+                    echo 'CI 通过：当前分支不构建部署镜像。'
+                }
+            }
         }
         failure {
-            echo 'CI 失败：请根据上方日志修复后重新推送。'
+            echo 'CI 失败：未产生可部署版本。'
         }
     }
 }

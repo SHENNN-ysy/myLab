@@ -1,6 +1,6 @@
-name: myblog-local
+name: myblog
 
-# 本地一键部署：从源码构建，不依赖 Jenkins、Registry、域名或 SSL 证书。
+# 生产部署：应用服务只使用 CI 推送的不可变镜像，禁止源码构建。
 services:
   postgres:
     image: ${POSTGRES_IMAGE:-postgres:16-alpine}
@@ -47,10 +47,7 @@ services:
     restart: unless-stopped
 
   backend:
-    build:
-      context: ./backend-java
-      dockerfile: Dockerfile
-    image: myblog-api:local
+    image: ${API_IMAGE:?API_IMAGE must be provided by CD}
     ports: ["127.0.0.1:8000:8000"]
     environment:
       APP_PORT: "8000"
@@ -76,7 +73,8 @@ services:
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
       INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD}
       LOG_PATH: /logs
-    volumes: [./logs:/logs]
+    volumes:
+      - ${APP_LOG_DIR:-/data/myblog/logs}:/logs
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -93,10 +91,7 @@ services:
     restart: unless-stopped
 
   frontend-web:
-    build:
-      context: ./myblog
-      dockerfile: Dockerfile
-    image: myblog-web:local
+    image: ${WEB_IMAGE:?WEB_IMAGE must be provided by CD}
     depends_on: [backend]
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1/healthz || exit 1"]
@@ -109,12 +104,7 @@ services:
     restart: unless-stopped
 
   frontend-admin:
-    build:
-      context: ./admin
-      dockerfile: Dockerfile
-      args:
-        ADMIN_ROUTE: ${ADMIN_ROUTE:-/admin}
-    image: myblog-admin:local
+    image: ${ADMIN_IMAGE:?ADMIN_IMAGE must be provided by CD}
     depends_on: [backend]
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1/healthz || exit 1"]
@@ -129,25 +119,33 @@ services:
   nginx:
     image: nginx:1.27-alpine
     environment:
+      BLOG_DOMAIN: ${BLOG_DOMAIN}
       ADMIN_ROUTE: ${ADMIN_ROUTE:-/admin}
+      JENKINS_ROUTE: ${JENKINS_ROUTE:-/jenkins}
+      TLS_CERT_FILE: ${TLS_CERT_FILE:-fullchain.pem}
+      TLS_KEY_FILE: ${TLS_KEY_FILE:-privkey.pem}
       TZ: ${TZ:-Asia/Shanghai}
-    ports: ["80:80"]
+    ports: ["80:80", "443:443"]
     volumes:
-      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${HOST_PROJECT_DIR:-..}/deploy/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${TLS_CERT_DIR:-/opt/myblog/deploy/nginx/certs}:/etc/nginx/certs:ro
     depends_on: [frontend-web, frontend-admin, backend]
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --no-check-certificate --spider https://127.0.0.1/healthz || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 3
       start_period: 10s
     mem_limit: 128m
-    networks: [blog-net]
+    networks: [blog-net, jenkins-proxy]
     restart: unless-stopped
 
 networks:
   blog-net:
     driver: bridge
+  jenkins-proxy:
+    name: myblog-jenkins-proxy
+    external: true
 
 volumes:
   pg_data:

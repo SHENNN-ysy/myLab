@@ -1,16 +1,6 @@
 // ============================================================
-// MyBlog CD 流水线（手动触发）
-//
-// Jenkins 侧一次性配置：
-//   1. 新建普通 Pipeline 作业，Definition 选
-//      "Pipeline script from SCM"，Script Path 填 Jenkinsfile.cd
-//   2. 通过 "Build with Parameters" 手动触发，可指定 IMAGE_TAG
-//
-// 节点前置条件（Jenkins 与部署目标为同一台机器）：
-//   - Jenkins 节点已安装 Docker CLI、Buildx 与 Docker Compose v2
-//   - jenkins 用户可访问宿主机 /var/run/docker.sock
-//   - 仓库目录下已按 .env.example 配置好 .env（compose 自动读取）
-//   - 镜像在 Jenkins 节点本机构建并直接部署，不依赖镜像仓库
+// MyBlog CD：手动选择 CI 产生的不可变 tag，从本机 Registry 拉取并部署。
+// CD 不执行镜像构建；Jenkins 需加入 myblog-cicd 网络并安装 reg、flock。
 // ============================================================
 pipeline {
     agent any
@@ -18,7 +8,7 @@ pipeline {
     parameters {
         string(name: 'IMAGE_TAG',
                defaultValue: '',
-               description: '镜像标签，留空则使用构建号（BUILD_NUMBER）')
+               description: '必填，格式：yyyyMMdd-HHmmss-7位GitSHA')
     }
 
     options {
@@ -28,76 +18,123 @@ pipeline {
     }
 
     environment {
-        // 参数留空时回退到构建号
-        TAG = "${params.IMAGE_TAG?.trim() ? params.IMAGE_TAG.trim() : env.BUILD_NUMBER}"
-        // Jenkins Home 在宿主机上的持久化目录，用于换算 Compose bind mount 源路径
+        REGISTRY_HOST = '127.0.0.1:5000'
+        REGISTRY_API_HOST = 'registry:5000'
+        REGISTRY_CONTAINER = 'myblog-registry'
+        REGISTRY_LOCK = '/var/jenkins_home/locks/myblog-registry.lock'
+        DEPLOY_STATE_FILE = '/var/jenkins_home/deploy-state/myblog-current-release'
+        DEPLOY_COMPOSE_FILE = 'deploy/docker-compose.yml'
+        DEPLOY_ENV_FILE = '/opt/myblog/deploy/.env'
         JENKINS_HOST_HOME = '/data/jenkins'
     }
 
     stages {
-        stage('Build Images') {
+        stage('Registry Preflight & Pull') {
             steps {
-                // 后端镜像构建期内会执行全部单元测试，测试失败则构建失败
-                sh 'docker compose build backend frontend-web frontend-admin'
-            }
-        }
+                script {
+                    env.TAG = params.IMAGE_TAG.trim()
+                    env.API_IMAGE = "${env.REGISTRY_HOST}/myblog-api:${env.TAG}"
+                    env.WEB_IMAGE = "${env.REGISTRY_HOST}/myblog-web:${env.TAG}"
+                    env.ADMIN_IMAGE = "${env.REGISTRY_HOST}/myblog-admin:${env.TAG}"
+                }
+                sh '''
+                    set -eu
+                    printf '%s' "$TAG" | grep -Eq '^[0-9]{8}-[0-9]{6}-[0-9a-f]{7}$' || {
+                        echo "IMAGE_TAG 格式错误: $TAG" >&2
+                        exit 1
+                    }
 
-        stage('Tag Images') {
-            steps {
-                // 给本机构建的镜像打上版本标签，保留历史 TAG 便于回滚
-                sh """
-                    docker tag myblog-api:latest  myblog-api:${TAG}
-                    docker tag myblog-web:latest  myblog-web:${TAG}
-                    docker tag myblog-admin:latest  myblog-admin:${TAG}
-                """
+                    mkdir -p "$(dirname "$REGISTRY_LOCK")"
+                    (
+                        flock -x 9
+
+                        registry_status=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$REGISTRY_CONTAINER" 2>/dev/null || echo missing)
+                        if [ "$registry_status" != "healthy" ]; then
+                            echo "Registry 容器未就绪: $registry_status" >&2
+                            exit 1
+                        fi
+                        curl --fail --silent --show-error "http://$REGISTRY_API_HOST/v2/" >/dev/null
+
+                        for repository in myblog-api myblog-web myblog-admin; do
+                            digest=$(reg -f digest "$REGISTRY_API_HOST/$repository:$TAG")
+                            printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$' || {
+                                echo "Registry 镜像无效: $repository:$TAG" >&2
+                                exit 1
+                            }
+                            echo "$repository:$TAG -> $digest"
+                        done
+
+                        docker pull "$API_IMAGE"
+                        docker pull "$WEB_IMAGE"
+                        docker pull "$ADMIN_IMAGE"
+                    ) 9>"$REGISTRY_LOCK"
+
+                    configured_admin_route=$(sed -n 's/^ADMIN_ROUTE=//p' "$DEPLOY_ENV_FILE" | tail -n 1 | tr -d '\r')
+                    configured_admin_route=${configured_admin_route:-/admin}
+                    image_admin_route=$(docker image inspect --format '{{index .Config.Labels "com.myblog.admin-route"}}' "$ADMIN_IMAGE")
+                    if [ "$image_admin_route" != "$configured_admin_route" ]; then
+                        echo "ADMIN_ROUTE 不一致：镜像=$image_admin_route，部署配置=$configured_admin_route" >&2
+                        exit 1
+                    fi
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
-                // 通过 API_IMAGE / WEB_IMAGE / ADMIN_IMAGE 覆盖 compose 默认镜像名，
-                // 直接使用本机刚构建并打好标签的镜像重建 backend/frontend-web/frontend-admin 容器；
-                // nginx 网关使用官方镜像随 compose 一并重建，postgres/redis 不受影响
                 sh '''
+                    set -eu
                     case "$WORKSPACE" in
                         "$JENKINS_HOME"/*) ;;
                         *) echo "WORKSPACE 不在 JENKINS_HOME 下，无法换算宿主机路径" >&2; exit 1 ;;
                     esac
                     relative_workspace=${WORKSPACE#"$JENKINS_HOME"}
-                    HOST_PROJECT_DIR="${JENKINS_HOST_HOME}${relative_workspace}" \\
-                    API_IMAGE="myblog-api:${TAG}" \\
-                    WEB_IMAGE="myblog-web:${TAG}" \\
-                    ADMIN_IMAGE="myblog-admin:${TAG}" \\
-                    docker compose up -d
+                    HOST_PROJECT_DIR="${JENKINS_HOST_HOME}${relative_workspace}" \
+                    API_IMAGE="$API_IMAGE" \
+                    WEB_IMAGE="$WEB_IMAGE" \
+                    ADMIN_IMAGE="$ADMIN_IMAGE" \
+                    docker compose --env-file "$DEPLOY_ENV_FILE" -f "$DEPLOY_COMPOSE_FILE" up -d --no-build
                 '''
             }
         }
 
         stage('Health Check') {
             steps {
-                // 以 compose 健康检查为准（backend 探测 /api/v1/health，frontend-web/frontend-admin 探测 /healthz，
-                // nginx 探测 443 端口），轮询容器 Health.Status 直到 healthy；超时则判定部署失败
                 sh '''
-                    for svc in backend frontend-web frontend-admin nginx; do
-                        ok=false
-                        for i in $(seq 1 30); do
-                            cid=$(docker compose ps -q "$svc")
-                            status=$(docker inspect --format '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo unknown)
+                    set -eu
+                    for service in backend frontend-web frontend-admin nginx; do
+                        ready=false
+                        for attempt in $(seq 1 30); do
+                            container_id=$(docker compose --env-file "$DEPLOY_ENV_FILE" -f "$DEPLOY_COMPOSE_FILE" ps -q "$service")
+                            status=$(docker inspect --format '{{.State.Health.Status}}' "$container_id" 2>/dev/null || echo unknown)
                             if [ "$status" = "healthy" ]; then
-                                echo "$svc 已就绪 (healthy)"
-                                ok=true
+                                echo "$service 已就绪"
+                                ready=true
                                 break
                             fi
-                            echo "等待 $svc 健康检查通过（当前: $status）... ($i/30)"
+                            echo "等待 $service 健康检查（当前: $status）... ($attempt/30)"
                             sleep 5
                         done
-                        if [ "$ok" != "true" ]; then
-                            echo "健康检查失败: $svc"
-                            docker compose ps
+                        if [ "$ready" != "true" ]; then
+                            echo "健康检查失败: $service" >&2
                             exit 1
                         fi
                     done
-                    docker compose ps
+                    docker compose --env-file "$DEPLOY_ENV_FILE" -f "$DEPLOY_COMPOSE_FILE" ps
+                '''
+            }
+        }
+
+        stage('Record Release') {
+            steps {
+                sh '''
+                    set -eu
+                    state_directory=$(dirname "$DEPLOY_STATE_FILE")
+                    mkdir -p "$state_directory"
+                    temporary_state=$(mktemp "$state_directory/.myblog-current-release.XXXXXX")
+                    printf '%s\n' "$TAG" > "$temporary_state"
+                    mv "$temporary_state" "$DEPLOY_STATE_FILE"
+                    echo "已记录当前成功部署版本: $TAG"
                 '''
             }
         }
@@ -105,15 +142,16 @@ pipeline {
 
     post {
         success {
-            echo "部署成功：myblog-api:${TAG}、myblog-web:${TAG} 与 myblog-admin:${TAG} 已上线。"
+            echo "部署成功：${env.TAG} 已上线并记录为当前版本。"
         }
         failure {
-            echo """部署失败。如需回滚，执行：
-  API_IMAGE=myblog-api:<上一个TAG> WEB_IMAGE=myblog-web:<上一个TAG> ADMIN_IMAGE=myblog-admin:<上一个TAG> docker compose up -d"""
-        }
-        cleanup {
-            // 清理构建过程中产生的悬空镜像
-            sh 'docker image prune -f || true'
+            echo "部署失败，成功版本状态文件未更新；请检查容器日志后手工选择 tag 回滚。"
+            sh '''
+                docker compose --env-file "$DEPLOY_ENV_FILE" -f "$DEPLOY_COMPOSE_FILE" ps || true
+                docker compose --env-file "$DEPLOY_ENV_FILE" -f "$DEPLOY_COMPOSE_FILE" logs --tail=100 backend frontend-web frontend-admin nginx || true
+                echo "回滚命令："
+                echo "API_IMAGE=$REGISTRY_HOST/myblog-api:<TAG> WEB_IMAGE=$REGISTRY_HOST/myblog-web:<TAG> ADMIN_IMAGE=$REGISTRY_HOST/myblog-admin:<TAG> docker compose --env-file /opt/myblog/deploy/.env -f deploy/docker-compose.yml up -d --no-build"
+            '''
         }
     }
 }

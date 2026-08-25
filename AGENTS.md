@@ -23,12 +23,14 @@ MyBlog/
 │       ├── application.yml        # 主配置（占位符走环境变量）
 │       ├── application-dev.yml    # 本地开发配置（含敏感值，已 gitignore，需自建）
 │       └── db/migration/          # Flyway 迁移脚本（V1__baseline.sql 起）
-├── nginx/                   # 网关配置模板 + SSL 证书（certs/ 已 gitignore）
+├── nginx/                   # 本地 HTTP 网关配置
+├── deploy/                  # 生产 Compose、HTTPS Nginx、Registry、Jenkins
 ├── docs/                    # API 文档、数据库设计、测试工作流
 ├── scripts/                 # 运维脚本（OSS 静态资源上传、库基线校验）
-├── docker-compose.yml       # 生产编排：postgres / redis / backend / frontend-web / frontend-admin / nginx
-├── Jenkinsfile.ci           # CI：push 触发，测试 + 静态检查 + 前端构建
-└── Jenkinsfile.cd           # CD：手动触发，本机构建镜像并部署
+├── docker-compose.yml       # 本地一键部署（从源码构建）
+├── Jenkinsfile.ci           # CI：质量门 + master 镜像构建与推送
+├── Jenkinsfile.cd           # CD：指定 Registry tag 拉取部署
+└── Jenkinsfile.registry-cleanup # Registry 定时清理
 ```
 
 详细文档：[README.md](README.md) | [后端架构](backend-java/ARCHITECTURE.md) | [API 接口文档](docs/API接口文档.md)
@@ -55,9 +57,9 @@ mvn verify      # 完整质量门：单测 + Checkstyle + SpotBugs + JaCoCo + Ar
 docker compose up -d postgres redis   # PG 映射 127.0.0.1:15432，Redis 映射 127.0.0.1:6379
 ```
 
-### 部署（服务器，Jenkins 与部署目标同机）
+### 本地一键部署
 ```bash
-docker compose up -d --build    # 全量构建启动
+docker compose up -d --build
 docker compose logs -f backend    # 跟踪后端日志（另见宿主机 ./logs/myblog.log）
 ```
 
@@ -111,7 +113,10 @@ starter ────────> application / common / infrastructure
 - 后台（admin/）：Ant Design Vue 4 优先，避免自造组件；ECharts 仪表盘；vite base 由 `ADMIN_ROUTE` 注入
 - `npm run build` 内含 vue-tsc 类型检查，即编译验证；提交前至少跑 `lint` + `build`
 
-## 5. 部署架构（docker-compose.yml）
+## 5. 部署架构
+
+- 根目录 `docker-compose.yml`：本地一键部署，从源码构建，使用 `nginx/default.conf.template`，仅 HTTP，不运行 Jenkins 或 Registry。
+- `deploy/docker-compose.yml`：生产 image-only 部署，使用 `deploy/nginx/default.conf.template`，提供 HTTPS 和 Jenkins 反向代理。
 
 ```
 Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
@@ -123,18 +128,21 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
              └── ${JENKINS_ROUTE}/ → Jenkins（专用外部网络，不发布主机端口）
 ```
 
-- web/admin 不暴露主机端口，仅内部网络可达；SSL 证书挂载 `nginx/certs/`
-- 管理后台路径由 `.env` 的 `ADMIN_ROUTE` 同时注入 Vite 构建和 Nginx，修改后必须重建 `frontend-admin` 并重建 Nginx 容器
+- web/admin 不暴露主机端口，仅内部网络可达；生产 SSL 证书挂载 `deploy/nginx/certs/`
+- 本地配置使用根目录 `.env`；生产配置使用 `deploy/.env`，两者不得混用
+- 管理后台路径由生产 `deploy/.env` 的 `ADMIN_ROUTE` 同时注入 CI 构建和 Nginx，修改后必须重新发布镜像
 - 镜像名可用环境变量覆盖：`API_IMAGE` / `WEB_IMAGE` / `ADMIN_IMAGE` / `POSTGRES_IMAGE` / `REDIS_IMAGE`
-- **不使用镜像仓库**：CD 在 Jenkins 节点本机构建镜像、打 TAG 直接部署
+- 应用镜像由 CI 推送到 `registry:2`，生产 Compose 不含 `build`；CD 只允许指定不可变 tag 拉取部署
+- Registry 仅绑定 `127.0.0.1:5000`；每个仓库保留最近 5 个 tag，并额外保护当前成功部署 tag
 - 注意：`depends_on` 仅在 `docker compose up` 时生效；服务器重启后 Docker 按 `restart: unless-stopped` 自行拉起容器，backend 可能先于 postgres 启动失败几轮后自愈，属预期行为
 
 ### CI/CD（Jenkins）
-- **Jenkinsfile.ci**：Multibranch，任意分支 push 触发。后端 `mvn verify`（Testcontainers 集成测试需 docker.sock），两个前端并行 `npm ci + lint + build`
-- **Jenkinsfile.cd**：手动触发（参数 IMAGE_TAG，留空用构建号）。流程：`docker compose build backend frontend-web frontend-admin` → 打 TAG → `API_IMAGE/WEB_IMAGE/ADMIN_IMAGE=...:<TAG> docker compose up -d` → 轮询 backend/frontend-web/frontend-admin/nginx 健康检查
-- Jenkins 官方镜像不包含 Docker 工具链；容器化节点使用 `deploy/jenkins/Dockerfile` 安装 Docker CLI、Buildx 与 Compose，不要只挂载宿主机的 Docker 二进制
-- Jenkins 使用 `.env` 的 `JENKINS_ROUTE` 作为控制器 `--prefix`，并通过外部网络 `myblog-jenkins-proxy` 由 Nginx 提供 HTTPS 与 GitHub Webhook 入口
-- 回滚：用上一个 TAG 重新 `up -d`（历史 TAG 镜像保留在本机）
+- **Jenkinsfile.ci**：任意分支执行后端 `mvn verify` 与前端质量门；仅 master 封装已验证产物并推送三个镜像
+- **Jenkinsfile.cd**：必填 `IMAGE_TAG`，先检查 Registry 与三镜像，再拉取并通过 `deploy/docker-compose.yml` 执行 `up -d --no-build`
+- **Jenkinsfile.registry-cleanup**：每天 03:30 使用 `reg` 删除非保留 manifest，再执行 Registry garbage collection
+- Jenkins 容器使用 `deploy/jenkins/Dockerfile` 安装 Docker CLI、Buildx、Compose、`reg` 与 `flock`
+- Jenkins 使用 `deploy/.env` 的 `JENKINS_ROUTE` 作为控制器 `--prefix`，并通过外部网络 `myblog-jenkins-proxy` 由生产 Nginx 提供 HTTPS 与 GitHub Webhook 入口
+- 回滚：从 Registry 最近保留版本中选择 tag，重新触发 CD
 
 ## 6. 关键约定
 
@@ -148,7 +156,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
    - 关键业务操作必须记审计日志（登录成功/失败含 IP、内容发布/下线、用户管理、文件上传/删除），用 `@Slf4j`
    - 敏感值（密码、令牌、密钥）禁止落日志；客户端 IP 从 `RequestContext.getIp()` 取
    - 日志文件：`logs/myblog.log`，按天滚动保留 30 天
-5. **配置**：敏感配置一律走环境变量占位符（`${VAR:默认值}`），不提交真实值；`.env`、`application-dev.yml`、`nginx/certs/` 已 gitignore
+5. **配置**：敏感配置一律走环境变量占位符（`${VAR:默认值}`），不提交真实值；`.env`、`application-dev.yml`、`nginx/certs/`、`deploy/nginx/certs/` 已 gitignore
 6. **质量门**：改动后端后至少跑 `mvn verify`；`application.service` 行覆盖率 ≥ 99%，新增业务逻辑必须补单测
 7. **注释要求**：生成的代码必须有注释，注释要简洁精准
 
@@ -173,4 +181,5 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 | 数据库设计 | [docs/数据库表结构重设计.md](docs/数据库表结构重设计.md) | 版本化内容系统表设计 |
 | 测试工作流 | [docs/测试工作流.md](docs/测试工作流.md) | 测试约定与流程 |
 | 部署说明 | [deploy/README.md](deploy/README.md) | Nginx/SSL/域名配置细节 |
-| 环境变量模板 | [.env.example](.env.example) | 全部配置项说明 |
+| 本地环境变量模板 | [.env.example](.env.example) | 本地一键部署配置 |
+| 生产环境变量模板 | [deploy/.env.example](deploy/.env.example) | 生产 CI/CD 配置 |
