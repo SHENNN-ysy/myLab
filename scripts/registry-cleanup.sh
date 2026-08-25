@@ -11,6 +11,7 @@ REGISTRY_COMPOSE_FILE=${REGISTRY_COMPOSE_FILE:-deploy/registry/docker-compose.ym
 REGISTRY_ENV_FILE=${REGISTRY_ENV_FILE:-/opt/myblog/deploy/.env}
 DEPLOY_STATE_FILE=${DEPLOY_STATE_FILE:-/var/jenkins_home/deploy-state/myblog-current-release}
 DRY_RUN=${DRY_RUN:-false}
+REGISTRY_API_SCRIPT=${REGISTRY_API_SCRIPT:-scripts/registry-api.sh}
 
 release_pattern='^[0-9]{8}-[0-9]{6}-[0-9a-f]{7}$'
 repositories='myblog-api myblog-web myblog-admin'
@@ -40,13 +41,18 @@ case "$DRY_RUN" in
     *) fail "DRY_RUN 只能为 true 或 false" ;;
 esac
 
-command -v reg >/dev/null 2>&1 || fail "缺少 reg 工具"
 command -v curl >/dev/null 2>&1 || fail "缺少 curl 工具"
+command -v jq >/dev/null 2>&1 || fail "缺少 jq 工具"
 command -v docker >/dev/null 2>&1 || fail "缺少 docker 工具"
+[ -f "$REGISTRY_API_SCRIPT" ] || fail "缺少 Registry API 脚本: $REGISTRY_API_SCRIPT"
+
+registry_api() {
+    sh "$REGISTRY_API_SCRIPT" "$@"
+}
 
 registry_status=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$REGISTRY_CONTAINER" 2>/dev/null || echo missing)
 [ "$registry_status" = "healthy" ] || fail "Registry 容器状态为 $registry_status"
-curl --fail --silent --show-error "http://$REGISTRY_API_HOST/v2/" >/dev/null || fail "Registry API 不可用"
+registry_api ping "$REGISTRY_API_HOST" || fail "Registry API 不可用"
 
 [ -f "$DEPLOY_STATE_FILE" ] || fail "当前部署状态文件不存在: $DEPLOY_STATE_FILE"
 current_tag=$(tr -d '\r\n' < "$DEPLOY_STATE_FILE")
@@ -75,8 +81,8 @@ for repository in $repositories; do
     delete_tags_file="$repository_directory/delete-tags"
     keep_digests_file="$repository_directory/keep-digests"
 
-    reg -f digest "$REGISTRY_API_HOST/$repository:$current_tag" >/dev/null 2>&1 || fail "$repository 缺少当前部署 tag $current_tag"
-    reg -f tags "$REGISTRY_API_HOST/$repository" \
+    registry_api digest "$REGISTRY_API_HOST" "$repository" "$current_tag" >/dev/null 2>&1 || fail "$repository 缺少当前部署 tag $current_tag"
+    registry_api tags "$REGISTRY_API_HOST" "$repository" \
         | grep -E "$release_pattern" \
         | sort -r > "$all_tags_file"
     [ -s "$all_tags_file" ] || fail "$repository 没有有效 release tag"
@@ -91,7 +97,7 @@ for repository in $repositories; do
 
     : > "$keep_digests_file"
     while IFS= read -r protected_tag; do
-        reg -f digest "$REGISTRY_API_HOST/$repository:$protected_tag" >> "$keep_digests_file"
+        registry_api digest "$REGISTRY_API_HOST" "$repository" "$protected_tag" >> "$keep_digests_file"
     done < "$keep_tags_file"
     sort -u -o "$keep_digests_file" "$keep_digests_file"
 
@@ -119,7 +125,7 @@ for repository in $repositories; do
 
     while IFS= read -r delete_tag; do
         [ -n "$delete_tag" ] || continue
-        delete_digest=$(reg -f digest "$REGISTRY_API_HOST/$repository:$delete_tag")
+        delete_digest=$(registry_api digest "$REGISTRY_API_HOST" "$repository" "$delete_tag")
         if grep -Fxq "$delete_digest" "$keep_digests_file"; then
             echo "跳过 $repository:$delete_tag：manifest 仍被保留 tag 引用"
             continue
@@ -127,7 +133,7 @@ for repository in $repositories; do
         if grep -Fxq "$delete_digest" "$deleted_digests_file"; then
             continue
         fi
-        reg -f rm "$REGISTRY_API_HOST/$repository@$delete_digest"
+        registry_api delete "$REGISTRY_API_HOST" "$repository" "$delete_digest"
         printf '%s\n' "$delete_digest" >> "$deleted_digests_file"
     done < "$delete_tags_file"
 done

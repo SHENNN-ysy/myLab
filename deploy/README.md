@@ -213,9 +213,12 @@ RELEASE_TAG=yyyyMMdd-HHmmss-7位GitSHA
 三个仓库必须同时存在该 tag：
 
 ```bash
-docker exec jenkins reg -f tags registry:5000/myblog-api
-docker exec jenkins reg -f tags registry:5000/myblog-web
-docker exec jenkins reg -f tags registry:5000/myblog-admin
+docker exec jenkins sh -c \
+  "curl -fsS http://registry:5000/v2/myblog-api/tags/list | jq -r '.tags[]?'"
+docker exec jenkins sh -c \
+  "curl -fsS http://registry:5000/v2/myblog-web/tags/list | jq -r '.tags[]?'"
+docker exec jenkins sh -c \
+  "curl -fsS http://registry:5000/v2/myblog-admin/tags/list | jq -r '.tags[]?'"
 ```
 
 ### 8.2 运行 CD
@@ -270,7 +273,7 @@ REGISTRY_CLEANUP_DRY_RUN=false
 - 三个仓库都存在当前 tag；
 - Registry 健康。
 
-任一校验失败都会安全退出，不删除镜像。`reg rm` 后短暂停止 Registry 执行 garbage collection，再等待 `/v2/` 恢复。
+任一校验失败都会安全退出，不删除镜像。清理脚本通过 Registry V2 HTTP API 删除 manifest，随后短暂停止 Registry 执行 garbage collection，再等待 `/v2/` 恢复。
 
 ## 10. 回滚与运维
 
@@ -290,7 +293,7 @@ curl -f http://127.0.0.1:5000/v2/
 docker inspect jenkins --format '{{json .NetworkSettings.Networks}}'
 docker exec jenkins curl -f http://registry:5000/v2/
 docker exec jenkins docker compose version
-docker exec jenkins reg --version
+docker exec jenkins jq --version
 ```
 
 更新仓库或 Jenkins 镜像：

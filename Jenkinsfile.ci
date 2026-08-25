@@ -190,9 +190,9 @@ pipeline {
                         docker push "$REGISTRY_HOST/myblog-web:$RELEASE_TAG"
                         docker push "$REGISTRY_HOST/myblog-admin:$RELEASE_TAG"
 
-                        reg -f digest "$REGISTRY_API_HOST/myblog-api:$RELEASE_TAG"
-                        reg -f digest "$REGISTRY_API_HOST/myblog-web:$RELEASE_TAG"
-                        reg -f digest "$REGISTRY_API_HOST/myblog-admin:$RELEASE_TAG"
+                        sh scripts/registry-api.sh digest "$REGISTRY_API_HOST" myblog-api "$RELEASE_TAG"
+                        sh scripts/registry-api.sh digest "$REGISTRY_API_HOST" myblog-web "$RELEASE_TAG"
+                        sh scripts/registry-api.sh digest "$REGISTRY_API_HOST" myblog-admin "$RELEASE_TAG"
                     ) 9>"$REGISTRY_LOCK"
 
                     cat > release.env <<EOF

@@ -139,8 +139,8 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 ### CI/CD（Jenkins）
 - **Jenkinsfile.ci**：任意分支执行后端 `mvn verify` 与前端质量门；仅 master 封装已验证产物并推送三个镜像
 - **Jenkinsfile.cd**：必填 `IMAGE_TAG`，先检查 Registry 与三镜像，再拉取并通过 `deploy/docker-compose.yml` 执行 `up -d --no-build`
-- **Jenkinsfile.registry-cleanup**：每天 03:30 使用 `reg` 删除非保留 manifest，再执行 Registry garbage collection
-- Jenkins 容器使用 `deploy/jenkins/Dockerfile` 安装 Docker CLI、Buildx、Compose、`reg` 与 `flock`
+- **Jenkinsfile.registry-cleanup**：每天 03:30 通过 Registry V2 HTTP API 删除非保留 manifest，再执行 garbage collection
+- Jenkins 容器使用 `deploy/jenkins/Dockerfile` 安装 Docker CLI、Buildx、Compose、`curl`、`jq` 与 `flock`
 - Jenkins 使用 `deploy/.env` 的 `JENKINS_ROUTE` 作为控制器 `--prefix`，并通过外部网络 `myblog-jenkins-proxy` 由生产 Nginx 提供 HTTPS 与 GitHub Webhook 入口
 - 回滚：从 Registry 最近保留版本中选择 tag，重新触发 CD
 

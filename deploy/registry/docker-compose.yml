@@ -5,7 +5,7 @@ services:
     image: registry:2
     container_name: myblog-registry
     environment:
-      # reg 删除 manifest 后，垃圾回收才能释放无引用层。
+      # Registry API 删除 manifest 后，垃圾回收才能释放无引用层。
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
       REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
       OTEL_TRACES_EXPORTER: none

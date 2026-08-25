@@ -1,6 +1,6 @@
 // ============================================================
 // MyBlog CD：手动选择 CI 产生的不可变 tag，从本机 Registry 拉取并部署。
-// CD 不执行镜像构建；Jenkins 需加入 myblog-cicd 网络并安装 reg、flock。
+// CD 不执行镜像构建；Jenkins 需加入 myblog-cicd 网络并安装 curl、jq、flock。
 // ============================================================
 pipeline {
     agent any
@@ -56,7 +56,7 @@ pipeline {
                         curl --fail --silent --show-error "http://$REGISTRY_API_HOST/v2/" >/dev/null
 
                         for repository in myblog-api myblog-web myblog-admin; do
-                            digest=$(reg -f digest "$REGISTRY_API_HOST/$repository:$TAG")
+                            digest=$(sh scripts/registry-api.sh digest "$REGISTRY_API_HOST" "$repository" "$TAG")
                             printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$' || {
                                 echo "Registry 镜像无效: $repository:$TAG" >&2
                                 exit 1

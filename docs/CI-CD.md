@@ -105,7 +105,7 @@ CI 推送、CD 拉取和清理共用文件锁：
 - 当前版本位于最近 5 个中时保留 5 个；
 - 当前版本较旧时保留 6 个；
 - 状态文件缺失、格式错误、仓库缺少当前 tag，或三个运行容器版本不一致时，整个任务退出且不删除任何内容；
-- 先用 `reg rm` 删除旧 manifest，再停止 Registry 执行 garbage collection，最后重启并等待健康；
+- 先通过 Registry V2 HTTP API 删除旧 manifest，再停止 Registry 执行 garbage collection，最后重启并等待健康；
 - 生产配置默认 `REGISTRY_CLEANUP_DRY_RUN=true`；确认演练后改为 `false` 才启用定时删除，Job 的 `DRY_RUN` 参数可随时强制演练。
 
 ## 7. 回滚
