@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * 认证相关的请求 DTO 集合，覆盖登录、刷新令牌与修改密码场景。
+ * 认证相关的请求 DTO 集合，覆盖登录、刷新令牌与当前账号信息修改场景。
  * <p>
  * 各字段的校验规则与文档说明见字段上的注解。
  */
@@ -33,5 +33,15 @@ public final class AuthDtos {
             @Schema(description = "原密码", format = "password") String oldPassword,
             @NotBlank @Size(min = 8, max = 64)
             @Schema(description = "新密码", format = "password") String newPassword) {
+    }
+
+    @Schema(name = "AccountUpdateRequest", description = "修改当前账号信息请求")
+    public record AccountUpdate(
+            @NotBlank @Size(min = 3, max = 64)
+            @Schema(description = "新账号名称", example = "admin") String username,
+            @NotBlank @Size(min = 8, max = 64)
+            @Schema(description = "当前密码", format = "password") String oldPassword,
+            @Size(min = 8, max = 64)
+            @Schema(description = "新密码；不修改时省略", format = "password") String newPassword) {
     }
 }

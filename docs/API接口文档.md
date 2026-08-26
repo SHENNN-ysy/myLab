@@ -70,6 +70,7 @@ Authorization: Bearer <access_token>
 | POST | `/api/v1/auth/logout` | 是 | 无状态客户端退出，不在服务端吊销令牌 |
 | POST | `/api/v1/auth/logout-token` | 是 | 吊销指定 access 或 refresh token |
 | PUT | `/api/v1/auth/password` | 是 | 修改当前用户密码 |
+| PUT | `/api/v1/auth/account` | 是 | 校验当前密码后修改账号名称，并可同时修改密码 |
 
 登录请求：
 
@@ -447,8 +448,8 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 | --- | --- | --- | --- |
 | GET | `/api/v1/users?page=1&page_size=20` | admin | 分页查询管理员 |
 | POST | `/api/v1/users` | superadmin | 创建管理员 |
-| PUT | `/api/v1/users/{id}` | admin | 更新角色、状态或密码 |
-| DELETE | `/api/v1/users/{id}` | superadmin | 软删除管理员 |
+| PUT | `/api/v1/users/{id}` | admin | 更新角色、状态或密码；超级管理员不可操作 |
+| DELETE | `/api/v1/users/{id}` | superadmin | 软删除管理员；超级管理员不可操作 |
 
 创建请求：
 

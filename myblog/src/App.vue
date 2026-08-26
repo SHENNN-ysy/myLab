@@ -1,5 +1,9 @@
 <template>
-  <div id="app">
+  <RouterView v-if="route.meta.standalone" />
+  <div
+    v-else
+    id="app"
+  >
     <Navigation />
     <RouterView />
     <Footer />

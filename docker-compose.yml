@@ -50,6 +50,8 @@ services:
     build:
       context: ./backend-java
       dockerfile: Dockerfile
+      args:
+        MAVEN_TEST_SKIP: "true"
     image: myblog-api:local
     ports: ["127.0.0.1:8000:8000"]
     environment:

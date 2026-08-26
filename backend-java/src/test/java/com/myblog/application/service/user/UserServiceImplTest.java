@@ -161,6 +161,17 @@ class UserServiceImplTest {
     }
 
     @Test
+    void updateRejectsSuperadminTarget() {
+        User user = persistedUser("root", "superadmin");
+        when(users.findById(user.getId())).thenReturn(user);
+
+        assertThatThrownBy(() -> service.update(
+                superadmin, user.getId(), new UserCommands.Update(null, false, null)))
+                .isInstanceOf(ForbiddenException.class);
+        verify(users, never()).save(any());
+    }
+
+    @Test
     void updateAppliesOnlyProvidedFields() {
         User user = persistedUser("editor", "editor");
         OffsetDateTime previousUpdate = user.getUpdatedAt();
@@ -197,20 +208,41 @@ class UserServiceImplTest {
     @Test
     void deleteRejectsUnknownUser() {
         UUID id = UUID.randomUUID();
-        when(users.remove(id)).thenReturn(false);
+        when(users.findById(id)).thenReturn(null);
 
         assertThatThrownBy(() -> service.delete(superadmin, id))
                 .isInstanceOf(NotFoundException.class);
     }
 
     @Test
+    void deleteRejectsSuperadminTarget() {
+        User user = persistedUser("root", "superadmin");
+        when(users.findById(user.getId())).thenReturn(user);
+
+        assertThatThrownBy(() -> service.delete(superadmin, user.getId()))
+                .isInstanceOf(ForbiddenException.class);
+        verify(users, never()).remove(user.getId());
+    }
+
+    @Test
+    void deleteRejectsConcurrentRemoval() {
+        User user = persistedUser("editor", "editor");
+        when(users.findById(user.getId())).thenReturn(user);
+        when(users.remove(user.getId())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.delete(superadmin, user.getId()))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
     void deleteRemovesExistingUser() {
-        UUID id = UUID.randomUUID();
-        when(users.remove(id)).thenReturn(true);
+        User user = persistedUser("editor", "editor");
+        when(users.findById(user.getId())).thenReturn(user);
+        when(users.remove(user.getId())).thenReturn(true);
 
-        service.delete(superadmin, id);
+        service.delete(superadmin, user.getId());
 
-        verify(users).remove(id);
+        verify(users).remove(user.getId());
     }
 
     private User persistedUser(String username, String role) {

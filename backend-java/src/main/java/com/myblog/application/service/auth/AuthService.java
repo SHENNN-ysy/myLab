@@ -38,6 +38,11 @@ public interface AuthService {
     void change(UUID id, String oldPassword, String newPassword);
 
     /**
+     * 校验当前密码后修改当前用户的账号名称，并按需修改密码。
+     */
+    UserPublicVO updateAccount(UUID id, String username, String oldPassword, String newPassword);
+
+    /**
      * 确保系统中至少存在一个管理员：仅在无任何用户时按配置创建初始超级管理员。
      */
     void ensureAdmin();

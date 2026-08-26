@@ -188,8 +188,8 @@ const filtered = computed(() => users.value.filter(user => user.username.toLower
 
 const displayRole = (role: UserRole) => roleText[role]
 const formatTime = (value?: string) => value ? new Date(value).toLocaleString('zh-CN') : '从未登录'
-const canEdit = (user: User) => isSuperadmin.value || user.role !== 'superadmin'
-const canDelete = (user: User) => isSuperadmin.value && user.id !== currentUser.value?.id
+const canEdit = (user: User) => user.role !== 'superadmin'
+const canDelete = (user: User) => isSuperadmin.value && user.role !== 'superadmin'
 
 const load = async () => {
   loading.value = true

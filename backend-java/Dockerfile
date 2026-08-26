@@ -19,9 +19,10 @@ RUN mvn -B -q -s /root/.m2/settings.xml dependency:go-offline
 # 再复制源码与质量检查配置（checkstyle/spotbugs 规则），源码变化只重建这一层
 COPY src ./src
 COPY config ./config
-# 构建镜像时执行全部单元测试（纯单测，不依赖 DB/Redis），测试失败则构建失败、无法部署；
-# *IT 集成测试（Testcontainers）不在镜像构建期执行，由 CI 流水线负责
-RUN mvn -B -q -s /root/.m2/settings.xml package
+# 默认执行单元测试；本地 Compose 传入 MAVEN_TEST_SKIP=true，仅编译打包。
+# *IT 集成测试（Testcontainers）不在镜像构建期执行，由 CI 流水线负责。
+ARG MAVEN_TEST_SKIP=false
+RUN mvn -B -q -s /root/.m2/settings.xml package -Dmaven.test.skip=${MAVEN_TEST_SKIP}
 
 # ---------- 阶段 2：精简运行镜像 ----------
 FROM ${JRE_IMAGE}

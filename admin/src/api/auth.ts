@@ -44,3 +44,17 @@ export const changePasswordApi = async (oldPassword: string, newPassword: string
     new_password: newPassword
   })
 }
+
+/** 使用当前密码校验后更新当前账号名称，并可同时修改密码。 */
+export const updateAccountApi = async (
+  username: string,
+  oldPassword: string,
+  newPassword?: string
+): Promise<User> => {
+  const res = await request.put('/auth/account', {
+    username,
+    old_password: oldPassword,
+    new_password: newPassword
+  })
+  return mapUser(res.data)
+}

@@ -2,6 +2,7 @@ package com.myblog.application.service.auth;
 
 import com.myblog.application.model.entity.User;
 import com.myblog.common.context.RequestContext;
+import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.UnauthorizedException;
 import com.myblog.common.exception.ValidationException;
 import com.myblog.common.enumeration.ErrorCode;
@@ -26,6 +27,16 @@ import java.util.UUID;
 @Slf4j
 @Service
 public class AuthServiceImpl implements AuthService {
+
+    private static final UUID LEGACY_SEED_ADMIN_ID =
+            UUID.fromString("b7b1a013-fc83-579a-a1e3-bb1cc0483bac");
+    private static final String LEGACY_SEED_ADMIN_USERNAME = "admin";
+    private static final String LEGACY_SEED_ADMIN_PASSWORD_HASH =
+            "$2a$12$6feNM80PGgXs0en.BWDbzeUZzp71yNmPNGakhiHmuzf5TKUxdPOPG";
+    private static final int MIN_USERNAME_LENGTH = 3;
+    private static final int MAX_USERNAME_LENGTH = 64;
+    private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final int MAX_PASSWORD_LENGTH = 64;
 
     private final UserRepository users;
     private final TokenService tokens;
@@ -111,10 +122,44 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     /**
+     * 修改当前账号：校验当前密码后更新账号名称，并可同时更新密码。
+     */
+    public UserPublicVO updateAccount(UUID id, String username, String oldPassword, String newPassword) {
+        User user = current(id);
+        if (!bcrypt.matches(oldPassword, user.getPasswordHash())) {
+            throw new ValidationException(ErrorCode.OLD_PASSWORD_INCORRECT, null);
+        }
+        String normalizedUsername = username == null ? "" : username.trim();
+        if (normalizedUsername.length() < MIN_USERNAME_LENGTH
+                || normalizedUsername.length() > MAX_USERNAME_LENGTH) {
+            throw new ValidationException("账号名称长度必须为 3～64 位");
+        }
+        if (newPassword != null && (newPassword.length() < MIN_PASSWORD_LENGTH
+                || newPassword.length() > MAX_PASSWORD_LENGTH)) {
+            throw new ValidationException("密码长度必须为 8～64 位");
+        }
+        if (!normalizedUsername.equals(user.getUsername()) && users.usernameExists(normalizedUsername)) {
+            throw new ConflictException(ErrorCode.USER_ALREADY_EXISTS, null);
+        }
+        user.setUsername(normalizedUsername);
+        if (newPassword != null) {
+            user.setPasswordHash(bcrypt.encode(newPassword));
+        }
+        user.setUpdatedAt(OffsetDateTime.now());
+        users.save(user);
+        log.info("账号信息已修改：username={}, passwordChanged={}, ip={}",
+                normalizedUsername, newPassword != null, RequestContext.getIp());
+        return publicUser(user);
+    }
+
+    @Override
+    @Transactional
+    /**
      * 初始化兜底：仅当系统没有任何用户时，按配置创建初始超级管理员。
      */
     public void ensureAdmin() {
         if (users.countAll() > 0) {
+            migrateLegacySeedAdmin();
             return;
         }
         User admin = new User();
@@ -127,6 +172,28 @@ public class AuthServiceImpl implements AuthService {
         admin.setCreatedAt(now);
         admin.setUpdatedAt(now);
         users.add(admin);
+    }
+
+    /**
+     * 将旧基线中的固定管理员安全接管为环境变量账号，同时保留其发布记录外键。
+     */
+    private void migrateLegacySeedAdmin() {
+        User seedAdmin = users.findById(LEGACY_SEED_ADMIN_ID);
+        if (seedAdmin == null
+                || !LEGACY_SEED_ADMIN_USERNAME.equals(seedAdmin.getUsername())
+                || !LEGACY_SEED_ADMIN_PASSWORD_HASH.equals(seedAdmin.getPasswordHash())) {
+            return;
+        }
+        String configuredUsername = props.initialAdminUsername().trim();
+        if (!LEGACY_SEED_ADMIN_USERNAME.equals(configuredUsername)
+                && users.usernameExists(configuredUsername)) {
+            throw new ConflictException(ErrorCode.USER_ALREADY_EXISTS, null);
+        }
+        seedAdmin.setUsername(configuredUsername);
+        seedAdmin.setPasswordHash(bcrypt.encode(props.initialAdminPassword()));
+        seedAdmin.setUpdatedAt(OffsetDateTime.now());
+        users.save(seedAdmin);
+        log.info("旧基线管理员已按环境变量完成接管：username={}", configuredUsername);
     }
 
     @Override
