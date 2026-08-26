@@ -278,35 +278,20 @@ docker exec jenkins sh -c \
 生产后端以非 root `myblog` 用户运行，宿主机日志目录必须归该镜像用户所有。首次运行 CD 前，在服务器项目目录执行以下命令；`IMAGE_TAG` 使用本次 CI 输出的 tag：
 
 ```bash
-cd /opt/myblog
-set -eu
-
-read -r -p '请输入 CI 输出的 RELEASE_TAG: ' IMAGE_TAG
-printf '%s' "$IMAGE_TAG" | grep -Eq '^[0-9]{8}-[0-9]{6}-[0-9a-f]{7}$' || {
-  echo "RELEASE_TAG 格式错误: $IMAGE_TAG" >&2
-  exit 1
-}
+IMAGE_TAG='替换为CI输出的RELEASE_TAG'
 API_IMAGE="127.0.0.1:5000/myblog-api:${IMAGE_TAG}"
-APP_LOG_DIR=$(sed -n 's/^APP_LOG_DIR=//p' deploy/.env | tail -n 1 | tr -d '\r')
-APP_LOG_DIR=${APP_LOG_DIR:-/data/myblog/logs}
-APP_LOG_DIR=$(realpath -m -- "$APP_LOG_DIR")
-
-case "$APP_LOG_DIR" in
-  /data/myblog/*) ;;
-  *) echo "APP_LOG_DIR 必须位于 /data/myblog/ 下: $APP_LOG_DIR" >&2; exit 1 ;;
-esac
+LOG_DIR=/data/myblog/logs
 
 docker pull "$API_IMAGE"
-RUNTIME_OWNER=$(docker run --rm --entrypoint sh "$API_IMAGE" \
+OWNER=$(docker run --rm --entrypoint sh "$API_IMAGE" \
   -c 'printf "%s:%s" "$(id -u myblog)" "$(id -g myblog)"')
-
-sudo install -d -m 0750 "$APP_LOG_DIR"
-sudo chown -R "$RUNTIME_OWNER" "$APP_LOG_DIR"
-sudo chmod 0750 "$APP_LOG_DIR"
-stat -c '日志目录=%n 属主=%u:%g 权限=%a' "$APP_LOG_DIR"
+sudo mkdir -p "$LOG_DIR"
+sudo chown -R "$OWNER" "$LOG_DIR"
+sudo chmod 0750 "$LOG_DIR"
+stat -c '日志目录=%n 属主=%u:%g 权限=%a' "$LOG_DIR"
 ```
 
-镜像内 `myblog` UID/GID 发生变化、迁移服务器或重建日志目录后，需要重新执行。生产 Compose 和 CD 不会以 root 自动修改宿主机权限。
+如果 `deploy/.env` 修改了 `APP_LOG_DIR`，同步替换命令中的 `LOG_DIR`。镜像内 `myblog` UID/GID 发生变化、迁移服务器或重建日志目录后，需要重新执行。生产 Compose 和 CD 不会以 root 自动修改宿主机权限。
 
 ### 8.3 运行 CD
 
