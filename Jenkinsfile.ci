@@ -1,5 +1,5 @@
 // ============================================================
-// MyBlog CI：所有分支执行质量门，仅 master 构建并推送可部署镜像。
+// MyBlog CI：流水线支持分支校验；生产 Multibranch Job 只索引 PR 合并后的 master。
 // Jenkins 节点需能访问 docker.sock，并通过 myblog-cicd 网络访问 registry:5000。
 // ============================================================
 pipeline {
@@ -16,6 +16,8 @@ pipeline {
         REGISTRY_API_HOST = 'registry:5000'
         REGISTRY_LOCK = '/var/jenkins_home/locks/myblog-registry.lock'
         DEPLOY_ENV_FILE = '/opt/myblog/deploy/.env'
+        // agent 块中无法直接使用 env.DOCKER_GID，需在 environment 中显式定义。
+        DOCKER_GID = sh(returnStdout: true, script: 'echo $DOCKER_GID').trim()
     }
 
     stages {
@@ -45,7 +47,7 @@ pipeline {
                 docker {
                     // Testcontainers 通过宿主机 Docker 启动真实 PostgreSQL 与 Redis。
                     image 'maven:3.9-eclipse-temurin-21'
-                    args "-v /var/run/docker.sock:/var/run/docker.sock -v /data/jenkins/.m2:/home/ubuntu/.m2 --group-add ${env.DOCKER_GID}"
+                    args "-v /var/run/docker.sock:/var/run/docker.sock -v /data/jenkins/.m2:/home/ubuntu/.m2 --group-add ${DOCKER_GID}"
                     reuseNode true
                 }
             }

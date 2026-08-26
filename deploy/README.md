@@ -5,9 +5,9 @@
 ## 1. 生产架构
 
 ```text
-GitHub push
+GitHub PR 合并到 master
   → Jenkins CI：测试、检查、构建产物
-  → 仅 master 构建并推送三个不可变镜像
+  → 构建并推送三个不可变镜像
   → 127.0.0.1:5000 私有 Registry
   → Jenkins CD：预检、拉取、无构建部署、健康检查
 
@@ -186,27 +186,75 @@ https://<BLOG_DOMAIN><JENKINS_ROUTE>/
 
 ### 7.2 创建流水线
 
-创建三个 Job，仓库均指向本项目：
+Jenkins 只在 PR 合并到 `master` 后运行 CI。合并操作会更新 `master`，GitHub 随即发送 push Webhook；功能分支 push 和 PR 创建事件不触发 Jenkins。
+
+创建三个 Job，仓库均指向本项目的 `master`：
 
 | Job | 类型 | Script Path | 触发方式 |
 |---|---|---|---|
-| CI | Multibranch Pipeline | `Jenkinsfile.ci` | GitHub push |
+| CI | Multibranch Pipeline | `Jenkinsfile.ci` | PR 合并到 `master` 后自动触发 |
 | CD | Pipeline from SCM | `Jenkinsfile.cd` | 手动参数化 |
 | Registry Cleanup | Pipeline from SCM | `Jenkinsfile.registry-cleanup` | 每天 03:30 |
 
-GitHub Webhook：
+#### 7.2.1 创建 CI Job
+
+1. 点击 `New Item`，名称填写 `myblog-CI`，选择 `Multibranch Pipeline`。
+2. 在 `Branch Sources` 中添加 `GitHub`，填写仓库所有者、仓库名和访问凭据；公开仓库可不填凭据。
+3. 在 `Behaviors` 中添加 `Filter by name (with regular expression)`，正则填写：
+
+   ```text
+   ^master$
+   ```
+
+4. 不添加 `Discover pull requests`，避免 PR 创建或更新时提前执行 CI。
+5. 在 `Build Configuration` 中选择 `by Jenkinsfile`，`Script Path` 填写 `Jenkinsfile.ci`。
+6. 不启用 `Poll SCM` 或周期性分支扫描，后续只由 GitHub Webhook 通知变更。
+7. 保存后点击 `Scan Multibranch Pipeline Now`，确认只生成 `master` 子任务。
+
+#### 7.2.2 创建 CD Job
+
+1. 点击 `New Item`，名称填写 `myblog-CD`，选择 `Pipeline`。
+2. `Definition` 选择 `Pipeline script from SCM`，SCM 选择 `Git`。
+3. 填写仓库地址和凭据，`Branch Specifier` 填写 `*/master`。
+4. `Script Path` 填写 `Jenkinsfile.cd`，不要配置任何自动触发器。
+5. 保存后手动运行；部署时必须填写 CI 输出的 `IMAGE_TAG`。
+
+#### 7.2.3 创建 Registry Cleanup Job
+
+1. 点击 `New Item`，名称填写 `myblog-registry-cleanup`，选择 `Pipeline`。
+2. 与 CD Job 相同，使用 `Pipeline script from SCM`、`*/master` 和相同仓库凭据。
+3. `Script Path` 填写 `Jenkinsfile.registry-cleanup`。
+4. 保存后手动运行一次，使 Jenkins 注册文件中的北京时间 `03:30` 定时规则；首次保持 `DRY_RUN=true`。
+
+#### 7.2.4 配置 master 合并规则
+
+在 GitHub 仓库的分支 Ruleset 或 Branch protection 中保护 `master`：
+
+1. 要求所有变更通过 Pull Request 合并；
+2. 禁止直接 push、force push 和删除 `master`；
+3. 按团队需要设置审批人数；
+4. 不把该 Jenkins CI 设为合并前必需检查，因为本方案在合并完成后才运行 CI。
+
+日常发布流程为：功能分支提交 → 创建 PR → 审核并合并到 `master` → Jenkins 自动运行 CI → 使用 CI 输出的 tag 手动运行 CD。
+
+#### 7.2.5 配置 GitHub Webhook
+
+首次生产部署完成、域名入口可访问后，在 GitHub 仓库 `Settings` → `Webhooks` 中添加：
 
 ```text
-https://<BLOG_DOMAIN><JENKINS_ROUTE>/github-webhook/
+Payload URL: https://<BLOG_DOMAIN><JENKINS_ROUTE>/github-webhook/
+Content type: application/json
+Events: Just the push event
+Active: true
 ```
 
-Webhook 需等首次生产部署完成、域名入口可访问后再测试。
+Webhook 不需要订阅 Pull requests 事件。PR 合并后 GitHub 会产生一次针对 `master` 的 push 事件，Jenkins 收到后扫描仓库并只构建 `master`。保存 Webhook 后先确认自动发送的 `ping` 返回成功；再合并一个测试 PR，确认 push delivery 成功且 `myblog-CI/master` 只触发一次。需要排障时可在 `Recent Deliveries` 中重新投递该 push 事件。
 
 ## 8. 首次发布
 
 ### 8.1 运行 CI
 
-向 `master` 推送代码或手动执行 CI。成功后下载归档的 `release.env`：
+首次上线时 Nginx 和 Webhook 尚不可用，在 `myblog-CI` 中手动扫描仓库并运行 `master` 子任务。后续版本必须通过 PR 合并到 `master` 自动触发，不直接 push `master`。CI 成功后下载归档的 `release.env`：
 
 ```text
 RELEASE_TAG=yyyyMMdd-HHmmss-7位GitSHA
@@ -311,8 +359,8 @@ docker compose --env-file deploy/.env \
 
 ## 11. 上线验收
 
-- 功能分支只运行质量门，不构建或推送镜像；
-- `master` 成功后，三个仓库出现相同 release tag；
+- 功能分支 push、PR 创建和 PR 更新不会触发 Jenkins；
+- PR 合并到 `master` 后自动触发一次 CI，三个仓库出现相同 release tag；
 - Registry 异常、镜像缺失、tag 非法或 `ADMIN_ROUTE` 不一致时，CD 在修改容器前失败；
 - CD 不执行镜像构建，部署失败不覆盖当前成功版本文件；
 - Jenkins 无公网主机端口，域名路径和 GitHub Webhook 可用；
