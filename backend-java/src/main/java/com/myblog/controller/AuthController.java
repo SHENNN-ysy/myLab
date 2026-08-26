@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * 认证接口：管理员登录、令牌刷新与吊销、当前用户信息查询及密码修改。
+ * 认证接口：管理员登录、令牌刷新与吊销、当前用户信息查询及账号信息修改。
  * 基于无状态 JWT，业务逻辑委托给 {@link AuthService} 与 {@link TokenService}。
  */
 @Slf4j
@@ -121,5 +121,15 @@ public class AuthController {
                               @Valid @RequestBody AuthDtos.PasswordChange body) {
         auth.change(user.id(), body.oldPassword(), body.newPassword());
         return Result.ok(null, "密码已更新");
+    }
+
+    /**
+     * 修改当前登录管理员的账号名称，并可同时修改密码。
+     */
+    @PutMapping("/account")
+    @Operation(summary = "修改当前管理员账号信息", security = @SecurityRequirement(name = "bearerAuth"))
+    public Result<?> account(@AuthenticationPrincipal CurrentUser user,
+                             @Valid @RequestBody AuthDtos.AccountUpdate body) {
+        return Result.ok(auth.updateAccount(user.id(), body.username(), body.oldPassword(), body.newPassword()));
     }
 }

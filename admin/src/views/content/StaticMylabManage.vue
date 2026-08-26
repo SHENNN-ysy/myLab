@@ -126,111 +126,195 @@
                     >删除</button>
                   </span>
                 </template>
-                <a-row :gutter="16">
-                  <a-col
-                    :xs="24"
-                    :md="8"
+                <div class="card-editor">
+                  <section class="editor-section">
+                    <div class="editor-section-head">
+                      <span class="editor-section-index">1</span>
+                      <div>
+                        <h4>基础信息</h4>
+                        <p>设置卡片标识、内容类型和对外展示文案。</p>
+                      </div>
+                    </div>
+                    <a-row :gutter="[16, 16]">
+                      <a-col
+                        :xs="24"
+                        :md="8"
+                      >
+                        <a-form-item
+                          label="稳定标识"
+                          class="editor-field"
+                        >
+                          <a-input
+                            v-model:value="card.postKey"
+                            placeholder="例如 project-gm1"
+                          />
+                        </a-form-item>
+                      </a-col>
+                      <a-col
+                        :xs="12"
+                        :md="8"
+                      >
+                        <a-form-item
+                          label="内容类型"
+                          class="editor-field"
+                        >
+                          <a-select
+                            v-model:value="card.cardType"
+                            :options="cardTypeOptions"
+                            @change="normalizeCardType(card)"
+                          />
+                        </a-form-item>
+                      </a-col>
+                      <a-col
+                        :xs="12"
+                        :md="8"
+                      >
+                        <a-form-item
+                          label="发布日期"
+                          class="editor-field"
+                        >
+                          <a-input
+                            v-model:value="card.date"
+                            type="date"
+                          />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="24">
+                        <a-form-item
+                          label="标题"
+                          class="editor-field"
+                        >
+                          <a-input
+                            v-model:value="card.title"
+                            placeholder="输入卡片标题"
+                          />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="24">
+                        <a-form-item
+                          label="摘要"
+                          class="editor-field"
+                        >
+                          <a-textarea
+                            v-model:value="card.summary"
+                            :rows="3"
+                            placeholder="简要介绍项目或文章内容"
+                          />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                  </section>
+
+                  <section class="editor-section">
+                    <div class="editor-section-head">
+                      <span class="editor-section-index">2</span>
+                      <div>
+                        <h4>内容与资源</h4>
+                        <p>关联标签、封面图片和 MyLab 详情正文。</p>
+                      </div>
+                    </div>
+                    <a-row :gutter="[16, 16]">
+                      <a-col :span="24">
+                        <a-form-item
+                          label="标签"
+                          class="editor-field"
+                        >
+                          <a-select
+                            v-model:value="card.tagIds"
+                            mode="multiple"
+                            :options="tagOptions"
+                            placeholder="从标签管理列表中选择"
+                          />
+                        </a-form-item>
+                      </a-col>
+                      <a-col
+                        :xs="24"
+                        :lg="12"
+                      >
+                        <a-form-item
+                          label="OSS 封面资源"
+                          class="editor-field resource-field"
+                        >
+                          <OssImageResourcePicker
+                            v-model="card.imageResource"
+                            directory="mylab-post"
+                          />
+                        </a-form-item>
+                      </a-col>
+                      <a-col
+                        :xs="24"
+                        :lg="12"
+                      >
+                        <a-form-item
+                          label="MyLab 详情 Markdown 正文"
+                          class="editor-field resource-field"
+                        >
+                          <OssDocumentResourcePicker
+                            v-model="card.contentResource"
+                            directory="mylab"
+                          />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                  </section>
+
+                  <section
+                    v-if="card.cardType === 'PROJECT'"
+                    class="editor-section project-section"
                   >
-                    <a-form-item label="稳定标识">
-                      <a-input v-model:value="card.postKey" />
-                    </a-form-item>
-                  </a-col>
-                  <a-col
-                    :xs="12"
-                    :md="8"
-                  >
-                    <a-form-item label="类型">
-                      <a-select
-                        v-model:value="card.cardType"
-                        :options="cardTypeOptions"
-                        @change="normalizeCardType(card)"
-                      />
-                    </a-form-item>
-                  </a-col>
-                  <a-col
-                    :xs="12"
-                    :md="8"
-                  >
-                    <a-form-item label="发布日期">
-                      <a-input
-                        v-model:value="card.date"
-                        type="date"
-                      />
-                    </a-form-item>
-                  </a-col>
-                  <a-col :span="24">
-                    <a-form-item label="标题">
-                      <a-input v-model:value="card.title" />
-                    </a-form-item>
-                  </a-col>
-                  <a-col :span="24">
-                    <a-form-item label="摘要">
-                      <a-textarea
-                        v-model:value="card.summary"
-                        :rows="3"
-                      />
-                    </a-form-item>
-                  </a-col>
-                  <a-col
-                    :xs="24"
-                    :md="12"
-                  >
-                    <a-form-item label="标签">
-                      <a-select
-                        v-model:value="card.tagIds"
-                        mode="multiple"
-                        :options="tagOptions"
-                        placeholder="从标签管理列表中选择"
-                      />
-                    </a-form-item>
-                  </a-col>
-                  <a-col
-                    :xs="24"
-                    :md="12"
-                  >
-                    <a-form-item label="OSS 封面资源">
-                      <OssImageResourcePicker
-                        v-model="card.imageResource"
-                        directory="mylab-post"
-                      />
-                    </a-form-item>
-                  </a-col>
-                  <a-col :span="24">
-                    <a-form-item label="MyLab 详情 Markdown 正文">
-                      <OssDocumentResourcePicker
-                        v-model="card.contentResource"
-                        directory="mylab"
-                      />
-                    </a-form-item>
-                  </a-col>
-                  <template v-if="card.cardType === 'PROJECT'">
-                    <a-col
-                      :xs="24"
-                      :md="6"
-                    >
-                      <a-form-item label="首页项目排序">
-                        <a-input-number
-                          v-model:value="card.projectShowOrder"
-                          :min="0"
-                        />
-                      </a-form-item>
-                    </a-col>
-                    <a-col
-                      :xs="24"
-                      :md="18"
-                    >
-                      <a-form-item label="首页项目侧边栏正文">
-                        <a-textarea
-                          v-model:value="card.projectContents"
-                          :rows="5"
-                        />
-                      </a-form-item>
-                    </a-col>
-                  </template>
-                  <a-col :span="24">
-                    <a-switch v-model:checked="card.enabled" /> 启用
-                  </a-col>
-                </a-row>
+                    <div class="editor-section-head">
+                      <span class="editor-section-index">3</span>
+                      <div>
+                        <h4>首页项目展示</h4>
+                        <p>仅项目卡片需要配置，决定首页展示位置和侧边栏内容。</p>
+                      </div>
+                    </div>
+                    <a-row :gutter="[16, 16]">
+                      <a-col
+                        :xs="24"
+                        :md="6"
+                      >
+                        <a-form-item
+                          label="首页项目排序"
+                          class="editor-field"
+                        >
+                          <a-select
+                            v-model:value="card.projectShowOrder"
+                            :options="projectOrderOptionsFor(card)"
+                            placeholder="选择展示位置"
+                          />
+                        </a-form-item>
+                      </a-col>
+                      <a-col
+                        :xs="24"
+                        :md="18"
+                      >
+                        <a-form-item
+                          label="首页项目侧边栏正文"
+                          class="editor-field"
+                        >
+                          <a-textarea
+                            v-model:value="card.projectContents"
+                            :rows="4"
+                            placeholder="输入首页项目侧边栏展示的简介"
+                          />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                  </section>
+
+                  <div class="editor-status">
+                    <div>
+                      <strong>展示状态</strong>
+                      <span>停用后该卡片不会在博客前台显示。</span>
+                    </div>
+                    <a-switch
+                      v-model:checked="card.enabled"
+                      checked-children="启用"
+                      un-checked-children="停用"
+                    />
+                  </div>
+                </div>
               </a-collapse-panel>
             </a-collapse>
 
@@ -360,6 +444,10 @@ const draftCards = reactive<AdminMylabCard[]>([])
 const draftTags = reactive<DraftTag[]>([])
 const deletedTagIds = new Set<string>()
 const cardTypeOptions = [{ value: 'PROJECT', label: '项目' }, { value: 'ARTICLE', label: '文章' }]
+const projectOrderOptions = Array.from({ length: 6 }, (_, index) => ({
+  value: index,
+  label: `第 ${index + 1} 位`
+}))
 const tagOptions = computed(() => draftTags
   .filter(tag => tag.enabled && tag.name.trim())
   .map(tag => ({ value: tag.id, label: tag.name.trim() })))
@@ -473,9 +561,20 @@ const normalizeCardType = (card: AdminMylabCard) => {
     card.projectShowOrder = null
     card.projectContents = ''
   } else {
-    card.projectShowOrder ??= draftCards.filter(item => item.cardType === 'PROJECT').length - 1
+    const occupiedOrders = new Set(draftCards
+      .filter(item => item !== card && item.cardType === 'PROJECT')
+      .map(item => item.projectShowOrder))
+    card.projectShowOrder ??= projectOrderOptions.find(option => !occupiedOrders.has(option.value))?.value ?? null
   }
 }
+const projectOrderOptionsFor = (currentCard: AdminMylabCard) => projectOrderOptions.map(option => ({
+  ...option,
+  disabled: option.value !== currentCard.projectShowOrder && draftCards.some(card => (
+    card !== currentCard
+    && card.cardType === 'PROJECT'
+    && card.projectShowOrder === option.value
+  ))
+}))
 
 const validate = (forPublish: boolean) => {
   const names = draftTags.map(tag => tag.name.trim())
@@ -489,8 +588,9 @@ const validate = (forPublish: boolean) => {
     return false
   }
   const projectOrders = draftCards.filter(card => card.cardType === 'PROJECT').map(card => card.projectShowOrder)
-  if (projectOrders.some(order => order === null || order < 0) || new Set(projectOrders).size !== projectOrders.length) {
-    message.error('项目卡片的首页排序必须为非负且不能重复')
+  if (projectOrders.some(order => order === null || order < 0 || order > 5)
+      || new Set(projectOrders).size !== projectOrders.length) {
+    message.error('项目卡片的首页排序必须选择第 1 至第 6 位，且不能重复')
     return false
   }
   if (forPublish && draftCards.some(card => card.enabled && (!card.title.trim() || !card.summary.trim() || !card.contentResource))) {
@@ -583,6 +683,24 @@ onMounted(load)
 .draft-toolbar .ant-alert { flex: 1; }
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
 .tag-table { margin-bottom: 24px; }
+.card-editor { display: grid; gap: 16px; }
+.editor-section { padding: 18px; background: #fafafa; border: 1px solid #f0f0f0; border-radius: 10px; }
+.project-section { background: #f6faff; border-color: #d6e4ff; }
+.editor-section-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+.editor-section-head h4 { margin: 0; color: #262626; font-size: 15px; line-height: 22px; }
+.editor-section-head p { margin: 2px 0 0; color: #8c8c8c; font-size: 12px; line-height: 18px; }
+.editor-section-index { display: grid; flex: 0 0 24px; place-items: center; height: 24px; color: #1677ff; font-size: 12px; font-weight: 600; background: #e6f4ff; border-radius: 50%; }
+.editor-field { margin-bottom: 0; }
+.editor-field :deep(.ant-form-item-row) { display: block; }
+.editor-field :deep(.ant-form-item-label) { display: block; padding: 0 0 6px; text-align: left; }
+.editor-field :deep(.ant-form-item-label > label) { height: auto; color: #434343; font-size: 13px; font-weight: 600; }
+.editor-field :deep(.ant-form-item-control) { display: block; max-width: none; }
+.editor-field :deep(.ant-select), .editor-field :deep(.ant-input-number) { width: 100%; }
+.resource-field :deep(.oss-picker), .resource-field :deep(.oss-document-picker), .resource-field :deep(.selected-resource) { width: 100%; min-width: 0; }
+.editor-status { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 18px; background: #fff; border: 1px solid #f0f0f0; border-radius: 10px; }
+.editor-status > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.editor-status strong { color: #262626; font-size: 14px; }
+.editor-status span { color: #8c8c8c; font-size: 12px; }
 .card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .lab-card { overflow: hidden; background: #fff; border: 1px solid #f0f0f0; border-radius: 10px; }
 .lab-card > img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #f5f5f5; }
@@ -594,5 +712,5 @@ onMounted(load)
 .row-actions button:disabled { color: #bfbfbf; cursor: not-allowed; }
 .row-actions .danger { color: #ff4d4f; }
 @media (max-width: 1050px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 720px) { .page-head, .draft-toolbar { align-items: stretch; flex-direction: column; } .card-grid { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .page-head, .draft-toolbar { align-items: stretch; flex-direction: column; } .card-grid { grid-template-columns: 1fr; } .editor-section { padding: 14px; } .editor-status { align-items: flex-start; } }
 </style>

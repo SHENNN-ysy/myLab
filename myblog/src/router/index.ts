@@ -19,6 +19,12 @@ const router = createRouter({
       name: 'myLabPost',
       component: () => import('../views/MyLabPostView.vue'),
     },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'notFound',
+      component: () => import('../views/NotFoundView.vue'),
+      meta: { standalone: true },
+    },
   ],
   scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) return savedPosition

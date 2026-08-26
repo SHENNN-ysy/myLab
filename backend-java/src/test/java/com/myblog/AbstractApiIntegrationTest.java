@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "app.jwt-secret=api-it-jwt-secret-0123456789abcdef0123456789abcdef",
+        "app.initial-admin-username=api-it-initial-admin",
         "app.initial-admin-password=api-it-initial-admin-password",
         // yml 中该值默认引用环境变量 ${JWT_SECRET}，属性覆盖 app.jwt-secret 对它不生效，需单独固定
         "app.engagement-hash-secret=api-it-engagement-hash-secret",

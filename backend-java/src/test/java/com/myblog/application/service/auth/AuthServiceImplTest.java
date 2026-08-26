@@ -7,6 +7,7 @@ import com.myblog.application.model.vo.UserPublicVO;
 import com.myblog.application.port.TokenClaims;
 import com.myblog.application.port.TokenService;
 import com.myblog.application.repository.UserRepository;
+import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.UnauthorizedException;
 import com.myblog.common.exception.ValidationException;
 import com.myblog.common.properties.AppProperties;
@@ -165,12 +166,109 @@ class AuthServiceImplTest {
     }
 
     @Test
+    void updateAccountRejectsWrongCurrentPassword() {
+        User user = activeUser("old-password");
+        when(users.findById(user.getId())).thenReturn(user);
+
+        assertThatThrownBy(() -> service.updateAccount(
+                user.getId(), "new-admin", "wrong-password", null))
+                .isInstanceOf(ValidationException.class);
+        verify(users, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void updateAccountRejectsInvalidUsernameAndPassword() {
+        User user = activeUser("old-password");
+        when(users.findById(user.getId())).thenReturn(user);
+
+        assertThatThrownBy(() -> service.updateAccount(user.getId(), "ab", "old-password", null))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.updateAccount(user.getId(), "new-admin", "old-password", "short"))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void updateAccountRejectsDuplicateUsername() {
+        User user = activeUser("old-password");
+        when(users.findById(user.getId())).thenReturn(user);
+        when(users.usernameExists("taken-name")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.updateAccount(
+                user.getId(), "taken-name", "old-password", null))
+                .isInstanceOf(ConflictException.class);
+        verify(users, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void updateAccountChangesUsernameAndPassword() {
+        User user = activeUser("old-password");
+        when(users.findById(user.getId())).thenReturn(user);
+
+        UserPublicVO updated = service.updateAccount(
+                user.getId(), " new-admin ", "old-password", "new-password-1");
+
+        assertThat(updated.username()).isEqualTo("new-admin");
+        assertThat(user.getUpdatedAt()).isNotNull();
+        assertThat(new BCryptPasswordEncoder().matches("new-password-1", user.getPasswordHash())).isTrue();
+        verify(users).save(user);
+    }
+
+    @Test
+    void updateAccountKeepsPasswordWhenNewPasswordIsOmitted() {
+        User user = activeUser("old-password");
+        String previousHash = user.getPasswordHash();
+        when(users.findById(user.getId())).thenReturn(user);
+
+        service.updateAccount(user.getId(), "admin", "old-password", null);
+
+        assertThat(user.getPasswordHash()).isEqualTo(previousHash);
+        verify(users).save(user);
+    }
+
+    @Test
     void ensureAdminDoesNothingWhenUsersExist() {
         when(users.countAll()).thenReturn(1L);
 
         service.ensureAdmin();
 
         verify(users, never()).add(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void ensureAdminMigratesLegacySeedFromConfiguration() {
+        UUID seedId = UUID.fromString("b7b1a013-fc83-579a-a1e3-bb1cc0483bac");
+        User seedAdmin = new User();
+        seedAdmin.setId(seedId);
+        seedAdmin.setUsername("admin");
+        seedAdmin.setPasswordHash("$2a$12$6feNM80PGgXs0en.BWDbzeUZzp71yNmPNGakhiHmuzf5TKUxdPOPG");
+        when(users.countAll()).thenReturn(1L);
+        when(users.findById(seedId)).thenReturn(seedAdmin);
+        when(props.initialAdminUsername()).thenReturn("configured-admin");
+        when(props.initialAdminPassword()).thenReturn("configured-password");
+
+        service.ensureAdmin();
+
+        assertThat(seedAdmin.getUsername()).isEqualTo("configured-admin");
+        assertThat(new BCryptPasswordEncoder().matches(
+                "configured-password", seedAdmin.getPasswordHash())).isTrue();
+        assertThat(seedAdmin.getUpdatedAt()).isNotNull();
+        verify(users).save(seedAdmin);
+    }
+
+    @Test
+    void ensureAdminRejectsLegacyMigrationToDuplicateUsername() {
+        UUID seedId = UUID.fromString("b7b1a013-fc83-579a-a1e3-bb1cc0483bac");
+        User seedAdmin = new User();
+        seedAdmin.setId(seedId);
+        seedAdmin.setUsername("admin");
+        seedAdmin.setPasswordHash("$2a$12$6feNM80PGgXs0en.BWDbzeUZzp71yNmPNGakhiHmuzf5TKUxdPOPG");
+        when(users.countAll()).thenReturn(2L);
+        when(users.findById(seedId)).thenReturn(seedAdmin);
+        when(props.initialAdminUsername()).thenReturn("existing-admin");
+        when(users.usernameExists("existing-admin")).thenReturn(true);
+
+        assertThatThrownBy(service::ensureAdmin).isInstanceOf(ConflictException.class);
+        verify(users, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test

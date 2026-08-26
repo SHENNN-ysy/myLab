@@ -82,8 +82,9 @@
                   <span class="marker-dot">
                     <img
                       v-if="hobby.isSelf"
-                      src="/assets/404.png"
-                      alt=""
+                      :src="locationAvatar"
+                      :alt="locationAvatarAlt"
+                      @error="onLocationAvatarError"
                     >
                   </span>
                   <span class="marker-stem" />
@@ -208,6 +209,16 @@ import DinoRunner from './ui/DinoRunner.vue'
 
 type ManagedFootprint = Hobby & { detailTitle?: string; detailSummary?: string; paragraphs?: string[]; images?: string[]; ctaText?: string; ctaUrl?: string }
 const { content } = usePublicContent()
+const FALLBACK_AVATAR = '/assets/404.png'
+const avatarLoadFailed = ref(false)
+const locationAvatar = computed(() => {
+  const configuredAvatar = content.value.about?.profile?.avatar_url
+  return configuredAvatar && !avatarLoadFailed.value ? configuredAvatar : FALLBACK_AVATAR
+})
+const locationAvatarAlt = computed(() => content.value.about?.profile?.avatar_alt || '我的位置')
+const onLocationAvatarError = () => {
+  avatarLoadFailed.value = true
+}
 const section = {
   title: '我的', highlight: '足迹',
   description: '用脚步和镜头,在地图上留下这些城市的名字。每个地点背后,都有一次认真的抵达。',

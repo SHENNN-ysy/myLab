@@ -25,6 +25,7 @@ class AuthApiIT extends AbstractApiIntegrationTest {
     private static final String ME_URL = "/api/v1/auth/me";
     private static final String REFRESH_URL = "/api/v1/auth/refresh";
     private static final String LOGOUT_URL = "/api/v1/auth/logout";
+    private static final String ACCOUNT_URL = "/api/v1/auth/account";
 
     @Test
     void loginMeRefreshLogoutFullFlow() {
@@ -88,6 +89,31 @@ class AuthApiIT extends AbstractApiIntegrationTest {
         ResponseEntity<JsonNode> response = loginRaw(username, "wrong-password");
 
         assertStatusAndCode(response, HttpStatus.UNAUTHORIZED, 11001);
+    }
+
+    @Test
+    void currentUserCanChangeUsernameAndPassword() {
+        String username = uniqueUsername();
+        String updatedUsername = uniqueUsername();
+        String password = "It-passw0rd!";
+        String updatedPassword = "Updated-passw0rd!";
+        ensureUser(username, password, "admin");
+        JsonNode login = assertStatusAndCode(loginRaw(username, password), HttpStatus.OK, 0);
+        String accessToken = login.path("data").path("tokens").path("access_token").asText();
+
+        JsonNode updated = assertStatusAndCode(
+                rest.exchange(ACCOUNT_URL, HttpMethod.PUT,
+                        new HttpEntity<>(Map.of(
+                                "username", updatedUsername,
+                                "old_password", password,
+                                "new_password", updatedPassword),
+                                authHeaders(accessToken)),
+                        JsonNode.class),
+                HttpStatus.OK, 0);
+
+        assertThat(updated.path("data").path("username").asText()).isEqualTo(updatedUsername);
+        assertStatusAndCode(loginRaw(username, password), HttpStatus.UNAUTHORIZED, 11001);
+        assertStatusAndCode(loginRaw(updatedUsername, updatedPassword), HttpStatus.OK, 0);
     }
 
     @Test

@@ -20,9 +20,6 @@
             <a-descriptions-item label="角色">
               {{ roleText }}
             </a-descriptions-item>
-            <a-descriptions-item label="账号 ID">
-              {{ currentUser?.id || '-' }}
-            </a-descriptions-item>
           </a-descriptions>
           <a-alert
             class="account-tip"
@@ -38,7 +35,7 @@
         :lg="15"
       >
         <a-card
-          title="修改密码"
+          title="修改账号信息"
           :bordered="false"
         >
           <a-form
@@ -46,11 +43,21 @@
             :model="form"
             :rules="rules"
             layout="vertical"
-            class="password-form"
+            class="account-form"
             @finish="submit"
           >
             <a-form-item
-              label="原密码"
+              label="账号名称"
+              name="username"
+            >
+              <a-input
+                v-model:value="form.username"
+                :maxlength="64"
+                autocomplete="username"
+              />
+            </a-form-item>
+            <a-form-item
+              label="当前密码"
               name="oldPassword"
             >
               <a-input-password
@@ -59,7 +66,7 @@
               />
             </a-form-item>
             <a-form-item
-              label="新密码"
+              label="新密码（留空不修改）"
               name="newPassword"
             >
               <a-input-password
@@ -68,6 +75,7 @@
               />
             </a-form-item>
             <a-form-item
+              v-if="form.newPassword"
               label="确认新密码"
               name="confirmPassword"
             >
@@ -81,7 +89,7 @@
               html-type="submit"
               :loading="submitting"
             >
-              更新密码
+              更新账号信息
             </a-button>
           </a-form>
         </a-card>
@@ -94,33 +102,42 @@
 import { computed, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import { changePasswordApi } from '@/api/auth'
+import { updateAccountApi } from '@/api/auth'
 import { useAuth } from '@/composables/useAuth'
 import type { UserRole } from '@/types'
 
-const { currentUser } = useAuth()
+const { currentUser, updateUserInfo } = useAuth()
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
-const form = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
+const form = reactive({
+  username: currentUser.value?.username || '',
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
 const roles: Record<UserRole, string> = {
   superadmin: '超级管理员', admin: '管理员', editor: '编辑者', viewer: '只读用户'
 }
 const roleText = computed(() => currentUser.value ? roles[currentUser.value.role] : '-')
 
 const validateConfirm = async (_rule: Rule, value: string) => {
-  if (value !== form.newPassword) throw new Error('两次输入的新密码不一致')
+  if (form.newPassword && !value) throw new Error('请再次输入新密码')
+  if (value && value !== form.newPassword) throw new Error('两次输入的新密码不一致')
 }
 const rules: Record<string, Rule[]> = {
-  oldPassword: [{ required: true, message: '请输入原密码' }, { min: 8, max: 64, message: '密码长度为 8～64 位' }],
-  newPassword: [{ required: true, message: '请输入新密码' }, { min: 8, max: 64, message: '密码长度为 8～64 位' }],
-  confirmPassword: [{ required: true, message: '请再次输入新密码' }, { validator: validateConfirm }]
+  username: [{ required: true, message: '请输入账号名称' }, { min: 3, max: 64, message: '账号名称长度为 3～64 位' }],
+  oldPassword: [{ required: true, message: '请输入当前密码' }, { min: 8, max: 64, message: '密码长度为 8～64 位' }],
+  newPassword: [{ min: 8, max: 64, message: '密码长度为 8～64 位' }],
+  confirmPassword: [{ validator: validateConfirm }]
 }
 
 const submit = async () => {
   submitting.value = true
   try {
-    await changePasswordApi(form.oldPassword, form.newPassword)
-    message.success('密码已更新')
+    const user = await updateAccountApi(form.username.trim(), form.oldPassword, form.newPassword || undefined)
+    updateUserInfo(user)
+    form.username = user.username
+    message.success('账号信息已更新')
     form.oldPassword = ''
     form.newPassword = ''
     form.confirmPassword = ''
@@ -134,6 +151,6 @@ const submit = async () => {
 <style scoped>
 .account-security :deep(.ant-card) { height: 100%; }
 .account-tip { margin-top: 18px; }
-.password-form { max-width: 520px; }
+.account-form { max-width: 520px; }
 @media (max-width: 991px) { .account-security :deep(.ant-col:first-child) { margin-bottom: 20px; } }
 </style>

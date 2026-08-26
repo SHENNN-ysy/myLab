@@ -38,6 +38,8 @@ docker compose up -d --build
 docker compose ps
 ```
 
+本地一键部署仅编译并打包应用，不执行后端单元测试或 Testcontainers 集成测试；完整质量门由 CI 执行。
+
 首次启动由 Flyway 自动建表。访问地址：
 
 - 博客前台：`http://localhost/`
@@ -143,6 +145,7 @@ MyBlog/
 |---|---|
 | [deploy/README.md](deploy/README.md) | 从空白服务器开始的生产部署指南 |
 | [docs/CI-CD.md](docs/CI-CD.md) | CI/CD 阶段、版本、校验、清理与回滚 |
+| [docs/CI-CD学习实验记录.md](docs/CI-CD学习实验记录.md) | 从手工部署演进到 Jenkins CI/CD 的学习与实践记录 |
 | [docs/测试工作流.md](docs/测试工作流.md) | 本地与流水线测试要求 |
 | [backend-java/ARCHITECTURE.md](backend-java/ARCHITECTURE.md) | 后端分层架构 |
 | [docs/API接口文档.md](docs/API接口文档.md) | REST API |

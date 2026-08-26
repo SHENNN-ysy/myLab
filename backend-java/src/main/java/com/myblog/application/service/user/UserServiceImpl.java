@@ -3,6 +3,7 @@ package com.myblog.application.service.user;
 import com.myblog.application.model.entity.User;
 import com.myblog.application.model.vo.UserOutVO;
 import com.myblog.common.exception.ConflictException;
+import com.myblog.common.exception.ForbiddenException;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.exception.ValidationException;
 import com.myblog.common.enumeration.ErrorCode;
@@ -98,6 +99,7 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
+        requireMutable(user);
         List<String> changed = new ArrayList<>();
         if (command.role() != null) {
             requireValidRole(command.role());
@@ -125,6 +127,11 @@ public class UserServiceImpl implements UserService {
      */
     public void delete(CurrentUser actor, UUID id) {
         Authorization.requireSuperadmin(actor);
+        User user = users.findById(id);
+        if (user == null) {
+            throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
+        }
+        requireMutable(user);
         if (!users.remove(id)) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
@@ -140,6 +147,13 @@ public class UserServiceImpl implements UserService {
     private static void requireValidRole(String role) {
         if (!ALLOWED_ROLES.contains(role)) {
             throw new ValidationException("role 只允许 viewer、editor、admin 或 superadmin");
+        }
+    }
+
+    /** 超级管理员只能在账号安全页面维护自身信息，用户管理不允许修改或删除。 */
+    private static void requireMutable(User user) {
+        if ("superadmin".equals(user.getRole())) {
+            throw new ForbiddenException();
         }
     }
 }
