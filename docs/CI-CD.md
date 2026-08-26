@@ -14,12 +14,11 @@
 ## 2. 流水线
 
 ```text
-任意分支
+功能分支 → Pull Request → 审核并合并到 master
+  → GitHub push Webhook
   → Backend: mvn verify
   → Frontend Web: npm ci + lint + build
   → Frontend Admin: npm ci + lint + build
-
-仅 master
   → Build Images
   → Push Images
   → 输出 release.env
@@ -33,6 +32,7 @@
 
 CI 中的 Testcontainers 集成测试早于镜像构建。镜像阶段仅包装已经通过验证的 JAR 和两个 `dist`，不重复 Maven、npm 或测试。
 Jenkins 与 Maven 构建容器都使用生产配置中的 `DOCKER_GID` 访问宿主机 `docker.sock`。
+生产 Multibranch Pipeline 仅索引 `master`，不发现 PR，也不轮询 SCM。首次上线手动运行一次；Webhook 可用后，仅由 PR 合并产生的 `master` push 事件触发。
 
 ## 3. 版本契约
 
@@ -116,8 +116,8 @@ CI 推送、CD 拉取和清理共用文件锁：
 
 ## 8. 验收
 
-- 功能分支没有 `Build Images` 和 `Push Images`；
-- `master` 的三个仓库拥有相同 tag；
+- 功能分支 push、PR 创建和 PR 更新不触发 Jenkins；
+- PR 合并到 `master` 后自动运行 CI，三个仓库拥有相同 tag；
 - Registry 故障发生时，CD 在部署前结束；
 - CD 日志没有 `docker build`；
 - 成功部署更新状态文件，失败部署不更新；

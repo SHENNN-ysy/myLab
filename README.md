@@ -105,9 +105,9 @@ npm ci && npm run lint && npm run build
 生产环境不执行根目录的一键部署命令。完整流程为：
 
 ```text
-Git push
+GitHub PR 合并到 master
   → CI 质量门与集成测试
-  → master 构建三个镜像
+  → 构建三个镜像
   → 推送本机 Registry
   → CD 校验并拉取指定 tag
   → deploy/docker-compose.yml 无构建部署

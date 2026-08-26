@@ -137,7 +137,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 - 注意：`depends_on` 仅在 `docker compose up` 时生效；服务器重启后 Docker 按 `restart: unless-stopped` 自行拉起容器，backend 可能先于 postgres 启动失败几轮后自愈，属预期行为
 
 ### CI/CD（Jenkins）
-- **Jenkinsfile.ci**：任意分支执行后端 `mvn verify` 与前端质量门；仅 master 封装已验证产物并推送三个镜像
+- **Jenkinsfile.ci**：生产 Multibranch Job 只索引 `master`；PR 合并后执行质量门并封装、推送三个已验证镜像
 - **Jenkinsfile.cd**：必填 `IMAGE_TAG`，先检查 Registry 与三镜像，再拉取并通过 `deploy/docker-compose.yml` 执行 `up -d --no-build`
 - **Jenkinsfile.registry-cleanup**：每天 03:30 通过 Registry V2 HTTP API 删除非保留 manifest，再执行 garbage collection
 - Jenkins 容器使用 `deploy/jenkins/Dockerfile` 安装 Docker CLI、Buildx、Compose、`curl`、`jq` 与 `flock`
