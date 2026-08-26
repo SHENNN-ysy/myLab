@@ -31,7 +31,7 @@
 ```
 
 CI 中的 Testcontainers 集成测试早于镜像构建。镜像阶段仅包装已经通过验证的 JAR 和两个 `dist`，不重复 Maven、npm 或测试。
-Jenkins 与 Maven 构建容器都使用生产配置中的 `DOCKER_GID` 访问宿主机 `docker.sock`。
+`Prepare` 阶段在 Jenkins 节点内校验生产配置中的 `DOCKER_GID` 与 `docker.sock` 实际 GID 一致，再把 GID 传给 Maven 构建容器。顶层使用 `agent none`，因此禁止在顶层 `environment` 中调用需要节点 workspace 的 `sh`；运行期 GID 也不得直接插值到 Declarative `agent` 块。
 生产 Multibranch Pipeline 仅索引 `master`，不发现 PR，也不轮询 SCM。首次上线手动运行一次；Webhook 可用后，仅由 PR 合并产生的 `master` push 事件触发。
 
 ## 3. 版本契约

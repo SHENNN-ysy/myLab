@@ -16,8 +16,6 @@ pipeline {
         REGISTRY_API_HOST = 'registry:5000'
         REGISTRY_LOCK = '/var/jenkins_home/locks/myblog-registry.lock'
         DEPLOY_ENV_FILE = '/opt/myblog/deploy/.env'
-        // agent 块中无法直接使用 env.DOCKER_GID，需在 environment 中显式定义。
-        DOCKER_GID = sh(returnStdout: true, script: 'echo $DOCKER_GID').trim()
     }
 
     stages {
@@ -25,6 +23,23 @@ pipeline {
             agent any
             steps {
                 script {
+                    env.DOCKER_SOCKET_GID = sh(
+                        returnStdout: true,
+                        script: '''
+                            set -eu
+                            configured_gid=${DOCKER_GID:-}
+                            socket_gid=$(stat -c '%g' /var/run/docker.sock)
+                            printf '%s' "$configured_gid" | grep -Eq '^[0-9]+$' || {
+                                echo 'DOCKER_GID 未配置或不是数字' >&2
+                                exit 1
+                            }
+                            [ "$configured_gid" = "$socket_gid" ] || {
+                                echo "DOCKER_GID=$configured_gid 与 docker.sock GID=$socket_gid 不一致" >&2
+                                exit 1
+                            }
+                            printf '%s' "$socket_gid"
+                        '''
+                    ).trim()
                     env.ADMIN_ROUTE = sh(
                         returnStdout: true,
                         script: '''
@@ -43,18 +58,20 @@ pipeline {
         }
 
         stage('Backend CI') {
-            agent {
-                docker {
-                    // Testcontainers 通过宿主机 Docker 启动真实 PostgreSQL 与 Redis。
-                    image 'maven:3.9-eclipse-temurin-21'
-                    args "-v /var/run/docker.sock:/var/run/docker.sock -v /data/jenkins/.m2:/home/ubuntu/.m2 --group-add ${DOCKER_GID}"
-                    reuseNode true
-                }
-            }
+            agent any
             steps {
-                dir('backend-java') {
-                    // verify 包含 Checkstyle、单测、*IT 集成测试、SpotBugs 与 JaCoCo。
-                    sh 'mvn -B verify'
+                script {
+                    // Declarative agent 无法安全读取运行期 GID，改在节点内启动 Maven 容器。
+                    docker.image('maven:3.9-eclipse-temurin-21').inside(
+                        "-v /var/run/docker.sock:/var/run/docker.sock " +
+                        "-v /data/jenkins/.m2:/home/ubuntu/.m2 " +
+                        "--group-add ${env.DOCKER_SOCKET_GID}"
+                    ) {
+                        dir('backend-java') {
+                            // verify 包含 Checkstyle、单测、*IT 集成测试、SpotBugs 与 JaCoCo。
+                            sh 'mvn -B verify'
+                        }
+                    }
                 }
                 stash name: 'backend-artifact',
                       includes: 'backend-java/target/myblog-backend-*.jar'

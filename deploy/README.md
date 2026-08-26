@@ -87,6 +87,8 @@ DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
 sed -i "s/^DOCKER_GID=.*/DOCKER_GID=$DOCKER_GID/" deploy/.env
 ```
 
+CI 会在已分配 Jenkins 节点的 `Prepare` 阶段再次校验该值，再将实际 GID 传入 Maven 容器。不要在 `agent none` 流水线的顶层 `environment` 中使用 `sh` 读取 GID，否则 Jenkins 尚无 workspace，会直接报 `MissingContextVariableException: hudson.FilePath is missing`。
+
 默认配置目录保持一致：
 
 ```text
