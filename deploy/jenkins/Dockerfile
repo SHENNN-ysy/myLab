@@ -1,18 +1,20 @@
 ARG JENKINS_IMAGE=jenkins/jenkins:lts-jdk21
 FROM ${JENKINS_IMAGE}
 
+ARG DOCKER_APT_MIRROR=https://mirrors.ustc.edu.cn/docker-ce/linux/debian
+
 USER root
 
-# 安装 Docker 工具链；Registry 操作直接使用 curl + jq 调用 V2 HTTP API。
+# 通过国内 Docker CE APT 镜像安装工具链；Registry 操作使用 curl + jq 调用 V2 HTTP API。
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl jq util-linux \
     && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg \
+    && curl -fsSL "${DOCKER_APT_MIRROR}/gpg" \
         -o /etc/apt/keyrings/docker.asc \
     && chmod a+r /etc/apt/keyrings/docker.asc \
     && printf '%s\n' \
         'Types: deb' \
-        'URIs: https://download.docker.com/linux/debian' \
+        "URIs: ${DOCKER_APT_MIRROR}" \
         "Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")" \
         'Components: stable' \
         "Architectures: $(dpkg --print-architecture)" \

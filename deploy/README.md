@@ -148,6 +148,8 @@ Registry 数据保存在 `/data/registry`，不随博客应用重启或删除。
 
 ## 7. 启动 Jenkins
 
+Jenkins 工具镜像默认通过中科大 Docker CE APT 镜像安装 Docker CLI、Buildx 和 Compose。该镜像的 GPG、Debian 12/13 Release 与 amd64 软件包索引已在替换时验证可访问；如服务器线路不同，可修改 `deploy/.env` 中的 `DOCKER_APT_MIRROR` 后重新构建。
+
 ### 7.1 首次初始化
 
 首次发布前生产 Nginx 尚未运行，因此临时把 Jenkins 绑定到服务器回环地址：
