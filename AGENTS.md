@@ -141,6 +141,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 - **Jenkinsfile.cd**：必填 `IMAGE_TAG`，先检查 Registry 与三镜像，再拉取并通过 `deploy/docker-compose.yml` 执行 `up -d --no-build`
 - **Jenkinsfile.registry-cleanup**：每天 03:30 通过 Registry V2 HTTP API 删除非保留 manifest，再执行 garbage collection
 - Jenkins 容器使用 `deploy/jenkins/Dockerfile` 安装 Docker CLI、Buildx、Compose、`curl`、`jq` 与 `flock`
+- `Jenkinsfile.ci` 顶层为 `agent none`，禁止在顶层 `environment` 调用 `sh`；`DOCKER_GID` 必须在已分配节点的阶段内校验并传给 Maven 容器
 - Jenkins 使用 `deploy/.env` 的 `JENKINS_ROUTE` 作为控制器 `--prefix`，并通过外部网络 `myblog-jenkins-proxy` 由生产 Nginx 提供 HTTPS 与 GitHub Webhook 入口
 - 回滚：从 Registry 最近保留版本中选择 tag，重新触发 CD
 
