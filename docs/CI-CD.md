@@ -61,6 +61,8 @@ CD 在执行 `docker compose up` 前完成以下检查：
 5. 三个完整镜像均拉取成功；
 6. admin 镜像标签与生产 `ADMIN_ROUTE` 一致。
 
+生产 backend 以非 root `myblog` 用户运行。首次 CD 前必须按 `deploy/README.md` 从指定 API 镜像读取实际 UID/GID，并在服务器上手工修正 `APP_LOG_DIR`；生产 Compose 与 CD 不以 root 自动修改宿主机目录权限。
+
 任一步失败都不修改运行中容器。检查通过后，CD 注入三个完整镜像地址并执行：
 
 ```bash

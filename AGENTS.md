@@ -133,6 +133,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 - 管理后台路径由生产 `deploy/.env` 的 `ADMIN_ROUTE` 同时注入 CI 构建和 Nginx，修改后必须重新发布镜像
 - 镜像名可用环境变量覆盖：`API_IMAGE` / `WEB_IMAGE` / `ADMIN_IMAGE` / `POSTGRES_IMAGE` / `REDIS_IMAGE`
 - 应用镜像由 CI 推送到 `registry:2`，生产 Compose 不含 `build`；CD 只允许指定不可变 tag 拉取部署
+- 首次生产 CD 前须按 `deploy/README.md` 将 `APP_LOG_DIR` 属主改为 API 镜像内 `myblog` 用户；Compose 与 CD 不自动执行 root 权限修改
 - Registry 仅绑定 `127.0.0.1:5000`；每个仓库保留最近 5 个 tag，并额外保护当前成功部署 tag
 - 注意：`depends_on` 仅在 `docker compose up` 时生效；服务器重启后 Docker 按 `restart: unless-stopped` 自行拉起容器，backend 可能先于 postgres 启动失败几轮后自愈，属预期行为
 
