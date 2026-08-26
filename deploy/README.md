@@ -148,7 +148,7 @@ Registry 数据保存在 `/data/registry`，不随博客应用重启或删除。
 
 ## 7. 启动 Jenkins
 
-Jenkins 工具镜像默认通过中科大 Docker CE APT 镜像安装 Docker CLI、Buildx 和 Compose。该镜像的 GPG、Debian 12/13 Release 与 amd64 软件包索引已在替换时验证可访问；如服务器线路不同，可修改 `deploy/.env` 中的 `DOCKER_APT_MIRROR` 后重新构建。
+Jenkins 工具镜像会在首次 `apt-get update` 前将 Debian 主源和安全更新源固定切换到中科大镜像，Docker CE 源默认使用中科大镜像。相关 Release、Docker GPG 与 amd64 软件包索引已在替换时验证可访问；如 Docker CE 镜像线路不同，可修改 `deploy/.env` 中的 `DOCKER_APT_MIRROR` 后重新构建。
 
 ### 7.1 首次初始化
 

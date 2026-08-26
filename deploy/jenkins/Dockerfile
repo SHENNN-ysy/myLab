@@ -5,8 +5,14 @@ ARG DOCKER_APT_MIRROR=https://mirrors.ustc.edu.cn/docker-ce/linux/debian
 
 USER root
 
-# 通过国内 Docker CE APT 镜像安装工具链；Registry 操作使用 curl + jq 调用 V2 HTTP API。
-RUN apt-get update \
+# 首次更新前替换 Debian 系统源，再通过国内 Docker CE APT 镜像安装工具链。
+RUN find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) \
+        -exec sed -Ei \
+            -e 's|https?://deb\.debian\.org/debian-security|https://mirrors.ustc.edu.cn/debian-security|g' \
+            -e 's|https?://security\.debian\.org/debian-security|https://mirrors.ustc.edu.cn/debian-security|g' \
+            -e 's|https?://deb\.debian\.org/debian|https://mirrors.ustc.edu.cn/debian|g' \
+            {} + \
+    && apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl jq util-linux \
     && install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL "${DOCKER_APT_MIRROR}/gpg" \
