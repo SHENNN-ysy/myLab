@@ -10,6 +10,7 @@ import com.myblog.application.port.ObjectStorage;
 import com.myblog.application.repository.ContentReleaseRepository;
 import com.myblog.application.repository.FileRepository;
 import com.myblog.application.repository.MylabTagRepository;
+import com.myblog.application.repository.MylabPublicRepository;
 import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.NotFoundException;
@@ -39,21 +40,25 @@ import java.util.UUID;
 @Slf4j
 @Service
 public class ContentModuleServiceImpl implements ContentModuleService {
+    static final int MAX_MYLAB_MARKDOWN_CHARACTERS = 500_000;
     private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab"); // 支持的内容模块清单
     private static final Set<String> TIME_KEYS = Set.of("爱好1", "爱好2", "爱好3", "爱好4", "爱好5"); // hobbies 时间分布图的五个维度
     private static final ObjectMapper OM = JacksonObjectMapper.get();
 
     private final ContentReleaseRepository releases;
     private final MylabTagRepository tags;
+    private final MylabPublicRepository mylabPublic;
     private final FileRepository resources;
     private final ObjectStorage storage;
 
     public ContentModuleServiceImpl(ContentReleaseRepository releases, MylabTagRepository tags,
-                                    FileRepository resources, ObjectStorage storage) {
+                                    FileRepository resources, ObjectStorage storage,
+                                    MylabPublicRepository mylabPublic) {
         this.releases = releases;
         this.tags = tags;
         this.resources = resources;
         this.storage = storage;
+        this.mylabPublic = mylabPublic;
     }
 
     /**
@@ -64,7 +69,10 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String key : KEYS) {
             ContentRelease release = releases.findPublished(key);
-            if (release != null) result.put(key, publicData(key, releases.readData(release)));
+            if (release != null) {
+                Object data = "mylab".equals(key) ? mylabPublic.readSummary(release.getId()) : releases.readData(release);
+                result.put(key, publicData(key, data));
+            }
         }
         return result;
     }
@@ -77,7 +85,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         requireKey(moduleKey);
         ContentRelease release = releases.findPublished(moduleKey);
         if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, moduleKey);
-        return publicData(moduleKey, releases.readData(release));
+        Object data = "mylab".equals(moduleKey) ? mylabPublic.readSummary(release.getId()) : releases.readData(release);
+        return publicData(moduleKey, data);
     }
 
     /**
@@ -86,7 +95,11 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     @Override
     @SuppressWarnings("unchecked")
     public Object publicMylabDetail(String postKey) {
-        Map<String, Object> root = (Map<String, Object>) publicModule("mylab");
+        ContentRelease release = releases.findPublished("mylab");
+        if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, "mylab");
+        Map<String, Object> detail = mylabPublic.readDetail(release.getId(), postKey);
+        if (detail == null) throw new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, postKey);
+        Map<String, Object> root = (Map<String, Object>) publicData("mylab", detail);
         List<Map<String, Object>> cards = (List<Map<String, Object>>) root.getOrDefault("cards", List.of());
         return cards.stream().filter(card -> postKey.equals(card.get("post_key")))
                 .findFirst().orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, postKey));
@@ -549,14 +562,16 @@ public class ContentModuleServiceImpl implements ContentModuleService {
                 throw validation("卡片只能引用当前启用且未删除的标签");
             }
             UUID imageId = uuid(card, "image_resource_id");
-            UUID contentId = uuid(card, "content_resource_id");
             if (imageId != null) requireResource(imageId, "image/");
-            if (contentId != null) requireResource(contentId, "text/markdown", "text/plain");
+            String markdown = card.path("markdown_content").asText("");
+            if (markdown.length() > MAX_MYLAB_MARKDOWN_CHARACTERS) {
+                throw validation("Markdown 正文不能超过 500000 字符");
+            }
             if (publishing && enabled(card)) {
                 if (firstText(card, "card_title", "title") == null || firstText(card, "card_summary", "summary") == null) {
                     throw validation("已启用 MyLab 卡片必须填写标题和摘要");
                 }
-                if (contentId == null) throw validation("已启用 MyLab 卡片必须选择 Markdown 正文资源");
+                if (markdown.isBlank()) throw validation("已启用 MyLab 卡片必须填写 Markdown 正文");
             }
         }
     }
@@ -632,7 +647,6 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             case "mylab" -> ((List<Map<String, Object>>) root.getOrDefault("cards", List.of()))
                     .forEach(item -> {
                         putUrl(item, "image_object_key", "image_url");
-                        putUrl(item, "content_object_key", "markdown_url");
                     });
             default -> { }
         }

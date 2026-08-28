@@ -83,7 +83,7 @@
           v-if="markdownLoading"
           class="post-content-state"
         >
-          正在从 OSS 加载正文…
+          正在加载正文…
         </p>
         <p
           v-else-if="markdownError && !post.sections.length"
@@ -209,6 +209,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLabPosts } from '../composables/useLabPosts'
+import { loadPublicMylabDetail } from '../composables/usePublicContent'
 import { recordContentView, setContentLiked, useEngagement } from '../composables/useEngagement'
 import { renderMarkdown, type MarkdownHeading } from '../utils/markdown'
 
@@ -253,20 +254,21 @@ watch(
 )
 
 watch(
-  () => post.value?.markdownUrl,
-  async (markdownUrl, _previousUrl, onCleanup) => {
+  () => post.value?.id,
+  async (postKey, _previousKey, onCleanup) => {
     markdownHtml.value = ''
     markdownHeadings.value = []
     markdownError.value = ''
-    if (!markdownUrl) return
+    if (!postKey) return
 
     const controller = new AbortController()
     onCleanup(() => controller.abort())
     markdownLoading.value = true
     try {
-      const response = await fetch(markdownUrl, { signal: controller.signal, headers: { Accept: 'text/markdown,text/plain' } })
-      if (!response.ok) throw new Error(`正文加载失败：${response.status}`)
-      const rendered = renderMarkdown(await response.text())
+      const detail = await loadPublicMylabDetail(postKey, controller.signal)
+      const markdown = detail.markdown_content || ''
+      if (!markdown.trim()) throw new Error('正文为空')
+      const rendered = renderMarkdown(markdown)
       markdownHtml.value = rendered.html
       markdownHeadings.value = rendered.headings
     } catch (error) {

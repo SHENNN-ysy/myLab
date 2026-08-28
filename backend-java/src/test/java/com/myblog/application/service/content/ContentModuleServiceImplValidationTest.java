@@ -6,6 +6,7 @@ import com.myblog.application.port.ObjectStorage;
 import com.myblog.application.repository.ContentReleaseRepository;
 import com.myblog.application.repository.FileRepository;
 import com.myblog.application.repository.MylabTagRepository;
+import com.myblog.application.repository.MylabPublicRepository;
 import com.myblog.common.exception.ValidationException;
 import com.myblog.common.security.CurrentUser;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,20 +39,20 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ContentModuleServiceImplValidationTest {
     private static final UUID IMAGE_ID = UUID.randomUUID();
-    private static final UUID CONTENT_ID = UUID.randomUUID();
     private static final UUID TAG_ID = UUID.randomUUID();
 
     @Mock ContentReleaseRepository releases;
     @Mock MylabTagRepository tags;
     @Mock FileRepository resources;
     @Mock ObjectStorage storage;
+    @Mock MylabPublicRepository mylabPublic;
 
     private ContentModuleServiceImpl service;
     private CurrentUser admin;
 
     @BeforeEach
     void setUp() {
-        service = new ContentModuleServiceImpl(releases, tags, resources, storage);
+        service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic);
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
@@ -781,14 +782,12 @@ class ContentModuleServiceImplValidationTest {
     }
 
     @Test
-    void mylabRejectsNonMarkdownContentResource() {
-        when(resources.findById(CONTENT_ID)).thenReturn(file(CONTENT_ID, "image/png"));
-
+    void mylabRejectsOversizedMarkdown() {
         assertThatThrownBy(() -> saveMylabDraft(Map.of("cards", List.of(Map.of(
                 "post_key", "article-a", "enabled", false,
-                "content_resource_id", CONTENT_ID.toString())))))
+                "markdown_content", "x".repeat(ContentModuleServiceImpl.MAX_MYLAB_MARKDOWN_CHARACTERS + 1))))))
                 .isInstanceOfSatisfying(ValidationException.class,
-                        e -> assertThat(e.getDetail()).contains("媒体类型不符合"));
+                        e -> assertThat(e.getDetail()).contains("500000"));
     }
 
     @Test
@@ -802,21 +801,20 @@ class ContentModuleServiceImplValidationTest {
     }
 
     @Test
-    void mylabPublishRequiresMarkdownResource() {
+    void mylabPublishRequiresMarkdownContent() {
         stubDraft("mylab", Map.of("cards", List.of(Map.of(
                 "post_key", "article-a", "enabled", true,
                 "card_title", "标题", "card_summary", "摘要"))));
 
         assertThatThrownBy(() -> service.publish(admin, "mylab"))
                 .isInstanceOfSatisfying(ValidationException.class,
-                        e -> assertThat(e.getDetail()).contains("Markdown 正文资源"));
+                        e -> assertThat(e.getDetail()).contains("Markdown 正文"));
     }
 
     @Test
     void mylabPublishSucceedsWithValidData() {
         when(tags.findActiveByIds(any())).thenReturn(List.of(tag(TAG_ID, "Java")));
         when(resources.findById(IMAGE_ID)).thenReturn(file(IMAGE_ID, "image/webp"));
-        when(resources.findById(CONTENT_ID)).thenReturn(file(CONTENT_ID, "text/markdown"));
         Map<String, Object> card = new LinkedHashMap<>();
         card.put("post_key", "project-a");
         card.put("project_show_order", 1);
@@ -826,7 +824,7 @@ class ContentModuleServiceImplValidationTest {
         card.put("enabled", true);
         card.put("tag_ids", List.of(TAG_ID.toString()));
         card.put("image_resource_id", IMAGE_ID.toString());
-        card.put("content_resource_id", CONTENT_ID.toString());
+        card.put("markdown_content", "# 正文");
         stubDraft("mylab", Map.of("cards", List.of(card)));
 
         service.publish(admin, "mylab");

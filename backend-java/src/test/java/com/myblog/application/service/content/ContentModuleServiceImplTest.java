@@ -6,6 +6,7 @@ import com.myblog.application.port.ObjectStorage;
 import com.myblog.application.repository.ContentReleaseRepository;
 import com.myblog.application.repository.FileRepository;
 import com.myblog.application.repository.MylabTagRepository;
+import com.myblog.application.repository.MylabPublicRepository;
 import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.security.CurrentUser;
@@ -34,13 +35,14 @@ class ContentModuleServiceImplTest {
     @Mock MylabTagRepository tags;
     @Mock FileRepository resources;
     @Mock ObjectStorage storage;
+    @Mock MylabPublicRepository mylabPublic;
 
     private ContentModuleServiceImpl service;
     private CurrentUser admin;
 
     @BeforeEach
     void setUp() {
-        service = new ContentModuleServiceImpl(releases, tags, resources, storage);
+        service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic);
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
@@ -80,7 +82,7 @@ class ContentModuleServiceImplTest {
     void publicMylabUsesOnlyPublishedRelease() {
         ContentRelease published = release("mylab", "PUBLISHED");
         when(releases.findPublished("mylab")).thenReturn(published);
-        when(releases.readData(published)).thenReturn(Map.of(
+        when(mylabPublic.readSummary(published.getId())).thenReturn(Map.of(
                 "tags", List.of(),
                 "cards", List.of(Map.of(
                         "post_key", "article-one", "card_type", "ARTICLE", "enabled", true))));

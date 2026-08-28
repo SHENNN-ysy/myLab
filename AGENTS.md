@@ -94,6 +94,8 @@ starter ────────> application / common / infrastructure
 - 每个内容模块同一时刻至多一个 DRAFT 草稿和一个 PUBLISHED 线上版本，发布即生成不可变历史版本
 - 发布内容只读；历史版本可恢复到草稿；线上版本须先下线才能删除
 - 草稿保存用 `expected_updated_at` 乐观锁防并发覆盖；写操作对模块加行锁串行化
+- MyLab Markdown 正文保存在 `mylab_cards.markdown_content` 并参与版本复制；公开列表不返回正文，单篇详情接口按 `post_key` 返回正文
+- `mylab_resources` 只保存卡片封面图片引用；Markdown 文件可在后台本地读取到编辑区，但不上传 OSS
 
 ### 认证与安全
 - JWT 双令牌（access + refresh），退出登录把 jti 写入 Redis 黑名单吊销

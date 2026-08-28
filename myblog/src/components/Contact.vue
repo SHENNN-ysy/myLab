@@ -105,9 +105,9 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useSiteStatistics } from '../composables/useSiteStatistics'
 
 const support = {
-  site_started_at: '2024-04-21T00:00:00+08:00',
-  github_url: 'https://github.com', github_enabled: true,
-  email: '', email_enabled: true,
+  site_started_at: '2026-08-24T00:00:00+08:00',
+  github_url: 'https://github.com/SHENNN-ysy/myLab', github_enabled: true,
+  email: 'shuyun_yang_lab@163.com', email_enabled: true,
   icp_number: 'XXXXXXX', icp_enabled: true,
   cloud_provider: '阿里云', cloud_enabled: true,
 }

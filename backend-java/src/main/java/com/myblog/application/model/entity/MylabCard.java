@@ -45,4 +45,7 @@ public class MylabCard extends BaseEntity {
 
     // 项目正文（仅 PROJECT 类型非空）
     private String projectContents;
+
+    // MyLab 详情页 Markdown 正文，随内容版本保存
+    private String markdownContent;
 }

@@ -25,8 +25,9 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         JsonNode body = assertStatusAndCode(
                 rest.getForEntity(CONTENT_URL, JsonNode.class), HttpStatus.OK, 0);
 
-        assertThat(findCard(body.path("data").path("mylab").path("cards"), postKey))
-                .as("已发布 mylab 模块中应包含自建卡片").isNotNull();
+        JsonNode card = findCard(body.path("data").path("mylab").path("cards"), postKey);
+        assertThat(card).as("已发布 mylab 模块中应包含自建卡片").isNotNull();
+        assertThat(card.has("markdown_content")).as("公开列表不应携带大正文").isFalse();
     }
 
     @Test
@@ -54,6 +55,7 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
 
         assertThat(body.path("data").path("post_key").asText()).isEqualTo(postKey);
         assertThat(body.path("data").path("title").asText()).isEqualTo("详情测试文章");
+        assertThat(body.path("data").path("markdown_content").asText()).contains("API 集成测试正文");
     }
 
     @Test

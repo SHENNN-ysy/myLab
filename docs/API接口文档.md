@@ -401,9 +401,8 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
       "project_show_order": 0,
       "project_contents": "首页项目侧边栏正文",
       "image_resource_id": "图片资源 UUID",
-      "content_resource_id": "Markdown 或纯文本资源 UUID",
       "image_url": "https://img.example.com/cover.webp",
-      "markdown_url": "https://img.example.com/post.md",
+      "markdown_content": "# 数据库重设计\n\n正文内容……",
       "enabled": true,
       "sort_order": 0
     }
@@ -416,9 +415,11 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 - `PROJECT` 发布时必须填写非负且不重复的 `project_show_order` 和 `project_contents`。
 - `ARTICLE` 的 `project_show_order`、`project_contents` 必须为 `null` 或不传。
 - `tag_ids` 按数组顺序保存，不允许重复，只能引用启用且未删除的全局标签。
-- 发布已启用卡片时标题、摘要和 `content_resource_id` 必填。
-- `image_resource_id` 只能引用图片；`content_resource_id` 只能引用 `text/markdown` 或 `text/plain`。
+- 发布已启用卡片时标题、摘要和 `markdown_content` 必填；正文最长 500000 字符。
+- `image_resource_id` 只能引用图片；Markdown 正文直接随卡片版本保存在数据库中。
+- 后台编辑器可读取本地 `.md`、`.markdown` UTF-8 文件并覆盖编辑区，文件内容仍通过草稿接口保存，不上传 OSS。
 - 公开接口在 `tags` 中返回有效标签对象，并在卡片中同时返回解析后的标签名称数组。
+- `/api/v1/public/content` 和 `/api/v1/public/content/mylab` 仅返回卡片摘要，不包含 `markdown_content`；`/api/v1/public/mylab/{postKey}` 返回单篇完整正文。
 
 ## 6. MyLab 全局标签
 
@@ -513,7 +514,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 }
 ```
 
-`directory` 只允许 `footstep`、`hero`、`hobbies`、`icon`、`mylab`、`mylab-post`。`mylab` 只保存 PDF、Markdown 和纯文本正文，其余目录只保存图片；MyLab 卡片封面固定使用 `mylab-post`。CDN 域名为空时图片与文档均使用 OSS 签名地址，配置 CDN 域名后图片自动改用 CDN 地址。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
+上传时 `directory` 只允许 `footstep`、`hero`、`hobbies`、`icon`、`mylab-post`，并且只允许图片；MyLab 卡片封面固定使用 `mylab-post`。旧 `mylab` 目录仍可筛选和查看，但只用于永久保留迁移前的 Markdown 资源，不允许新增上传或删除。CDN 域名为空时图片使用 OSS 签名地址，配置 CDN 域名后自动改用 CDN 地址。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
 
 ## 9. 系统接口
 

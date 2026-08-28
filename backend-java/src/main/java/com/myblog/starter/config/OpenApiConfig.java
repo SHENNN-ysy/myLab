@@ -91,7 +91,7 @@ public class OpenApiConfig {
                         .addProperty("cards", new ArraySchema().items(itemSchema(
                                 "id", "post_key", "card_title", "card_summary", "post_date", "tags",
                                 "card_type", "project_show_order", "project_contents", "image_resource_id",
-                                "content_resource_id", "markdown_url"))));
+                                "markdown_content"))));
         return new OpenAPI().components(components);
     }
 

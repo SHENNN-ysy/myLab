@@ -25,7 +25,6 @@ import java.util.Date;
 public class OssObjectStorageAdapter implements ObjectStorage {
 
     private static final Logger log = LoggerFactory.getLogger(OssObjectStorageAdapter.class);
-
     private final OSS oss;             // 阿里云 OSS 客户端（懒加载注入）
     private final AppProperties props; // OSS endpoint、密钥、bucket、CDN 域名等配置
 
