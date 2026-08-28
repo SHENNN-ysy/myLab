@@ -514,7 +514,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 }
 ```
 
-上传时 `directory` 只允许 `footstep`、`hero`、`hobbies`、`icon`、`mylab-post`，并且只允许图片；MyLab 卡片封面固定使用 `mylab-post`。旧 `mylab` 目录仍可筛选和查看，但只用于永久保留迁移前的 Markdown 资源，不允许新增上传或删除。CDN 域名为空时图片使用 OSS 签名地址，配置 CDN 域名后自动改用 CDN 地址。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
+上传时 `directory` 只允许 `footstep`、`hero`、`hobbies`、`icon`、`mylab-post`，并且只允许图片；MyLab 卡片封面固定使用 `mylab-post`。CDN 域名为空时图片使用 OSS 签名地址，配置 CDN 域名后自动改用 CDN 地址。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
 
 ## 9. 系统接口
 
