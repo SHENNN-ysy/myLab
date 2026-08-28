@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.never;
@@ -197,7 +198,7 @@ class FileServiceImplTest {
     }
 
     @Test
-    void mylabDirectoryRejectsImages() {
+    void legacyMylabDirectoryRejectsNewUploads() {
         UploadFile upload = new UploadFile("mylab", "a.png", "image/png", 3,
                 new ByteArrayInputStream(new byte[] {1, 2, 3}));
 
@@ -224,6 +225,18 @@ class FileServiceImplTest {
                 .isInstanceOf(ValidationException.class);
         verify(storage, never()).upload(anyString(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.anyLong(), anyString());
+    }
+
+    @Test
+    void deleteRejectsLegacyMylabDocumentEvenWithoutReferences() {
+        FileRecord document = resource("mylab/legacy.md", "text/markdown");
+        when(files.findById(document.getId())).thenReturn(document);
+
+        assertThatThrownBy(() -> service.delete(admin, document.getId()))
+                .isInstanceOf(com.myblog.common.exception.ConflictException.class);
+
+        verify(files, never()).save(any());
+        verify(storage, never()).deleteAsync(anyString());
     }
 
     @Test
@@ -257,15 +270,6 @@ class FileServiceImplTest {
             assertThat(result.objectKey()).endsWith(extension);
         });
 
-        Map<String, String> documentTypes = Map.of(
-                "application/pdf", ".pdf",
-                "text/markdown", ".md",
-                "text/plain", ".txt");
-        documentTypes.forEach((type, extension) -> {
-            FileOutVO result = service.upload(admin, new UploadFile("mylab", "x", type, 3,
-                    new ByteArrayInputStream(new byte[] {1, 2, 3})));
-            assertThat(result.objectKey()).endsWith(extension);
-        });
     }
 
     @Test

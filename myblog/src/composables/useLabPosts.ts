@@ -23,7 +23,7 @@ const resolveTags = (post: PublicMylabCard, managedTags: PublicMylabTag[]): stri
     .filter((name): name is string => Boolean(name))
 }
 
-/** MyLab 的统一数据源：后端控制卡片与正文，内置数据只补充旧记录的视觉兜底。 */
+/** MyLab 的统一列表数据源：后端控制卡片摘要，内置数据只补充视觉兜底。 */
 export const useLabPosts = () => {
   const { content } = usePublicContent()
 
@@ -49,7 +49,6 @@ export const useLabPosts = () => {
           summary: post.card_summary || post.summary || '',
           image: post.image_url || fallback?.image,
           sections: fallback?.sections || [],
-          markdownUrl: post.markdown_url || fallback?.markdownUrl,
           detailImage: post.image_url || fallback?.detailImage,
           showInProjects: post.card_type === 'PROJECT',
           projectDetailTitle: post.card_title || post.title || fallback?.projectDetailTitle,

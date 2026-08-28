@@ -275,6 +275,25 @@ docker exec jenkins sh -c \
 
 ### 8.2 运行 CD
 
+首次部署包含 `V2__mylab_markdown_content.sql` 的版本时，Flyway 会新增正文列，将现有 MyLab Markdown 正文写入 `mylab_cards.markdown_content`，验证没有遗漏后删除 `mylab_resources.content_resource_id`。迁移失败时后端不会启动，也不得继续后续 CD。
+
+部署成功后可验证正文和旧字段状态：
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml exec -T postgres \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+    SELECT COUNT(*) AS missing_markdown
+    FROM mylab_cards
+    WHERE deleted_at IS NULL AND markdown_content IS NULL;
+    SELECT COUNT(*) AS legacy_column
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'mylab_resources'
+      AND column_name = 'content_resource_id';"'
+```
+
+`missing_markdown` 和 `legacy_column` 均应为 `0`。旧 OSS Markdown 对象及其资源记录继续保留，但业务数据不再引用它们。
+
 执行 CD 的 `Build with Parameters`，将 `IMAGE_TAG` 设置为 CI 输出的 release tag。CD 会：
 
 1. 检查 Registry 容器与 `/v2/`；

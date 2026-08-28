@@ -58,10 +58,10 @@ public class FileController {
     /**
      * 上传文件到指定目录，返回文件元信息。
      *
-     * @param directory 目标目录，仅支持 footstep、hero、hobbies、icon、mylab、mylab-post
+     * @param directory 目标目录，仅支持 footstep、hero、hobbies、icon、mylab-post
      */
     @PostMapping("/upload")
-    @Operation(summary = "上传资源", description = "directory 支持 footstep、hero、hobbies、icon、mylab、mylab-post；mylab 只存正文，其余目录只存图片。")
+    @Operation(summary = "上传资源", description = "directory 支持 footstep、hero、hobbies、icon、mylab-post，且只允许图片。")
     public Result<FileOutVO> upload(@AuthenticationPrincipal CurrentUser actor,
                                     @RequestParam String directory,
                                     @Parameter(description = "待上传文件", required = true) @RequestPart("file") MultipartFile file) throws Exception {

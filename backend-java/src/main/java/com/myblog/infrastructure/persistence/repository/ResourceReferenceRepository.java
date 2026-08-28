@@ -64,8 +64,8 @@ public class ResourceReferenceRepository implements FileRepository {
                   + (SELECT COUNT(*) FROM footprint_resources WHERE resource_id = ? AND deleted_at IS NULL)
                   + (SELECT COUNT(*) FROM hobby_resources WHERE resource_id = ? AND deleted_at IS NULL)
                   + (SELECT COUNT(*) FROM mylab_resources
-                     WHERE (image_resource_id = ? OR content_resource_id = ?) AND deleted_at IS NULL)
-                """, Long.class, id, id, id, id, id, id, id);
+                     WHERE image_resource_id = ? AND deleted_at IS NULL)
+                """, Long.class, id, id, id, id, id, id);
         return count != null && count > 0;
     }
 
@@ -102,17 +102,16 @@ public class ResourceReferenceRepository implements FileRepository {
                     JOIN content_releases cr ON cr.id = hb.release_id
                     WHERE hr.resource_id = ? AND hr.deleted_at IS NULL
                     UNION ALL
-                    SELECT cr.module_key, cr.version_no, cr.state,
-                           CASE WHEN mr.image_resource_id = ? THEN 'MyLab 封面' ELSE 'MyLab 正文' END
+                    SELECT cr.module_key, cr.version_no, cr.state, 'MyLab 封面'
                     FROM mylab_resources mr
                     JOIN mylab_cards mc ON mc.id = mr.card_id
                     JOIN content_releases cr ON cr.id = mc.release_id
-                    WHERE (mr.image_resource_id = ? OR mr.content_resource_id = ?) AND mr.deleted_at IS NULL
+                    WHERE mr.image_resource_id = ? AND mr.deleted_at IS NULL
                 ) refs
                 ORDER BY module_key, version_no DESC
                 """, (rs, n) -> new FileReferenceVO(
                 rs.getString("module_key"), rs.getInt("version_no"),
                 rs.getString("state"), rs.getString("usage")),
-                id, id, id, id, id, id, id, id);
+                id, id, id, id, id, id);
     }
 }

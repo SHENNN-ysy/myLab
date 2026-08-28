@@ -1,9 +1,3 @@
-export interface ContentResourceValue {
-  id: string
-  name: string
-  url: string
-}
-
 export interface HomeImageData {
   row_id?: string
   image_resource_id?: string
@@ -160,8 +154,7 @@ export interface MylabCardData {
   project_contents: string | null
   image_resource_id?: string
   image_url?: string
-  content_resource_id?: string
-  markdown_url?: string
+  markdown_content?: string
   tags?: string[]
 }
 

@@ -18,8 +18,6 @@ export interface LabPost {
   image?: string
   /** 详情页正文章节 */
   sections: LabPostSection[]
-  /** OSS 上的 Markdown 正文地址 */
-  markdownUrl?: string
   /** OSS 上的详情页头图地址 */
   detailImage?: string
   /** 是否同时显示在首页项目区域 */

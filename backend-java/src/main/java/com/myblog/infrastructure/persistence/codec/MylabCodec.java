@@ -111,6 +111,7 @@ public class MylabCodec implements ModuleCodec {
             entity.setCardType(type);
             entity.setProjectShowOrder(projectOrder);
             entity.setProjectContents(firstText(item, "project_contents", "project_content"));
+            entity.setMarkdownContent(firstText(item, "markdown_content"));
             mylabCardMapper.insert(entity);
 
             int tagOrder = 0;
@@ -123,13 +124,11 @@ public class MylabCodec implements ModuleCodec {
                 mylabCardTagMapper.insert(link);
             }
             UUID imageId = nullableUuid(item, "image_resource_id");
-            UUID contentId = nullableUuid(item, "content_resource_id");
-            if (imageId != null || contentId != null) {
+            if (imageId != null) {
                 MylabResource resource = new MylabResource();
                 resource.setId(UUID.randomUUID());
                 resource.setCardId(id);
                 resource.setImageResourceId(imageId);
-                resource.setContentResourceId(contentId);
                 mylabResourceMapper.insert(resource);
             }
         }
@@ -164,7 +163,7 @@ public class MylabCodec implements ModuleCodec {
             }
         }
         List<UUID> resourceIds = resourceByCard.values().stream()
-                .flatMap(resource -> java.util.stream.Stream.of(resource.getImageResourceId(), resource.getContentResourceId()))
+                .map(MylabResource::getImageResourceId)
                 .filter(Objects::nonNull).distinct().toList();
         Map<UUID, String> objectKeys = new HashMap<>();
         if (!resourceIds.isEmpty()) {
@@ -177,7 +176,6 @@ public class MylabCodec implements ModuleCodec {
         for (MylabCard row : rows) {
             MylabResource resource = resourceByCard.get(row.getId());
             UUID imageId = resource == null ? null : resource.getImageResourceId();
-            UUID contentId = resource == null ? null : resource.getContentResourceId();
             result.add(mapOf(
                     "row_id", row.getId(), "id", row.getPostKey(), "post_key", row.getPostKey(),
                     "title", row.getCardTitle(), "card_title", row.getCardTitle(),
@@ -188,10 +186,9 @@ public class MylabCodec implements ModuleCodec {
                     "sort_order", row.getSortOrder(), "card_type", row.getCardType(),
                     "project_show_order", row.getProjectShowOrder(),
                     "project_contents", row.getProjectContents(),
+                    "markdown_content", row.getMarkdownContent(),
                     "image_resource_id", imageId,
-                    "image_object_key", imageId == null ? null : objectKeys.get(imageId),
-                    "content_resource_id", contentId,
-                    "content_object_key", contentId == null ? null : objectKeys.get(contentId)));
+                    "image_object_key", imageId == null ? null : objectKeys.get(imageId)));
         }
         return result;
     }

@@ -241,18 +241,49 @@
                           />
                         </a-form-item>
                       </a-col>
-                      <a-col
-                        :xs="24"
-                        :lg="12"
-                      >
+                      <a-col :span="24">
                         <a-form-item
-                          label="MyLab 详情 Markdown 正文"
-                          class="editor-field resource-field"
+                          label="Markdown 正文"
+                          class="editor-field"
                         >
-                          <OssDocumentResourcePicker
-                            v-model="card.contentResource"
-                            directory="mylab"
-                          />
+                          <div class="markdown-editor">
+                            <section class="markdown-pane">
+                              <header>
+                                <strong>编辑</strong>
+                                <a-space size="small">
+                                  <span>{{ card.markdownContent.length }} / {{ markdownMaxCharacters }}</span>
+                                  <a-button
+                                    size="small"
+                                    @click="selectMarkdownFile(card)"
+                                  >
+                                    <UploadOutlined />
+                                    上传文件
+                                  </a-button>
+                                </a-space>
+                              </header>
+                              <a-textarea
+                                v-model:value="card.markdownContent"
+                                :maxlength="markdownMaxCharacters"
+                                :rows="18"
+                                placeholder="在这里输入 Markdown 正文"
+                              />
+                            </section>
+                            <section class="markdown-pane preview-pane">
+                              <header>
+                                <strong>实时预览</strong>
+                                <span>与博客详情页渲染规则一致</span>
+                              </header>
+                              <div
+                                v-if="card.markdownContent.trim()"
+                                class="markdown-preview"
+                                v-html="markdownPreview(card.markdownContent)"
+                              />
+                              <a-empty
+                                v-else
+                                description="输入正文后在此预览"
+                              />
+                            </section>
+                          </div>
                         </a-form-item>
                       </a-col>
                     </a-row>
@@ -394,10 +425,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
-import { HistoryOutlined } from '@ant-design/icons-vue'
+import { HistoryOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import CollectionHeader from '@/components/content/CollectionHeader.vue'
 import OssImageResourcePicker, { type OssImageResourceValue } from '@/components/content/OssImageResourcePicker.vue'
-import OssDocumentResourcePicker from '@/components/content/OssDocumentResourcePicker.vue'
 import VersionHistoryModal from '@/components/content/VersionHistoryModal.vue'
 import { getContentModuleApi, publishContentApi, saveContentDraftApi, type ContentModule } from '@/api/content'
 import {
@@ -407,7 +437,8 @@ import {
   updateMylabTagApi,
   type MylabTag
 } from '@/api/mylabTag'
-import type { ContentResourceValue, MylabCardData, MylabContentData } from '@/types/content'
+import type { MylabCardData, MylabContentData } from '@/types/content'
+import { renderMarkdown } from '@/utils/markdown'
 
 interface AdminMylabCard {
   rowId?: string
@@ -418,7 +449,7 @@ interface AdminMylabCard {
   summary: string
   image: string
   imageResource: OssImageResourceValue | null
-  contentResource: ContentResourceValue | null
+  markdownContent: string
   cardType: 'PROJECT' | 'ARTICLE'
   projectShowOrder: number | null
   projectContents: string
@@ -448,6 +479,9 @@ const projectOrderOptions = Array.from({ length: 6 }, (_, index) => ({
   value: index,
   label: `第 ${index + 1} 位`
 }))
+const markdownMaxCharacters = 500_000
+const markdownMaxBytes = 2_000_000
+const markdownPreview = (markdown: string) => renderMarkdown(markdown).html
 const tagOptions = computed(() => draftTags
   .filter(tag => tag.enabled && tag.name.trim())
   .map(tag => ({ value: tag.id, label: tag.name.trim() })))
@@ -461,7 +495,7 @@ const toCard = (card: MylabCardData): AdminMylabCard => ({
   summary: card.card_summary || '',
   image: card.image_url || '',
   imageResource: card.image_resource_id ? { id: card.image_resource_id, name: `${card.card_title || 'MyLab'}封面`, url: card.image_url || '' } : null,
-  contentResource: card.content_resource_id ? { id: card.content_resource_id, name: `${card.card_title || 'MyLab'}正文`, url: card.markdown_url || '' } : null,
+  markdownContent: card.markdown_content || '',
   cardType: card.card_type || 'ARTICLE',
   projectShowOrder: card.project_show_order ?? null,
   projectContents: card.project_contents || '',
@@ -539,7 +573,7 @@ const addCard = () => draftCards.unshift({
   postKey: `post-${Date.now()}`,
   // 用本地时区取日期，避免 toISOString() 的 UTC 日期在凌晨 0~8 点差一天
   date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
-  title: '', tagIds: [], summary: '', image: '', imageResource: null, contentResource: null,
+  title: '', tagIds: [], summary: '', image: '', imageResource: null, markdownContent: '',
   cardType: 'ARTICLE', projectShowOrder: null, projectContents: '', enabled: true
 })
 const moveCard = (index: number, delta: number) => {
@@ -576,6 +610,38 @@ const projectOrderOptionsFor = (currentCard: AdminMylabCard) => projectOrderOpti
   ))
 }))
 
+/** 读取本地 Markdown 文件并覆盖当前卡片编辑区，不上传到 OSS。 */
+const selectMarkdownFile = (card: AdminMylabCard) => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.md,.markdown,text/markdown,text/plain'
+  input.onchange = async () => {
+    const file = input.files?.[0]
+    if (!file) return
+    if (!/\.(md|markdown)$/i.test(file.name)) {
+      message.error('请选择 .md 或 .markdown 文件')
+      return
+    }
+    if (file.size > markdownMaxBytes) {
+      message.error('Markdown 文件不能超过 2 MB')
+      return
+    }
+    try {
+      const content = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer())
+        .replace(/^\uFEFF/, '')
+      if (content.length > markdownMaxCharacters) {
+        message.error(`Markdown 正文不能超过 ${markdownMaxCharacters} 字符`)
+        return
+      }
+      card.markdownContent = content
+      message.success(`已读取 ${file.name}`)
+    } catch {
+      message.error('文件读取失败，请确认文件使用 UTF-8 编码')
+    }
+  }
+  input.click()
+}
+
 const validate = (forPublish: boolean) => {
   const names = draftTags.map(tag => tag.name.trim())
   if (names.some(name => !name) || new Set(names).size !== names.length) {
@@ -593,8 +659,12 @@ const validate = (forPublish: boolean) => {
     message.error('项目卡片的首页排序必须选择第 1 至第 6 位，且不能重复')
     return false
   }
-  if (forPublish && draftCards.some(card => card.enabled && (!card.title.trim() || !card.summary.trim() || !card.contentResource))) {
-    message.error('已启用卡片必须填写标题、摘要并选择 Markdown 正文资源')
+  if (draftCards.some(card => card.markdownContent.length > markdownMaxCharacters)) {
+    message.error(`Markdown 正文不能超过 ${markdownMaxCharacters} 字符`)
+    return false
+  }
+  if (forPublish && draftCards.some(card => card.enabled && (!card.title.trim() || !card.summary.trim() || !card.markdownContent.trim()))) {
+    message.error('已启用卡片必须填写标题、摘要和 Markdown 正文')
     return false
   }
   if (forPublish && draftCards.some(card => card.cardType === 'PROJECT' && !card.projectContents.trim())) {
@@ -637,7 +707,7 @@ const payload = (): MylabContentData => ({
     project_show_order: card.cardType === 'PROJECT' ? card.projectShowOrder : null,
     project_contents: card.cardType === 'PROJECT' ? card.projectContents.trim() : null,
     image_resource_id: card.imageResource?.id,
-    content_resource_id: card.contentResource?.id
+    markdown_content: card.markdownContent
   }))
 })
 
@@ -697,6 +767,21 @@ onMounted(load)
 .editor-field :deep(.ant-form-item-control) { display: block; max-width: none; }
 .editor-field :deep(.ant-select), .editor-field :deep(.ant-input-number) { width: 100%; }
 .resource-field :deep(.oss-picker), .resource-field :deep(.oss-document-picker), .resource-field :deep(.selected-resource) { width: 100%; min-width: 0; }
+.markdown-editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); overflow: hidden; border: 1px solid #d9d9d9; border-radius: 8px; }
+.markdown-pane { min-width: 0; background: #fff; }
+.markdown-pane + .markdown-pane { border-left: 1px solid #e8e8e8; }
+.markdown-pane header { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 40px; padding: 0 12px; color: #595959; background: #fafafa; border-bottom: 1px solid #e8e8e8; }
+.markdown-pane header span { color: #8c8c8c; font-size: 12px; }
+.markdown-pane :deep(textarea.ant-input) { min-height: 420px; resize: vertical; border: 0; border-radius: 0; box-shadow: none; }
+.markdown-preview { min-height: 420px; max-height: 640px; padding: 16px 20px; overflow: auto; color: #262626; line-height: 1.75; }
+.markdown-preview :deep(h1), .markdown-preview :deep(h2), .markdown-preview :deep(h3), .markdown-preview :deep(h4) { margin: 1.2em 0 0.55em; color: #1f1f1f; line-height: 1.35; }
+.markdown-preview :deep(p) { margin: 0 0 0.9em; }
+.markdown-preview :deep(ul) { padding-left: 22px; }
+.markdown-preview :deep(blockquote) { margin: 12px 0; padding: 8px 14px; color: #595959; background: #fafafa; border-left: 4px solid #91caff; }
+.markdown-preview :deep(pre) { padding: 14px; overflow: auto; color: #f5f5f5; background: #1f1f1f; border-radius: 6px; }
+.markdown-preview :deep(code) { font-family: Consolas, Monaco, monospace; }
+.markdown-preview :deep(img) { max-width: 100%; height: auto; border-radius: 6px; }
+.preview-pane :deep(.ant-empty) { display: grid; min-height: 420px; place-content: center; }
 .editor-status { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 18px; background: #fff; border: 1px solid #f0f0f0; border-radius: 10px; }
 .editor-status > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .editor-status strong { color: #262626; font-size: 14px; }
@@ -712,5 +797,6 @@ onMounted(load)
 .row-actions button:disabled { color: #bfbfbf; cursor: not-allowed; }
 .row-actions .danger { color: #ff4d4f; }
 @media (max-width: 1050px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .markdown-editor { grid-template-columns: 1fr; } .markdown-pane + .markdown-pane { border-top: 1px solid #e8e8e8; border-left: 0; } }
 @media (max-width: 720px) { .page-head, .draft-toolbar { align-items: stretch; flex-direction: column; } .card-grid { grid-template-columns: 1fr; } .editor-section { padding: 14px; } .editor-status { align-items: flex-start; } }
 </style>

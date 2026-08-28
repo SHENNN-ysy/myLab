@@ -116,7 +116,7 @@ export interface PublicMylabCard {
   tag_ids?: string[]
   tags?: string[]
   image_url?: string
-  markdown_url?: string
+  markdown_content?: string
   card_type?: 'PROJECT' | 'ARTICLE'
   project_show_order?: number | null
   project_contents?: string | null
@@ -172,6 +172,18 @@ export const loadPublicContent = async () => {
       pending = null
     })
   return pending
+}
+
+/** 按文章标识加载 MyLab 详情，正文只在详情接口中返回。 */
+export const loadPublicMylabDetail = async (postKey: string, signal?: AbortSignal): Promise<PublicMylabCard> => {
+  const response = await fetch(`${apiBase}/public/mylab/${encodeURIComponent(postKey)}`, {
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+  if (!response.ok) throw new Error(`MyLab 详情接口请求失败: ${response.status}`)
+  const result = await response.json() as ResultEnvelope<PublicMylabCard>
+  if (!result.data) throw new Error('MyLab 详情接口未返回数据')
+  return result.data
 }
 
 export const usePublicContent = () => ({

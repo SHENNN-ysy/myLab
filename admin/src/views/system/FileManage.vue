@@ -36,13 +36,13 @@
               placeholder="筛选 OSS 目录"
               allow-clear
               style="width: 150px"
-              :options="resourceDirectoryOptions"
+              :options="filterDirectoryOptions"
               @change="onDirectoryFilterChange"
             />
             <a-select
               v-model:value="uploadDirectory"
               style="width: 150px"
-              :options="resourceDirectoryOptions"
+              :options="uploadDirectoryOptions"
               aria-label="上传目标目录"
             />
             <a-button
@@ -75,7 +75,7 @@
         type="info"
         show-icon
         class="file-tip"
-        message="删除前后端会检查所有草稿、线上和历史版本；存在引用时将返回冲突。"
+        message="删除前后端会检查所有草稿、线上和历史版本；MyLab 旧正文资源永久保留。"
       />
 
       <a-row
@@ -171,6 +171,7 @@
                 type="link"
                 danger
                 size="small"
+                :disabled="record.directory === 'mylab'"
                 @click="handleDelete(record)"
               >
                 删除
@@ -211,17 +212,16 @@ const fileInputRef = ref<HTMLInputElement>()
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
-const resourceDirectoryOptions: Array<{ value: ResourceDirectory, label: string }> = [
+const filterDirectoryOptions: Array<{ value: ResourceDirectory, label: string }> = [
   { value: 'hero', label: '首页图片 hero' },
   { value: 'icon', label: '图标 icon' },
   { value: 'hobbies', label: '爱好 hobbies' },
   { value: 'footstep', label: '足迹 footstep' },
   { value: 'mylab-post', label: 'MyLab 封面' },
-  { value: 'mylab', label: 'MyLab 正文' }
+  { value: 'mylab', label: 'MyLab 旧正文（只读保留）' }
 ]
-const acceptedTypes = computed(() => uploadDirectory.value === 'mylab'
-  ? `${imageTypes},application/pdf,text/markdown,text/plain,.md,.txt`
-  : imageTypes)
+const uploadDirectoryOptions = filterDirectoryOptions.filter(option => option.value !== 'mylab')
+const acceptedTypes = imageTypes
 
 const currentPageSizeText = computed(() => formatFileSize(files.value.reduce((sum, file) => sum + file.size, 0)))
 const pagination = computed<TablePaginationConfig>(() => ({
@@ -290,7 +290,7 @@ const formatFileSize = (size: number) => {
   return `${(size / 1024 ** 3).toFixed(2)} GB`
 }
 const formatTime = (value: string) => value ? new Date(value).toLocaleString('zh-CN') : '-'
-const directoryLabel = (directory?: ResourceDirectory) => resourceDirectoryOptions.find(item => item.value === directory)?.label || '旧本地资源'
+const directoryLabel = (directory?: ResourceDirectory) => filterDirectoryOptions.find(item => item.value === directory)?.label || '旧本地资源'
 const moduleLabel = (moduleKey: string) => ({
   home: '首页图片',
   about: '关于我',

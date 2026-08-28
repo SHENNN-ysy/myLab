@@ -8,6 +8,7 @@ import com.myblog.application.port.ObjectStorage;
 import com.myblog.application.repository.ContentReleaseRepository;
 import com.myblog.application.repository.FileRepository;
 import com.myblog.application.repository.MylabTagRepository;
+import com.myblog.application.repository.MylabPublicRepository;
 import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.ForbiddenException;
 import com.myblog.common.exception.NotFoundException;
@@ -42,20 +43,20 @@ import static org.mockito.Mockito.when;
 class ContentModuleServiceImplCoverageTest {
     private static final UUID AVATAR_ID = UUID.randomUUID();
     private static final UUID IMAGE_ID = UUID.randomUUID();
-    private static final UUID CONTENT_ID = UUID.randomUUID();
     private static final UUID TAG_ID = UUID.randomUUID();
 
     @Mock ContentReleaseRepository releases;
     @Mock MylabTagRepository tags;
     @Mock FileRepository resources;
     @Mock ObjectStorage storage;
+    @Mock MylabPublicRepository mylabPublic;
 
     private ContentModuleServiceImpl service;
     private CurrentUser admin;
 
     @BeforeEach
     void setUp() {
-        service = new ContentModuleServiceImpl(releases, tags, resources, storage);
+        service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic);
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
@@ -73,7 +74,7 @@ class ContentModuleServiceImplCoverageTest {
         when(releases.readData(about)).thenReturn(Map.of("profile", Map.of()));
         ContentRelease mylab = release("mylab", "PUBLISHED");
         when(releases.findPublished("mylab")).thenReturn(mylab);
-        when(releases.readData(mylab)).thenReturn(Map.of(
+        when(mylabPublic.readSummary(mylab.getId())).thenReturn(Map.of(
                 "tags", List.of(Map.of("id", TAG_ID.toString(), "name", "Java")),
                 "cards", List.of(
                         Map.of("post_key", "article-a", "enabled", true,
@@ -100,8 +101,9 @@ class ContentModuleServiceImplCoverageTest {
     void publicMylabDetailReturnsMatchingCard() {
         ContentRelease published = release("mylab", "PUBLISHED");
         when(releases.findPublished("mylab")).thenReturn(published);
-        when(releases.readData(published)).thenReturn(Map.of(
-                "cards", List.of(Map.of("post_key", "article-a", "card_title", "标题"))));
+        when(mylabPublic.readDetail(published.getId(), "article-a")).thenReturn(Map.of(
+                "tags", List.of(),
+                "cards", List.of(Map.of("post_key", "article-a", "card_title", "标题", "enabled", true))));
 
         Map<String, Object> card = (Map<String, Object>) service.publicMylabDetail("article-a");
 
@@ -112,7 +114,7 @@ class ContentModuleServiceImplCoverageTest {
     void publicMylabDetailRejectsUnknownPostKey() {
         ContentRelease published = release("mylab", "PUBLISHED");
         when(releases.findPublished("mylab")).thenReturn(published);
-        when(releases.readData(published)).thenReturn(Map.of("cards", List.of()));
+        when(mylabPublic.readDetail(published.getId(), "missing")).thenReturn(null);
 
         assertThatThrownBy(() -> service.publicMylabDetail("missing"))
                 .isInstanceOf(NotFoundException.class);
@@ -507,17 +509,17 @@ class ContentModuleServiceImplCoverageTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void mylabAdminDataMapsMarkdownUrl() {
+    void mylabAdminDataKeepsMarkdownContent() {
         ContentRelease current = release("mylab", "PUBLISHED");
         when(releases.findCurrent("mylab")).thenReturn(current);
         when(releases.readData(current)).thenReturn(Map.of(
-                "cards", List.of(Map.of("post_key", "article-a", "content_object_key", "/posts/a.md"))));
+                "cards", List.of(Map.of("post_key", "article-a", "markdown_content", "# 正文"))));
 
         ContentDtos.ModuleView view = service.get(admin, "mylab");
 
         List<Map<String, Object>> cards =
                 (List<Map<String, Object>>) ((Map<String, Object>) view.draftData()).get("cards");
-        assertThat(cards.getFirst().get("markdown_url")).isEqualTo("/posts/a.md");
+        assertThat(cards.getFirst().get("markdown_content")).isEqualTo("# 正文");
     }
 
     // ---------- 测试辅助 ----------

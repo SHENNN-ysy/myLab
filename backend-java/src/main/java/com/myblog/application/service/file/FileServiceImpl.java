@@ -35,14 +35,14 @@ public class FileServiceImpl implements FileService {
     // 允许上传的媒体类型白名单
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml",
-            "image/gif", "application/pdf", "text/markdown", "text/plain"
+            "image/gif"
     );
-    // 允许上传的业务目录白名单
+    // 可查询的业务目录白名单，mylab 仅用于保留旧正文资源
     private static final Set<String> ALLOWED_DIRECTORIES = Set.of(
             "footstep", "hero", "hobbies", "icon", "mylab", "mylab-post"
     );
-    private static final Set<String> MYLAB_DOCUMENT_TYPES = Set.of(
-            "application/pdf", "text/markdown", "text/plain"
+    private static final Set<String> UPLOAD_DIRECTORIES = Set.of(
+            "footstep", "hero", "hobbies", "icon", "mylab-post"
     );
 
     private final FileRepository files;
@@ -85,11 +85,7 @@ public class FileServiceImpl implements FileService {
         if (contentType == null || !ALLOWED_TYPES.contains(contentType)) {
             throw new ValidationException(ErrorCode.FILE_TYPE_UNSUPPORTED, "媒体类型：" + contentType);
         }
-        if ("mylab".equals(directory) && !MYLAB_DOCUMENT_TYPES.contains(contentType)) {
-            throw new ValidationException(ErrorCode.FILE_TYPE_UNSUPPORTED,
-                    "mylab 目录只允许上传 Markdown、纯文本或 PDF 正文资源");
-        }
-        if (!"mylab".equals(directory) && !contentType.startsWith("image/")) {
+        if (!contentType.startsWith("image/")) {
             throw new ValidationException(ErrorCode.FILE_TYPE_UNSUPPORTED,
                     directory + " 目录只允许上传图片资源");
         }
@@ -150,6 +146,10 @@ public class FileServiceImpl implements FileService {
         FileRecord record = files.findById(id);
         if (record == null || record.getDeletedAt() != null) {
             throw new NotFoundException(ErrorCode.FILE_NOT_FOUND, null);
+        }
+        if ("mylab".equals(directoryOf(record.getObjectKey()))) {
+            throw new com.myblog.common.exception.ConflictException(
+                    ErrorCode.RESOURCE_CONFLICT, "迁移前的 MyLab 正文资源按保留策略禁止删除");
         }
         if (files.hasReferences(id)) {
             throw new com.myblog.common.exception.ConflictException(
@@ -213,10 +213,14 @@ public class FileServiceImpl implements FileService {
 
     /** 归一化并校验目录入参，为空或不在白名单时抛校验异常。 */
     private static String normalizeRequiredDirectory(String directory) {
-        String normalized = normalizeOptionalDirectory(directory);
-        if (normalized == null) {
+        if (directory == null || directory.isBlank()) {
             throw new ValidationException(ErrorCode.VALIDATION_FAILED,
-                    "资源目录不能为空，可选值：footstep、hero、hobbies、icon、mylab、mylab-post");
+                    "资源目录不能为空，可选值：footstep、hero、hobbies、icon、mylab-post");
+        }
+        String normalized = directory.trim().toLowerCase();
+        if (!UPLOAD_DIRECTORIES.contains(normalized)) {
+            throw new ValidationException(ErrorCode.VALIDATION_FAILED,
+                    "上传目录仅支持：footstep、hero、hobbies、icon、mylab-post");
         }
         return normalized;
     }
@@ -253,9 +257,6 @@ public class FileServiceImpl implements FileService {
             case "image/webp" -> "webp";
             case "image/svg+xml" -> "svg";
             case "image/gif" -> "gif";
-            case "application/pdf" -> "pdf";
-            case "text/markdown" -> "md";
-            case "text/plain" -> "txt";
             default -> throw new ValidationException(ErrorCode.FILE_TYPE_UNSUPPORTED, "媒体类型：" + contentType);
         };
     }

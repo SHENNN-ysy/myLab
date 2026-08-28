@@ -15,9 +15,9 @@ docker compose up -d --build backend
 
 七个模块 `home`、`about`、`skills`、`footprints`、`hobbies`、`vibe`、`mylab` 使用关系表保存完整版本。`content_releases` 维护 `DRAFT/PUBLISHED/ARCHIVED/OFFLINE` 状态；发布内容只读，继续编辑或恢复历史会创建更高版本号的新草稿。
 
-MyLab 卡片使用 `PROJECT/ARTICLE` 类型统一承载首页项目与文章。全局标签位于 `mylab_tags`，不参与版本；`mylab_card_tags` 使用外键和排序字段保存卡片标签，接口仍以有序 `tag_ids` 数组交互。图片及 Markdown 正文均通过 `resources` 和三个资源关联表管理。
+MyLab 卡片使用 `PROJECT/ARTICLE` 类型统一承载首页项目与文章。全局标签位于 `mylab_tags`，不参与版本；`mylab_card_tags` 使用外键和排序字段保存卡片标签，接口仍以有序 `tag_ids` 数组交互。封面图片通过 `resources` 管理，Markdown 正文保存在 `mylab_cards.markdown_content`，随草稿、发布和历史版本一起复制。
 
-数据库最终结构共 19 张业务表。V1 直接创建完整表结构，V2 创建七个初始发布版本、全局标签及对应资源元数据，V3 起补充互动与站点流量聚合表。项目不启用 Flyway；Docker 只在 PostgreSQL 空数据卷首次初始化时执行 V1/V2。
+数据库由 Flyway 管理。`V1__baseline.sql` 创建完整基线，后续结构变更使用递增迁移文件；`V2__mylab_markdown_content.sql` 增加数据库正文列、回填现有正文并删除旧 OSS 正文关联字段。
 
 接口和表结构详见：
 

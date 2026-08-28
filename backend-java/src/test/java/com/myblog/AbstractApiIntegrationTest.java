@@ -112,10 +112,10 @@ public abstract class AbstractApiIntegrationTest {
     protected void ensurePublishedMylabCard(String postKey, String title, boolean enabled) {
         UUID releaseId = publishedMylabReleaseId();
         jdbc.update("INSERT INTO mylab_cards (id, release_id, post_key, card_title, card_summary,"
-                        + " post_date, enabled, sort_order, card_type)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ARTICLE')",
+                        + " post_date, enabled, sort_order, card_type, markdown_content)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ARTICLE', ?)",
                 UUID.randomUUID(), releaseId, postKey, title, "API IT 自建卡片",
-                LocalDate.now(), enabled, 9000);
+                LocalDate.now(), enabled, 9000, "# " + title + "\n\nAPI 集成测试正文。");
     }
 
     /** 取当前已发布 mylab 版本的 id；不存在时按发布约束（published_by/published_at 非空）自建一版 */
