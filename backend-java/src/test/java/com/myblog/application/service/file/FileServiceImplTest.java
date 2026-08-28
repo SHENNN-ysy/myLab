@@ -61,13 +61,13 @@ class FileServiceImplTest {
     }
 
     @Test
-    void presigningSiteMarkdownReturnsItsRelativeUrl() throws Exception {
-        FileRecord markdown = resource("/mylab/first-post.md", "text/markdown");
+    void presigningSiteResourceReturnsItsRelativeUrl() throws Exception {
+        FileRecord markdown = resource("/documents/readme.md", "text/markdown");
         when(files.findById(markdown.getId())).thenReturn(markdown);
 
         Map<String, String> result = service.presign(admin, markdown.getId());
 
-        assertThat(result.get("url")).isEqualTo("/mylab/first-post.md");
+        assertThat(result.get("url")).isEqualTo("/documents/readme.md");
         verify(storage, never()).signedUrl(anyString(), org.mockito.ArgumentMatchers.anyLong());
     }
 
@@ -132,7 +132,7 @@ class FileServiceImplTest {
 
     @Test
     void listReturnsNullUrlAndDirectoryForNonImageOrUnknownKey() {
-        FileRecord document = resource("mylab/2026/08/a.pdf", "application/pdf");
+        FileRecord document = resource("documents/2026/08/a.pdf", "application/pdf");
         FileRecord keyless = resource(null, "image/png");
         keyless.setMimeType(null);
         FileRecord oddKey = resource("stray-file", "image/png");
@@ -142,7 +142,7 @@ class FileServiceImplTest {
         PageResult<FileOutVO> result = service.list(admin, 1, 20, null);
 
         assertThat(result.records().get(0).url()).isNull();
-        assertThat(result.records().get(0).directory()).isEqualTo("mylab");
+        assertThat(result.records().get(0).directory()).isNull();
         assertThat(result.records().get(1).url()).isNull();
         assertThat(result.records().get(1).directory()).isNull();
         assertThat(result.records().get(2).directory()).isNull();
@@ -198,8 +198,8 @@ class FileServiceImplTest {
     }
 
     @Test
-    void legacyMylabDirectoryRejectsNewUploads() {
-        UploadFile upload = new UploadFile("mylab", "a.png", "image/png", 3,
+    void uploadRejectsInvalidDirectory() {
+        UploadFile upload = new UploadFile("documents", "a.png", "image/png", 3,
                 new ByteArrayInputStream(new byte[] {1, 2, 3}));
 
         assertThatThrownBy(() -> service.upload(admin, upload))
@@ -228,15 +228,15 @@ class FileServiceImplTest {
     }
 
     @Test
-    void deleteRejectsLegacyMylabDocumentEvenWithoutReferences() {
-        FileRecord document = resource("mylab/legacy.md", "text/markdown");
+    void deleteAllowsUnreferencedDocument() {
+        FileRecord document = resource("documents/archive.md", "text/markdown");
         when(files.findById(document.getId())).thenReturn(document);
+        when(files.hasReferences(document.getId())).thenReturn(false);
 
-        assertThatThrownBy(() -> service.delete(admin, document.getId()))
-                .isInstanceOf(com.myblog.common.exception.ConflictException.class);
+        service.delete(admin, document.getId());
 
-        verify(files, never()).save(any());
-        verify(storage, never()).deleteAsync(anyString());
+        verify(files).save(document);
+        verify(storage).deleteAsync("documents/archive.md");
     }
 
     @Test
@@ -299,9 +299,9 @@ class FileServiceImplTest {
 
     @Test
     void presignSignsNonPublicResources() throws Exception {
-        FileRecord document = resource("mylab/2026/08/a.pdf", "application/pdf");
+        FileRecord document = resource("documents/2026/08/a.pdf", "application/pdf");
         when(files.findById(document.getId())).thenReturn(document);
-        when(storage.signedUrl("mylab/2026/08/a.pdf", 3600)).thenReturn("https://oss.example.com/signed");
+        when(storage.signedUrl("documents/2026/08/a.pdf", 3600)).thenReturn("https://oss.example.com/signed");
 
         Map<String, String> result = service.presign(admin, document.getId());
 

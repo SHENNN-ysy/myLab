@@ -30,7 +30,7 @@ export interface PageResult<T> {
   pageSize: number
 }
 
-export type ResourceDirectory = 'footstep' | 'hero' | 'hobbies' | 'icon' | 'mylab' | 'mylab-post'
+export type ResourceDirectory = 'footstep' | 'hero' | 'hobbies' | 'icon' | 'mylab-post'
 
 // Menu item
 export interface MenuItem {

@@ -292,7 +292,7 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml exec -T postg
       AND column_name = 'content_resource_id';"'
 ```
 
-`missing_markdown` 和 `legacy_column` 均应为 `0`。旧 OSS Markdown 对象及其资源记录继续保留，但业务数据不再引用它们。
+`missing_markdown` 和 `legacy_column` 均应为 `0`。
 
 执行 CD 的 `Build with Parameters`，将 `IMAGE_TAG` 设置为 CI 输出的 release tag。CD 会：
 

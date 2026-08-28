@@ -37,11 +37,8 @@ public class FileServiceImpl implements FileService {
             "image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml",
             "image/gif"
     );
-    // 可查询的业务目录白名单，mylab 仅用于保留旧正文资源
+    // 可查询和上传的图片业务目录白名单
     private static final Set<String> ALLOWED_DIRECTORIES = Set.of(
-            "footstep", "hero", "hobbies", "icon", "mylab", "mylab-post"
-    );
-    private static final Set<String> UPLOAD_DIRECTORIES = Set.of(
             "footstep", "hero", "hobbies", "icon", "mylab-post"
     );
 
@@ -147,10 +144,6 @@ public class FileServiceImpl implements FileService {
         if (record == null || record.getDeletedAt() != null) {
             throw new NotFoundException(ErrorCode.FILE_NOT_FOUND, null);
         }
-        if ("mylab".equals(directoryOf(record.getObjectKey()))) {
-            throw new com.myblog.common.exception.ConflictException(
-                    ErrorCode.RESOURCE_CONFLICT, "迁移前的 MyLab 正文资源按保留策略禁止删除");
-        }
         if (files.hasReferences(id)) {
             throw new com.myblog.common.exception.ConflictException(
                     ErrorCode.RESOURCE_CONFLICT, "资源仍被内容草稿或历史版本引用");
@@ -218,7 +211,7 @@ public class FileServiceImpl implements FileService {
                     "资源目录不能为空，可选值：footstep、hero、hobbies、icon、mylab-post");
         }
         String normalized = directory.trim().toLowerCase();
-        if (!UPLOAD_DIRECTORIES.contains(normalized)) {
+        if (!ALLOWED_DIRECTORIES.contains(normalized)) {
             throw new ValidationException(ErrorCode.VALIDATION_FAILED,
                     "上传目录仅支持：footstep、hero、hobbies、icon、mylab-post");
         }
@@ -233,7 +226,7 @@ public class FileServiceImpl implements FileService {
         String normalized = directory.trim().toLowerCase();
         if (!ALLOWED_DIRECTORIES.contains(normalized)) {
             throw new ValidationException(ErrorCode.VALIDATION_FAILED,
-                    "资源目录仅支持：footstep、hero、hobbies、icon、mylab、mylab-post");
+                    "资源目录仅支持：footstep、hero、hobbies、icon、mylab-post");
         }
         return normalized;
     }

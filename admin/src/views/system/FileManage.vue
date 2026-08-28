@@ -16,22 +16,6 @@
               </template>
             </a-input>
             <a-select
-              v-model:value="filterType"
-              placeholder="筛选当前页类型"
-              allow-clear
-              style="width: 150px"
-            >
-              <a-select-option value="image">
-                图片
-              </a-select-option>
-              <a-select-option value="pdf">
-                PDF
-              </a-select-option>
-              <a-select-option value="text">
-                Markdown / 文本
-              </a-select-option>
-            </a-select>
-            <a-select
               v-model:value="filterDirectory"
               placeholder="筛选 OSS 目录"
               allow-clear
@@ -75,7 +59,7 @@
         type="info"
         show-icon
         class="file-tip"
-        message="删除前后端会检查所有草稿、线上和历史版本；MyLab 旧正文资源永久保留。"
+        message="删除前后端会检查所有草稿、线上和历史版本，仍被引用的资源不可删除。"
       />
 
       <a-row
@@ -171,7 +155,6 @@
                 type="link"
                 danger
                 size="small"
-                :disabled="record.directory === 'mylab'"
                 @click="handleDelete(record)"
               >
                 删除
@@ -192,8 +175,6 @@ import {
   DatabaseOutlined,
   FileImageOutlined,
   FileOutlined,
-  FilePdfOutlined,
-  FileTextOutlined,
   ReloadOutlined,
   SearchOutlined,
   UploadOutlined
@@ -205,7 +186,6 @@ const imageTypes = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml'
 const files = ref<FileResource[]>([])
 const loading = ref(false)
 const searchKeyword = ref('')
-const filterType = ref<string>()
 const filterDirectory = ref<ResourceDirectory>()
 const uploadDirectory = ref<ResourceDirectory>('hero')
 const fileInputRef = ref<HTMLInputElement>()
@@ -217,10 +197,9 @@ const filterDirectoryOptions: Array<{ value: ResourceDirectory, label: string }>
   { value: 'icon', label: '图标 icon' },
   { value: 'hobbies', label: '爱好 hobbies' },
   { value: 'footstep', label: '足迹 footstep' },
-  { value: 'mylab-post', label: 'MyLab 封面' },
-  { value: 'mylab', label: 'MyLab 旧正文（只读保留）' }
+  { value: 'mylab-post', label: 'MyLab 封面' }
 ]
-const uploadDirectoryOptions = filterDirectoryOptions.filter(option => option.value !== 'mylab')
+const uploadDirectoryOptions = filterDirectoryOptions
 const acceptedTypes = imageTypes
 
 const currentPageSizeText = computed(() => formatFileSize(files.value.reduce((sum, file) => sum + file.size, 0)))
@@ -234,11 +213,7 @@ const pagination = computed<TablePaginationConfig>(() => ({
 const filteredFiles = computed(() => files.value.filter(file => {
   const keyword = searchKeyword.value.trim().toLowerCase()
   const matchesKeyword = !keyword || file.originalName.toLowerCase().includes(keyword) || file.objectKey.toLowerCase().includes(keyword)
-  const matchesType = !filterType.value
-    || (filterType.value === 'image' && file.mimeType.startsWith('image/'))
-    || (filterType.value === 'pdf' && file.mimeType === 'application/pdf')
-    || (filterType.value === 'text' && ['text/markdown', 'text/plain'].includes(file.mimeType))
-  return matchesKeyword && matchesType
+  return matchesKeyword
 }))
 
 const columns = [
@@ -275,14 +250,8 @@ const onDirectoryFilterChange = () => {
 }
 
 const isImage = (file: FileResource) => file.mimeType.startsWith('image/')
-const getFileIcon = (type: string) => type.startsWith('image/') ? FileImageOutlined : type === 'application/pdf' ? FilePdfOutlined : FileTextOutlined
-const getFileTypeLabel = (type: string) => {
-  if (type.startsWith('image/')) return '图片'
-  if (type === 'application/pdf') return 'PDF'
-  if (type === 'text/markdown') return 'Markdown'
-  if (type === 'text/plain') return '纯文本'
-  return type
-}
+const getFileIcon = (type: string) => type.startsWith('image/') ? FileImageOutlined : FileOutlined
+const getFileTypeLabel = (type: string) => type.startsWith('image/') ? '图片' : type
 const formatFileSize = (size: number) => {
   if (size < 1024) return `${size} B`
   if (size < 1024 ** 2) return `${(size / 1024).toFixed(1)} KB`
@@ -290,7 +259,7 @@ const formatFileSize = (size: number) => {
   return `${(size / 1024 ** 3).toFixed(2)} GB`
 }
 const formatTime = (value: string) => value ? new Date(value).toLocaleString('zh-CN') : '-'
-const directoryLabel = (directory?: ResourceDirectory) => filterDirectoryOptions.find(item => item.value === directory)?.label || '旧本地资源'
+const directoryLabel = (directory?: ResourceDirectory) => filterDirectoryOptions.find(item => item.value === directory)?.label || '未分类资源'
 const moduleLabel = (moduleKey: string) => ({
   home: '首页图片',
   about: '关于我',
