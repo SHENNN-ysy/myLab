@@ -41,6 +41,8 @@ import java.util.UUID;
 @Service
 public class ContentModuleServiceImpl implements ContentModuleService {
     static final int MAX_MYLAB_MARKDOWN_CHARACTERS = 500_000;
+    static final int MAX_VERSION_NAME_CHARACTERS = 120;
+    static final int MAX_VERSION_DESCRIPTION_CHARACTERS = 2_000;
     private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab"); // 支持的内容模块清单
     private static final Set<String> TIME_KEYS = Set.of("爱好1", "爱好2", "爱好3", "爱好4", "爱好5"); // hobbies 时间分布图的五个维度
     private static final ObjectMapper OM = JacksonObjectMapper.get();
@@ -134,6 +136,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         Authorization.requireAdmin(actor);
         requireKey(moduleKey);
         if (command == null || command.data() == null) throw validation("data 为必填字段");
+        String versionName = requireVersionMetadata(command.versionName(), "version_name", MAX_VERSION_NAME_CHARACTERS);
+        String versionDescription = requireVersionMetadata(command.versionDescription(), "version_description",
+                MAX_VERSION_DESCRIPTION_CHARACTERS);
         validate(moduleKey, command.data(), false);
 
         releases.lockModule(moduleKey);
@@ -146,6 +151,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             draft.setId(UUID.randomUUID());
             draft.setModuleKey(moduleKey);
             draft.setVersionNo(releases.nextVersion(moduleKey));
+            draft.setVersionName(versionName);
+            draft.setVersionDescription(versionDescription);
             draft.setState("DRAFT");
             draft.setSourceReleaseId(current == null ? null : current.getId());
             draft.setCreatedAt(now);
@@ -154,10 +161,13 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             draftData = withoutRowIds(draftData);
         } else {
             if (command.expectedUpdatedAt() == null) throw conflict("缺少 expected_updated_at，无法确认草稿版本");
-            // touchDraft 以 expected_updated_at 为条件做 CAS 式更新，失败说明草稿已被并发修改
-            if (!releases.touchDraft(draft.getId(), command.expectedUpdatedAt(), now)) {
+            // updateDraft 以 expected_updated_at 为条件同时更新元数据和时间戳，失败说明草稿已被并发修改
+            if (!releases.updateDraft(draft.getId(), command.expectedUpdatedAt(), now,
+                    versionName, versionDescription)) {
                 throw conflict("草稿已被其他操作修改，请刷新后重试");
             }
+            draft.setVersionName(versionName);
+            draft.setVersionDescription(versionDescription);
             draft.setUpdatedAt(now);
         }
         releases.replaceData(draft, draftData);
@@ -213,22 +223,22 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     }
 
     /**
-     * 查看指定版本号的历史版本；草稿态版本不对外可见。
+     * 查看指定版本号的未删除版本详情。
      */
     @Override
     public ContentDtos.VersionView version(CurrentUser actor, String moduleKey, int versionNo) {
         Authorization.requireAdmin(actor);
         requireKey(moduleKey);
         ContentRelease release = releases.findVersion(moduleKey, versionNo);
-        if (release == null || "DRAFT".equals(release.getState())) {
+        if (release == null) {
             throw new NotFoundException(ErrorCode.CONTENT_VERSION_NOT_FOUND, moduleKey + " v" + versionNo);
         }
         return versionView(release);
     }
 
     /**
-     * 恢复：提取指定历史版本的内容覆盖当前草稿；没有草稿时以历史版本为底新建草稿。
-     * 历史版本本身不做任何改动，同一草稿可多次恢复不同历史版本。
+     * 恢复：将指定归档或下线版本原地切换为当前草稿，已有草稿转为归档版本。
+     * 不新建版本、不复制模块数据，确保管理员选择的版本身份保持不变。
      */
     @Override
     @Transactional
@@ -237,26 +247,19 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         requireKey(moduleKey);
         releases.lockModule(moduleKey);
         ContentRelease source = releases.findVersion(moduleKey, versionNo);
-        if (source == null || "DRAFT".equals(source.getState())) {
+        if (source == null) {
             throw new NotFoundException(ErrorCode.CONTENT_VERSION_NOT_FOUND, moduleKey + " v" + versionNo);
         }
-        Object data = releases.readData(source);
-        OffsetDateTime now = OffsetDateTime.now();
-        ContentRelease draft = releases.findDraft(moduleKey);
-        if (draft == null) {
-            draft = new ContentRelease();
-            draft.setId(UUID.randomUUID());
-            draft.setModuleKey(moduleKey);
-            draft.setVersionNo(releases.nextVersion(moduleKey));
-            draft.setState("DRAFT");
-            draft.setSourceReleaseId(source.getId());
-            draft.setCreatedAt(now);
-            draft.setUpdatedAt(now);
-            releases.add(draft);
-        } else {
-            releases.touchDraft(draft.getId(), null, now);
+        if ("DRAFT".equals(source.getState())) {
+            throw conflict("该版本已经是当前草稿");
         }
-        releases.replaceData(draft, withoutRowIds(data));
+        if ("PUBLISHED".equals(source.getState())) {
+            throw conflict("当前线上版本不可恢复为草稿");
+        }
+        ContentRelease currentDraft = releases.findDraft(moduleKey);
+        releases.restoreAsDraft(source, currentDraft, OffsetDateTime.now());
+        log.info("历史版本已恢复为草稿：operator={}, module={}, version={}",
+                actor.username(), moduleKey, source.getVersionNo());
         return view(moduleKey);
     }
 
@@ -301,11 +304,17 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         Object draftRaw = draft == null ? (current == null ? emptyData(moduleKey) : releases.readData(current)) : releases.readData(draft);
         Object draftData = adminData(moduleKey, draftRaw);
         Object publishedData = current == null ? null : adminData(moduleKey, releases.readData(current));
+        long historyCount = releases.findVersions(moduleKey).stream()
+                .filter(release -> !"DRAFT".equals(release.getState()) && !"PUBLISHED".equals(release.getState()))
+                .count();
         // 有草稿一律视为 draft；无草稿且无线上版本也视为 draft，否则取线上版本状态
         String status = draft != null ? "draft" : current == null ? "draft" : current.getState().toLowerCase();
         return new ContentDtos.ModuleView(moduleKey, draft == null ? null : draft.getId(), current == null ? null : current.getId(),
                 draftData, publishedData, draft == null ? null : draft.getVersionNo(),
-                current == null ? null : current.getVersionNo(), status,
+                current == null ? null : current.getVersionNo(),
+                draft == null ? null : draft.getVersionName(), current == null ? null : current.getVersionName(),
+                draft == null ? null : draft.getVersionDescription(),
+                current == null ? null : current.getVersionDescription(), historyCount, status,
                 draft == null ? null : draft.getUpdatedAt(), current == null ? null : current.getPublishedAt());
     }
 
@@ -314,8 +323,17 @@ public class ContentModuleServiceImpl implements ContentModuleService {
      */
     private ContentDtos.VersionView versionView(ContentRelease release) {
         return new ContentDtos.VersionView(release.getId(), release.getModuleKey(), release.getVersionNo(),
-                release.getState(), adminData(release.getModuleKey(), releases.readData(release)),
-                release.getSourceReleaseId(), release.getPublishedAt());
+                release.getVersionName(), release.getVersionDescription(), release.getState(),
+                adminData(release.getModuleKey(), releases.readData(release)),
+                release.getSourceReleaseId(), release.getPublishedAt(), release.getCreatedAt(), release.getUpdatedAt());
+    }
+
+    /** 校验并归一化版本元数据，数据库约束作为最后一道防线。 */
+    private String requireVersionMetadata(String value, String field, int maxLength) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.isEmpty()) throw validation(field + " 为必填字段");
+        if (normalized.length() > maxLength) throw validation(field + " 最长 " + maxLength + " 个字符");
+        return normalized;
     }
 
     /**

@@ -32,7 +32,7 @@ public interface ContentModuleService {
      */
     ContentDtos.ModuleView get(CurrentUser actor, String moduleKey);
     /**
-     * 保存草稿：新建首版草稿或基于 expected_updated_at 乐观并发控制更新既有草稿。
+     * 保存草稿：版本名称和描述必填，新建首版草稿或通过乐观锁更新既有草稿。
      */
     ContentDtos.ModuleView saveDraft(CurrentUser actor, String moduleKey, ContentDtos.SaveDraft command);
     /**
@@ -44,7 +44,7 @@ public interface ContentModuleService {
      */
     ContentDtos.ModuleView offline(CurrentUser actor, String moduleKey);
     /**
-     * 列出模块的历史版本。
+     * 列出模块全部未删除版本，包含当前线上版本和当前草稿。
      */
     List<ContentDtos.VersionView> versions(CurrentUser actor, String moduleKey);
     /**
@@ -52,7 +52,7 @@ public interface ContentModuleService {
      */
     ContentDtos.VersionView version(CurrentUser actor, String moduleKey, int versionNo);
     /**
-     * 以指定历史版本为底创建新草稿（回滚入口）。
+     * 将指定历史版本原地恢复为当前草稿，原草稿转为归档版本。
      */
     ContentDtos.ModuleView restore(CurrentUser actor, String moduleKey, int versionNo);
     /**

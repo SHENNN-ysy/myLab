@@ -92,8 +92,9 @@ starter ────────> application / common / infrastructure
 
 ### 版本化内容系统
 - 每个内容模块同一时刻至多一个 DRAFT 草稿和一个 PUBLISHED 线上版本，发布即生成不可变历史版本
-- 发布内容只读；历史版本可恢复到草稿；线上版本须先下线才能删除
-- 草稿保存用 `expected_updated_at` 乐观锁防并发覆盖；写操作对模块加行锁串行化
+- 发布内容只读；内容必须先保存具名且带描述的草稿才能发布；线上版本须先下线才能删除
+- 草稿保存用 `expected_updated_at` 乐观锁防并发覆盖；历史版本恢复时目标记录原地转为草稿、原草稿转为归档，不创建新版本
+- 历史列表包含当前线上、当前草稿和其他未删除版本；仪表盘历史数量不得包含软删除版本
 - MyLab Markdown 正文保存在 `mylab_cards.markdown_content` 并参与版本复制；公开列表不返回正文，单篇详情接口按 `post_key` 返回正文
 - `mylab_resources` 只保存卡片封面图片引用；Markdown 文件可在后台本地读取到编辑区，但不上传 OSS
 

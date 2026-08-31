@@ -180,7 +180,8 @@ class ContentModuleServiceImplValidationTest {
         when(resources.findById(any(UUID.class))).thenAnswer(
                 invocation -> file(invocation.getArgument(0), "image/webp"));
 
-        service.saveDraft(admin, "about", new ContentDtos.SaveDraft(null, validAboutData()));
+        service.saveDraft(admin, "about", new ContentDtos.SaveDraft(
+                null, "测试版本", "测试版本描述", validAboutData()));
 
         verify(releases).add(any());
     }
@@ -847,31 +848,31 @@ class ContentModuleServiceImplValidationTest {
     }
 
     private void saveHomeDraft(Object data) {
-        service.saveDraft(admin, "home", new ContentDtos.SaveDraft(null, data));
+        service.saveDraft(admin, "home", new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", data));
     }
 
     private void saveAboutDraft(Object data) {
-        service.saveDraft(admin, "about", new ContentDtos.SaveDraft(null, data));
+        service.saveDraft(admin, "about", new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", data));
     }
 
     private void saveSkillsDraft(Object data) {
-        service.saveDraft(admin, "skills", new ContentDtos.SaveDraft(null, data));
+        service.saveDraft(admin, "skills", new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", data));
     }
 
     private void saveFootprintsDraft(Object data) {
-        service.saveDraft(admin, "footprints", new ContentDtos.SaveDraft(null, data));
+        service.saveDraft(admin, "footprints", new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", data));
     }
 
     private void saveHobbiesDraft(Object data) {
-        service.saveDraft(admin, "hobbies", new ContentDtos.SaveDraft(null, data));
+        service.saveDraft(admin, "hobbies", new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", data));
     }
 
     private void saveVibeDraft(Object data) {
-        service.saveDraft(admin, "vibe", new ContentDtos.SaveDraft(null, data));
+        service.saveDraft(admin, "vibe", new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", data));
     }
 
     private void saveMylabDraft(Object data) {
-        service.saveDraft(admin, "mylab", new ContentDtos.SaveDraft(null, data));
+        service.saveDraft(admin, "mylab", new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", data));
     }
 
     private static List<Map<String, Object>> sixImagesWithoutResources() {

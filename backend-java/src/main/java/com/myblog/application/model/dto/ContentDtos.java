@@ -13,10 +13,12 @@ import java.util.UUID;
 public final class ContentDtos {
     private ContentDtos() { }
 
-    /** 保存草稿请求，data 为模块对应的草稿内容 JSON。 */
+    /** 保存草稿请求，版本名称和描述用于区分每次内容版本，data 为模块草稿内容 JSON。 */
     public record SaveDraft(
             // 调用方已知的最近更新时间，用于乐观并发控制，不匹配则拒绝保存
             @JsonProperty("expected_updated_at") OffsetDateTime expectedUpdatedAt,
+            @JsonProperty("version_name") String versionName,
+            @JsonProperty("version_description") String versionDescription,
             Object data) { }
 
     /** 单个内容模块的聚合视图，同时携带草稿与已发布两份数据及版本号。 */
@@ -28,6 +30,11 @@ public final class ContentDtos {
             @JsonProperty("published_data") Object publishedData,
             @JsonProperty("draft_version") Integer draftVersion,
             @JsonProperty("published_version") Integer publishedVersion,
+            @JsonProperty("draft_version_name") String draftVersionName,
+            @JsonProperty("published_version_name") String publishedVersionName,
+            @JsonProperty("draft_version_description") String draftVersionDescription,
+            @JsonProperty("published_version_description") String publishedVersionDescription,
+            @JsonProperty("history_count") long historyCount,
             String status,
             @JsonProperty("updated_at") OffsetDateTime updatedAt,
             @JsonProperty("published_at") OffsetDateTime publishedAt) { }
@@ -37,11 +44,15 @@ public final class ContentDtos {
             UUID id,
             @JsonProperty("module_key") String moduleKey,
             @JsonProperty("version_no") Integer versionNo,
+            @JsonProperty("version_name") String versionName,
+            @JsonProperty("version_description") String versionDescription,
             String state,
             Object data,
             // 该版本基于哪个历史版本创建（回滚场景），无来源时为 null
             @JsonProperty("source_release_id") UUID sourceReleaseId,
-            @JsonProperty("published_at") OffsetDateTime publishedAt) { }
+            @JsonProperty("published_at") OffsetDateTime publishedAt,
+            @JsonProperty("created_at") OffsetDateTime createdAt,
+            @JsonProperty("updated_at") OffsetDateTime updatedAt) { }
 
     /** 标签的写操作入参（新增或更新）。 */
     public record TagWrite(

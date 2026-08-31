@@ -227,7 +227,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThatThrownBy(() -> service.list(viewer)).isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> service.get(viewer, "home")).isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> service.saveDraft(viewer, "home",
-                new ContentDtos.SaveDraft(null, Map.of("images", List.of()))))
+                new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", Map.of("images", List.of()))))
                 .isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> service.publish(viewer, "home")).isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> service.offline(viewer, "home")).isInstanceOf(ForbiddenException.class);
@@ -246,17 +246,21 @@ class ContentModuleServiceImplCoverageTest {
         ContentRelease current = release("skills", "PUBLISHED");
         when(releases.findCurrent("skills")).thenReturn(current);
 
-        service.saveDraft(admin, "skills", new ContentDtos.SaveDraft(null, Map.of("items", List.of())));
+        service.saveDraft(admin, "skills", new ContentDtos.SaveDraft(
+                null, "技术栈更新", "调整技术栈内容", Map.of("items", List.of())));
 
         verify(releases).add(argThat(draft -> "DRAFT".equals(draft.getState())
                 && "skills".equals(draft.getModuleKey())
+                && "技术栈更新".equals(draft.getVersionName())
+                && "调整技术栈内容".equals(draft.getVersionDescription())
                 && current.getId().equals(draft.getSourceReleaseId())));
         verify(releases).replaceData(any(ContentRelease.class), any());
     }
 
     @Test
     void saveDraftCreatesDraftWithoutSourceWhenNothingPublished() {
-        service.saveDraft(admin, "vibe", new ContentDtos.SaveDraft(null, Map.of("tools", List.of())));
+        service.saveDraft(admin, "vibe", new ContentDtos.SaveDraft(
+                null, "测试版本", "测试版本描述", Map.of("tools", List.of())));
 
         verify(releases).add(argThat(draft -> draft.getSourceReleaseId() == null));
     }
@@ -265,11 +269,11 @@ class ContentModuleServiceImplCoverageTest {
     void saveDraftUpdatesExistingDraftWhenTimestampMatches() {
         ContentRelease draft = release("skills", "DRAFT");
         when(releases.findDraft("skills")).thenReturn(draft);
-        when(releases.touchDraft(any(UUID.class), any(), any(OffsetDateTime.class))).thenReturn(true);
+        when(releases.updateDraft(any(UUID.class), any(), any(OffsetDateTime.class), any(), any())).thenReturn(true);
         when(releases.readData(draft)).thenReturn(Map.of("items", List.of()));
 
         ContentDtos.ModuleView view = service.saveDraft(admin, "skills",
-                new ContentDtos.SaveDraft(OffsetDateTime.now(), Map.of("items", List.of())));
+                new ContentDtos.SaveDraft(OffsetDateTime.now(), "更新名称", "更新描述", Map.of("items", List.of())));
 
         verify(releases).replaceData(argThat(r -> r.getId().equals(draft.getId())), any());
         verify(releases, never()).add(any());
@@ -280,10 +284,10 @@ class ContentModuleServiceImplCoverageTest {
     void saveDraftFailsWhenDraftModifiedConcurrently() {
         ContentRelease draft = release("skills", "DRAFT");
         when(releases.findDraft("skills")).thenReturn(draft);
-        when(releases.touchDraft(any(UUID.class), any(), any(OffsetDateTime.class))).thenReturn(false);
+        when(releases.updateDraft(any(UUID.class), any(), any(OffsetDateTime.class), any(), any())).thenReturn(false);
 
         assertThatThrownBy(() -> service.saveDraft(admin, "skills",
-                new ContentDtos.SaveDraft(OffsetDateTime.now(), Map.of("items", List.of()))))
+                new ContentDtos.SaveDraft(OffsetDateTime.now(), "更新名称", "更新描述", Map.of("items", List.of()))))
                 .isInstanceOfSatisfying(ConflictException.class,
                         e -> assertThat(e.getDetail()).contains("刷新后重试"));
     }
@@ -292,12 +296,26 @@ class ContentModuleServiceImplCoverageTest {
     void saveDraftRejectsMissingOrNonObjectData() {
         assertThatThrownBy(() -> service.saveDraft(admin, "home", null))
                 .isInstanceOf(ValidationException.class);
-        assertThatThrownBy(() -> service.saveDraft(admin, "home", new ContentDtos.SaveDraft(null, null)))
+        assertThatThrownBy(() -> service.saveDraft(admin, "home",
+                new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", null)))
                 .isInstanceOf(ValidationException.class);
         assertThatThrownBy(() -> service.saveDraft(admin, "home",
-                new ContentDtos.SaveDraft(null, List.of("not-an-object"))))
+                new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", List.of("not-an-object"))))
                 .isInstanceOfSatisfying(ValidationException.class,
                         e -> assertThat(e.getDetail()).contains("JSON 对象"));
+    }
+
+    @Test
+    void saveDraftRequiresVersionNameAndDescription() {
+        Object data = Map.of("images", List.of());
+        assertThatThrownBy(() -> service.saveDraft(admin, "home",
+                new ContentDtos.SaveDraft(null, " ", "描述", data)))
+                .isInstanceOfSatisfying(ValidationException.class,
+                        e -> assertThat(e.getDetail()).contains("version_name"));
+        assertThatThrownBy(() -> service.saveDraft(admin, "home",
+                new ContentDtos.SaveDraft(null, "名称", " ", data)))
+                .isInstanceOfSatisfying(ValidationException.class,
+                        e -> assertThat(e.getDetail()).contains("version_description"));
     }
 
     // ---------- 发布 / 下线 ----------
@@ -358,21 +376,25 @@ class ContentModuleServiceImplCoverageTest {
     }
 
     @Test
-    void versionRejectsMissingOrDraftRelease() {
+    void versionRejectsMissingAndReturnsDraftRelease() {
         assertThatThrownBy(() -> service.version(admin, "vibe", 1))
                 .isInstanceOf(NotFoundException.class);
-        when(releases.findVersion("vibe", 2)).thenReturn(release("vibe", "DRAFT"));
-        assertThatThrownBy(() -> service.version(admin, "vibe", 2))
-                .isInstanceOf(NotFoundException.class);
+        ContentRelease draft = release("vibe", "DRAFT");
+        when(releases.findVersion("vibe", 2)).thenReturn(draft);
+        when(releases.readData(draft)).thenReturn(Map.of("tools", List.of()));
+        assertThat(service.version(admin, "vibe", 2).state()).isEqualTo("DRAFT");
     }
 
     @Test
-    void restoreRejectsMissingOrDraftSource() {
+    void restoreRejectsMissingDraftOrPublishedSource() {
         assertThatThrownBy(() -> service.restore(admin, "vibe", 1))
                 .isInstanceOf(NotFoundException.class);
         when(releases.findVersion("vibe", 2)).thenReturn(release("vibe", "DRAFT"));
         assertThatThrownBy(() -> service.restore(admin, "vibe", 2))
-                .isInstanceOf(NotFoundException.class);
+                .isInstanceOf(ConflictException.class);
+        when(releases.findVersion("vibe", 3)).thenReturn(release("vibe", "PUBLISHED"));
+        assertThatThrownBy(() -> service.restore(admin, "vibe", 3))
+                .isInstanceOf(ConflictException.class);
         verify(releases, never()).add(any());
     }
 

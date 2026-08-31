@@ -92,8 +92,9 @@
                 {{ statusText(module.status) }}
               </a-tag>
             </div>
-            <p>草稿版本：{{ module.draft_version ?? '无' }}</p>
-            <p>线上版本：{{ module.published_version ?? '无' }}</p>
+            <p>当前草稿：{{ module.draft_version_name || '无' }}</p>
+            <p>当前线上：{{ module.status === 'published' ? module.published_version_name || '未命名' : '无' }}</p>
+            <p>历史版本：{{ module.history_count }}</p>
             <small>最后发布：{{ formatTime(module.published_at) }}</small>
           </a-card>
         </a-col>

@@ -38,7 +38,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         // 存草稿：落库为 DRAFT 版本，工具数据拆进 vibe_tools 表
         JsonNode saved = assertStatusAndCode(
                 exchange(VIBE_URL, HttpMethod.PUT, admin,
-                        Map.of("data", vibeData(toolKey, "第一版描述"))),
+                        draftPayload("Vibe 初始草稿", "创建集成测试草稿", vibeData(toolKey, "第一版描述"))),
                 HttpStatus.OK, 0);
         assertThat(countRows("content_releases",
                 "module_key = 'vibe' AND state = 'DRAFT' AND deleted_at IS NULL")).isEqualTo(1);
@@ -49,7 +49,8 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         String updatedAt = saved.path("data").path("updated_at").asText();
         assertStatusAndCode(
                 exchange(VIBE_URL, HttpMethod.PUT, admin,
-                        Map.of("expected_updated_at", updatedAt, "data", vibeData(toolKey, "第二版描述"))),
+                        draftPayload("Vibe 修改草稿", "更新工具描述", updatedAt,
+                                vibeData(toolKey, "第二版描述"))),
                 HttpStatus.OK, 0);
         String description = jdbc.queryForObject(
                 "SELECT t.description FROM vibe_tools t JOIN content_releases r ON r.id = t.release_id"
@@ -60,7 +61,8 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         // 乐观锁：沿用旧的 expected_updated_at 再改应被拒绝
         assertStatusAndCode(
                 exchange(VIBE_URL, HttpMethod.PUT, admin,
-                        Map.of("expected_updated_at", updatedAt, "data", vibeData(toolKey, "第三版描述"))),
+                        draftPayload("Vibe 冲突草稿", "验证乐观锁", updatedAt,
+                                vibeData(toolKey, "第三版描述"))),
                 HttpStatus.CONFLICT, 12005);
 
         // 发布：DRAFT 转 PUBLISHED 并记录发布人/时间，旧线上版本（若有）归档
@@ -103,40 +105,63 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         // 自建两个已发布版本：v1 归档、v2 线上
         exchange(VIBE_URL + "/draft", HttpMethod.DELETE, admin, null);
         assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin,
-                Map.of("data", vibeData(uniqueKey("apitest-v1-"), "版本一"))), HttpStatus.OK, 0);
+                draftPayload("Vibe 版本一", "第一个发布版本",
+                        vibeData(uniqueKey("apitest-v1-"), "版本一"))), HttpStatus.OK, 0);
         JsonNode first = assertStatusAndCode(exchange(VIBE_URL + "/publish", HttpMethod.POST, admin, null),
                 HttpStatus.OK, 0);
         int v1 = first.path("data").path("published_version").intValue();
         assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin,
-                Map.of("data", vibeData(uniqueKey("apitest-v2-"), "版本二"))), HttpStatus.OK, 0);
+                draftPayload("Vibe 版本二", "第二个发布版本",
+                        vibeData(uniqueKey("apitest-v2-"), "版本二"))), HttpStatus.OK, 0);
         JsonNode second = assertStatusAndCode(exchange(VIBE_URL + "/publish", HttpMethod.POST, admin, null),
                 HttpStatus.OK, 0);
         int v2 = second.path("data").path("published_version").intValue();
 
-        // 版本列表包含两个版本；线上版本不可删除
+        // 再保存一个当前草稿；版本列表同时包含线上、草稿和其他版本
+        JsonNode third = assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin,
+                draftPayload("Vibe 待恢复草稿", "恢复测试前的当前草稿",
+                        vibeData(uniqueKey("apitest-v3-"), "版本三"))), HttpStatus.OK, 0);
+        int v3 = third.path("data").path("draft_version").intValue();
         JsonNode versions = assertStatusAndCode(
                 exchange(VIBE_URL + "/versions", HttpMethod.GET, admin, null), HttpStatus.OK, 0);
-        assertThat(versions.path("data").size()).isGreaterThanOrEqualTo(2);
+        assertThat(versions.path("data").toString())
+                .contains("Vibe 版本一", "Vibe 版本二", "Vibe 待恢复草稿", "version_description");
         assertStatusAndCode(exchange(VIBE_URL + "/versions/" + v2, HttpMethod.DELETE, admin, null),
                 HttpStatus.CONFLICT, 12005);
 
-        // 归档版本可删除：软删除后按版本号查询返回 404
+        // 恢复 v1：版本总数不增加，v1 原地变为草稿，原草稿 v3 转为归档
+        int releaseCount = countRows("content_releases", "module_key = 'vibe' AND deleted_at IS NULL");
+        assertStatusAndCode(exchange(VIBE_URL + "/versions/" + v1 + "/restore", HttpMethod.POST, admin, null),
+                HttpStatus.OK, 0);
+        assertThat(countRows("content_releases", "module_key = 'vibe' AND deleted_at IS NULL"))
+                .isEqualTo(releaseCount);
+        assertThat(jdbc.queryForObject("SELECT state FROM content_releases WHERE module_key = 'vibe' AND version_no = ?",
+                String.class, v1)).isEqualTo("DRAFT");
+        assertThat(jdbc.queryForObject("SELECT state FROM content_releases WHERE module_key = 'vibe' AND version_no = ?",
+                String.class, v3)).isEqualTo("ARCHIVED");
+
+        // 删除归档的原草稿：软删除后历史计数减少，且按版本号查询返回 404
+        JsonNode moduleBeforeDelete = assertStatusAndCode(
+                exchange(VIBE_URL, HttpMethod.GET, admin, null), HttpStatus.OK, 0);
+        int historyBeforeDelete = moduleBeforeDelete.path("data").path("history_count").asInt();
         JsonNode v1View = assertStatusAndCode(
-                exchange(VIBE_URL + "/versions/" + v1, HttpMethod.GET, admin, null), HttpStatus.OK, 0);
+                exchange(VIBE_URL + "/versions/" + v3, HttpMethod.GET, admin, null), HttpStatus.OK, 0);
         UUID v1Id = UUID.fromString(v1View.path("data").path("id").asText());
-        assertStatusAndCode(exchange(VIBE_URL + "/versions/" + v1, HttpMethod.DELETE, admin, null),
+        assertStatusAndCode(exchange(VIBE_URL + "/versions/" + v3, HttpMethod.DELETE, admin, null),
                 HttpStatus.OK, 0);
         Timestamp deletedAt = jdbc.queryForObject(
                 "SELECT deleted_at FROM content_releases WHERE id = ?", Timestamp.class, v1Id);
         assertThat(deletedAt).as("删除版本应软标记 deleted_at").isNotNull();
-        assertStatusAndCode(exchange(VIBE_URL + "/versions/" + v1, HttpMethod.GET, admin, null),
+        JsonNode moduleAfterDelete = assertStatusAndCode(
+                exchange(VIBE_URL, HttpMethod.GET, admin, null), HttpStatus.OK, 0);
+        assertThat(moduleAfterDelete.path("data").path("history_count").asInt())
+                .isEqualTo(historyBeforeDelete - 1);
+        assertStatusAndCode(exchange(VIBE_URL + "/versions/" + v3, HttpMethod.GET, admin, null),
                 HttpStatus.NOT_FOUND, 12003);
         assertStatusAndCode(exchange(VIBE_URL + "/versions/99999", HttpMethod.GET, admin, null),
                 HttpStatus.NOT_FOUND, 12003);
 
-        // 草稿可放弃：物理删除草稿记录，重复放弃返回 404
-        assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin,
-                Map.of("data", vibeData(uniqueKey("apitest-v3-"), "版本三"))), HttpStatus.OK, 0);
+        // 当前恢复草稿可放弃：物理删除草稿记录，重复放弃返回 404
         assertStatusAndCode(exchange(VIBE_URL + "/draft", HttpMethod.DELETE, admin, null),
                 HttpStatus.OK, 0);
         assertThat(countRows("content_releases",
@@ -152,7 +177,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         assertStatusAndCode(exchange(CONTENT_URL, HttpMethod.GET, viewer, null),
                 HttpStatus.FORBIDDEN, 10004);
         assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, viewer,
-                        Map.of("data", vibeData(uniqueKey("apitest-tool-"), "越权"))),
+                        draftPayload("越权版本", "越权描述", vibeData(uniqueKey("apitest-tool-"), "越权"))),
                 HttpStatus.FORBIDDEN, 10004);
         assertStatusAndCode(exchange(TAGS_URL, HttpMethod.POST, viewer,
                         Map.of("tag_key", uniqueKey("apitest-tag-"), "name", "越权标签")),
@@ -166,15 +191,19 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         String admin = loginAs("admin");
 
         // data 不是 JSON 对象、字段值越界均走内容校验（12004）；未知模块按模块不存在处理
-        assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin, Map.of("data", List.of())),
+        assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin,
+                        draftPayload("非法版本", "非法数据结构", List.of())),
                 HttpStatus.UNPROCESSABLE_ENTITY, 12004);
         assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin,
-                        Map.of("data", Map.of("tools", List.of(Map.of(
+                        draftPayload("越界版本", "验证百分比边界", Map.of("tools", List.of(Map.of(
                                 "tool_key", uniqueKey("apitest-tool-"), "percentage", 150))))),
                 HttpStatus.UNPROCESSABLE_ENTITY, 12004);
         assertStatusAndCode(exchange(CONTENT_URL + "/notamodule", HttpMethod.PUT, admin,
-                        Map.of("data", Map.of())),
+                        draftPayload("未知模块", "验证未知模块", Map.of())),
                 HttpStatus.NOT_FOUND, 12001);
+        assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin,
+                        Map.of("version_name", "缺少描述", "data", vibeData(uniqueKey("apitest-tool-"), "缺描述"))),
+                HttpStatus.UNPROCESSABLE_ENTITY, 12004);
     }
 
     @Test
@@ -225,6 +254,18 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
                 "percentage", 50,
                 "enabled", true,
                 "sort_order", 0)));
+    }
+
+    /** 构造首次保存草稿的完整请求体。 */
+    private Map<String, Object> draftPayload(String versionName, String versionDescription, Object data) {
+        return Map.of("version_name", versionName, "version_description", versionDescription, "data", data);
+    }
+
+    /** 构造更新既有草稿的完整请求体。 */
+    private Map<String, Object> draftPayload(String versionName, String versionDescription,
+                                             String expectedUpdatedAt, Object data) {
+        return Map.of("version_name", versionName, "version_description", versionDescription,
+                "expected_updated_at", expectedUpdatedAt, "data", data);
     }
 
     /** 当前 vibe 线上版本（PUBLISHED/OFFLINE）的 id，没有则返回 null */

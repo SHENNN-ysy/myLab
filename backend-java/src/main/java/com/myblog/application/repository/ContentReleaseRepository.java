@@ -51,7 +51,8 @@ public interface ContentReleaseRepository {
      * @param expectedUpdatedAt 调用方持有的旧时间戳，用于并发冲突检测
      * @return 时间戳匹配并更新成功返回 true，否则返回 false
      */
-    boolean touchDraft(UUID releaseId, OffsetDateTime expectedUpdatedAt, OffsetDateTime nextUpdatedAt);
+    boolean updateDraft(UUID releaseId, OffsetDateTime expectedUpdatedAt, OffsetDateTime nextUpdatedAt,
+                        String versionName, String versionDescription);
     /**
      * 覆盖指定版本的内容数据。
      */
@@ -64,6 +65,10 @@ public interface ContentReleaseRepository {
      * 发布草稿：将原当前版本下线，草稿转正为新的当前版本。
      */
     void publish(ContentRelease draft, ContentRelease current, UUID actorId, OffsetDateTime now);
+    /**
+     * 将历史版本原地切换为当前草稿，已有草稿转为归档版本。
+     */
+    void restoreAsDraft(ContentRelease source, ContentRelease currentDraft, OffsetDateTime now);
     /**
      * 将当前生效版本下线。
      */
