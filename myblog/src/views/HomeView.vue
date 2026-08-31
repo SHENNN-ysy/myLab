@@ -25,6 +25,7 @@
     <Footstep />
     <Hobbies />
     <VibeCoding />
+    <MyLabStation />
     <Contact />
   </main>
 </template>
@@ -38,6 +39,7 @@ import Projects from '../components/Projects.vue'
 import Footstep from '../components/Footstep.vue'
 import Hobbies from '../components/Hobbies.vue'
 import VibeCoding from '../components/VibeCoding.vue'
+import MyLabStation from '../components/MyLabStation.vue'
 import Contact from '../components/Contact.vue'
 
 const scrollCueRef = ref<HTMLElement | null>(null)
