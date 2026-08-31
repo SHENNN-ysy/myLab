@@ -228,9 +228,13 @@
                     <threshold>Medium</threshold>
                     <failOnError>true</failOnError>
                     <excludeFilterFile>config/spotbugs/excludeFilter.xml</excludeFilterFile>
-                    <!-- 将报告输出到 build 目录，避免触发 Maven site descriptor 解析 -->
-                    <spotbugsXmlOutput>true</spotbugsXmlOutput>
+                    <!-- 禁用 HTML 报告，避免触发 Maven site descriptor 解析 -->
+                    <htmlOutput>false</htmlOutput>
+                    <!-- 只保留 XML 报告，供 check goal 与 Jenkins 解析 -->
+                    <xmlOutput>true</xmlOutput>
                     <xmlOutputDirectory>${project.build.directory}/spotbugsXml</xmlOutputDirectory>
+                    <!-- 将报告根目录从 reporting 目录移到 build 目录，彻底跳过 site descriptor 下载 -->
+                    <outputDirectory>${project.build.directory}/spotbugsXml</outputDirectory>
                 </configuration>
                 <executions>
                     <execution>
