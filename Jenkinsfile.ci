@@ -64,12 +64,13 @@ pipeline {
                     // Declarative agent 无法安全读取运行期 GID，改在节点内启动 Maven 容器。
                     docker.image('maven:3.9-eclipse-temurin-21').inside(
                         "-v /var/run/docker.sock:/var/run/docker.sock " +
-                        "-v /data/jenkins/.m2:/home/ubuntu/.m2 " +
+                        "-v /data/jenkins/.m2:/root/.m2 " +
                         "--group-add ${env.DOCKER_SOCKET_GID}"
                     ) {
                         dir('backend-java') {
                             // verify 包含 Checkstyle、单测、*IT 集成测试、SpotBugs 与 JaCoCo。
-                            sh 'mvn -B verify'
+                            // 使用项目内的 maven-settings.xml（aliyun 镜像），并修正本地仓库挂载到 root 用户路径。
+                            sh 'mvn -B verify -s docker/maven-settings.xml'
                         }
                     }
                 }
