@@ -228,6 +228,9 @@
                     <threshold>Medium</threshold>
                     <failOnError>true</failOnError>
                     <excludeFilterFile>config/spotbugs/excludeFilter.xml</excludeFilterFile>
+                    <!-- 将报告输出到 build 目录，避免触发 Maven site descriptor 解析 -->
+                    <spotbugsXmlOutput>true</spotbugsXmlOutput>
+                    <xmlOutputDirectory>${project.build.directory}/spotbugsXml</xmlOutputDirectory>
                 </configuration>
                 <executions>
                     <execution>
