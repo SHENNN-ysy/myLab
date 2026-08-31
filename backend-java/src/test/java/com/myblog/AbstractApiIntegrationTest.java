@@ -129,10 +129,11 @@ public abstract class AbstractApiIntegrationTest {
         }
         UUID publisherId = ensureUser(uniqueKey("apitest-publisher-"), "It-passw0rd!", "admin");
         UUID releaseId = UUID.randomUUID();
-        jdbc.update("INSERT INTO content_releases (id, module_key, version_no, state, published_by, published_at)"
+        jdbc.update("INSERT INTO content_releases"
+                        + " (id, module_key, version_no, version_name, version_description, state, published_by, published_at)"
                         + " VALUES (?, 'mylab',"
                         + " (SELECT COALESCE(MAX(version_no), 0) + 1 FROM content_releases WHERE module_key = 'mylab'),"
-                        + " 'PUBLISHED', ?, now())",
+                        + " 'API 集成测试版本', '用于公开 MyLab 接口集成测试', 'PUBLISHED', ?, now())",
                 releaseId, publisherId);
         return releaseId;
     }

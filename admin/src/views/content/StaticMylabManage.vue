@@ -93,6 +93,7 @@
                 </a-button><a-button
                   type="primary"
                   :loading="publishing"
+                  :disabled="!moduleMeta?.draft_release_id"
                   @click="publishDraft"
                 >
                   发布
@@ -430,6 +431,7 @@ import CollectionHeader from '@/components/content/CollectionHeader.vue'
 import OssImageResourcePicker, { type OssImageResourceValue } from '@/components/content/OssImageResourcePicker.vue'
 import VersionHistoryModal from '@/components/content/VersionHistoryModal.vue'
 import { getContentModuleApi, publishContentApi, saveContentDraftApi, type ContentModule } from '@/api/content'
+import { requestVersionMetadata, type VersionMetadata } from '@/utils/versionMetadata'
 import {
   createMylabTagApi,
   deleteMylabTagApi,
@@ -711,27 +713,36 @@ const payload = (): MylabContentData => ({
   }))
 })
 
-const persistDraft = async (forPublish: boolean) => {
-  if (!moduleMeta.value || !validate(forPublish)) return null
+const persistDraft = async (metadata: VersionMetadata) => {
+  if (!moduleMeta.value || !validate(false)) return null
   await persistTags()
-  const result = await saveContentDraftApi('mylab', moduleMeta.value, payload())
+  const result = await saveContentDraftApi('mylab', moduleMeta.value, payload(), metadata)
   replaceModule(result)
   return result
 }
 
 const saveDraft = async () => {
+  if (!moduleMeta.value || !validate(false)) return
+  const metadata = await requestVersionMetadata({
+    versionName: moduleMeta.value.draft_version_name,
+    versionDescription: moduleMeta.value.draft_version_description,
+  })
+  if (!metadata) return
   saving.value = true
   try {
-    if (await persistDraft(false)) message.success('MyLab 草稿与标签已保存')
+    if (await persistDraft(metadata)) message.success('MyLab 草稿与标签已保存')
   } finally {
     saving.value = false
   }
 }
 
 const publishDraft = async () => {
+  if (!moduleMeta.value?.draft_release_id) {
+    message.warning('请先保存草稿并填写版本信息，再执行发布')
+    return
+  }
   publishing.value = true
   try {
-    if (!await persistDraft(true)) return
     replaceModule(await publishContentApi<MylabContentData>('mylab'))
     currentTags.value = (await getMylabTagsApi()).filter(tag => tag.enabled)
     activePanel.value = 'current'

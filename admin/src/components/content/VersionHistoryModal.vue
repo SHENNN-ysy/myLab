@@ -3,56 +3,68 @@
     :open="open"
     title="历史版本"
     :footer="null"
-    width="680px"
+    width="760px"
     @update:open="emit('update:open', $event)"
   >
     <a-alert
       type="info"
       show-icon
-      message="恢复会把历史版本的内容覆盖到当前草稿（无草稿时自动新建草稿），历史版本本身不变，同一草稿可多次恢复；删除为软删除，仅解除其资源引用，线上版本不可删除。"
+      message="恢复历史版本不会创建新版本：所选版本将直接成为当前草稿，原草稿转为归档版本。"
       class="version-tip"
     />
-    <a-list
-      :data-source="versions"
-      :loading="loading"
-    >
-      <template #renderItem="{ item }">
-        <a-list-item>
-          <a-list-item-meta
-            :title="`版本 ${item.version_no}`"
-            :description="`发布时间：${formatTime(item.published_at)}`"
+    <a-spin :spinning="loading">
+      <section class="version-section">
+        <h3>当前线上版本</h3>
+        <ContentVersionItem
+          v-if="onlineVersion"
+          :version="onlineVersion"
+        />
+        <a-empty
+          v-else
+          description="当前没有线上版本"
+        />
+      </section>
+      <section class="version-section">
+        <h3>当前草稿版本</h3>
+        <ContentVersionItem
+          v-if="draftVersion"
+          :version="draftVersion"
+        />
+        <a-empty
+          v-else
+          description="当前没有草稿版本"
+        />
+      </section>
+      <section class="version-section">
+        <h3>其他版本</h3>
+        <a-space
+          v-if="otherVersions.length"
+          direction="vertical"
+          class="version-list"
+        >
+          <ContentVersionItem
+            v-for="version in otherVersions"
+            :key="version.id"
+            :version="version"
+            restorable
+            deletable
+            @restore="restore"
+            @remove="remove"
           />
-          <a-tag :color="stateColor(item.state)">
-            {{ stateText(item.state) }}
-          </a-tag>
-          <a-space size="small">
-            <a-button
-              type="link"
-              @click="restore(item)"
-            >
-              恢复为草稿
-            </a-button>
-            <a-button
-              v-if="item.state !== 'PUBLISHED'"
-              type="link"
-              danger
-              @click="remove(item)"
-            >
-              删除
-            </a-button>
-          </a-space>
-        </a-list-item>
-      </template>
-      <template #empty>
-        <a-empty description="暂无历史版本" />
-      </template>
-    </a-list>
+        </a-space>
+        <a-empty
+          v-else
+          description="暂无其他版本"
+        />
+      </section>
+    </a-spin>
   </a-modal>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { message, Modal } from 'ant-design-vue'
+import ContentVersionItem from '@/components/content/ContentVersionItem.vue'
 import type { ContentModuleKey, ContentVersion } from '@/api/content'
 import { deleteContentVersionApi, getContentVersionsApi, restoreContentVersionApi } from '@/api/content'
 
@@ -69,6 +81,11 @@ const emit = defineEmits<{
 
 const versions = ref<ContentVersion[]>([])
 const loading = ref(false)
+const onlineVersion = computed(() => versions.value.find(item => item.state === 'PUBLISHED'))
+const draftVersion = computed(() => versions.value.find(item => item.state === 'DRAFT'))
+const otherVersions = computed(() => versions.value
+  .filter(item => item.state !== 'PUBLISHED' && item.state !== 'DRAFT')
+  .sort((left, right) => versionTime(right) - versionTime(left)))
 
 const load = async () => {
   loading.value = true
@@ -81,35 +98,25 @@ const load = async () => {
 
 watch(() => props.open, open => { if (open) load() })
 
-const stateText = (state: ContentVersion['state']) => ({
-  PUBLISHED: '已发布',
-  ARCHIVED: '已归档',
-  OFFLINE: '已下线'
-} as Record<string, string>)[state] || state
-
-const stateColor = (state: ContentVersion['state']) => ({
-  PUBLISHED: 'green',
-  ARCHIVED: 'default',
-  OFFLINE: 'orange'
-} as Record<string, string>)[state] || 'default'
-
-const formatTime = (value?: string) => value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '—'
+const versionTime = (version: ContentVersion) => new Date(
+  version.published_at || version.updated_at || version.created_at,
+).getTime()
 
 const restore = (item: ContentVersion) => Modal.confirm({
-  title: props.hasDraft
-    ? `将版本 ${item.version_no} 的内容覆盖当前草稿？`
-    : `以版本 ${item.version_no} 为底创建新草稿？`,
-  content: '历史版本本身不会被改动，可多次恢复不同历史版本。',
+  title: `将“${item.version_name}”恢复为当前草稿？`,
+  content: props.hasDraft
+    ? '当前草稿会转为归档版本，所选历史版本将直接成为当前草稿。'
+    : '所选历史版本将直接成为当前草稿，不会创建新版本。',
   onOk: async () => {
     await restoreContentVersionApi(props.moduleKey, item.version_no)
-    message.success(props.hasDraft ? '历史版本内容已覆盖当前草稿' : '历史版本已恢复为草稿')
+    message.success('历史版本已恢复为当前草稿')
     emit('update:open', false)
     emit('restored')
   }
 })
 
 const remove = (item: ContentVersion) => Modal.confirm({
-  title: `删除版本 ${item.version_no}？`,
+  title: `删除“${item.version_name}”？`,
   content: '删除后不可恢复；该版本独占引用的文件将解除引用，可在文件管理中手动删除。',
   okButtonProps: { danger: true },
   onOk: async () => {
@@ -121,5 +128,8 @@ const remove = (item: ContentVersion) => Modal.confirm({
 </script>
 
 <style scoped>
-.version-tip { margin-bottom: 16px; }
+.version-tip { margin-bottom: 18px; }
+.version-section + .version-section { margin-top: 22px; }
+.version-section h3 { margin: 0 0 10px; font-size: 15px; }
+.version-list { display: flex; width: 100%; }
 </style>

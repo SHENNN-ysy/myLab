@@ -58,7 +58,7 @@ class ContentModuleServiceImplTest {
         when(releases.findDraft("skills")).thenReturn(draft);
 
         assertThatThrownBy(() -> service.saveDraft(admin, "skills",
-                new ContentDtos.SaveDraft(null, Map.of("items", List.of()))))
+                new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", Map.of("items", List.of()))))
                 .isInstanceOfSatisfying(ConflictException.class,
                         exception -> assertThat(exception.getDetail()).contains("expected_updated_at"));
     }
@@ -113,7 +113,7 @@ class ContentModuleServiceImplTest {
         when(releases.findCurrent("vibe")).thenReturn(current);
         when(releases.nextVersion("vibe")).thenReturn(2);
 
-        service.saveDraft(admin, "vibe", new ContentDtos.SaveDraft(null, Map.of(
+        service.saveDraft(admin, "vibe", new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", Map.of(
                 "tools", List.of(Map.of(
                         "row_id", publishedRowId,
                         "tool_key", "cursor",
@@ -125,35 +125,34 @@ class ContentModuleServiceImplTest {
     }
 
     @Test
-    void restoringVersionDoesNotReuseHistoricalBusinessRowIds() {
+    void restoringVersionSwitchesHistoricalReleaseToDraftWithoutCopyingData() {
         ContentRelease source = release("vibe", "ARCHIVED");
-        UUID historicalRowId = UUID.randomUUID();
         when(releases.findVersion("vibe", 1)).thenReturn(source);
-        when(releases.nextVersion("vibe")).thenReturn(2);
-        when(releases.readData(source)).thenReturn(Map.of(
-                "tools", List.of(Map.of("row_id", historicalRowId, "tool_key", "cursor"))));
+        when(releases.findDraft("vibe")).thenReturn(null);
 
         service.restore(admin, "vibe", 1);
 
-        verify(releases).replaceData(any(ContentRelease.class), argThat(data ->
-                !String.valueOf(data).contains(historicalRowId.toString())));
+        verify(releases).restoreAsDraft(argThat(release -> release.getId().equals(source.getId())),
+                org.mockito.ArgumentMatchers.isNull(), any(OffsetDateTime.class));
+        verify(releases, never()).add(any());
+        verify(releases, never()).replaceData(any(), any());
     }
 
     @Test
-    void restoringWithExistingDraftOverwritesDraftWithoutTouchingSource() {
+    void restoringWithExistingDraftArchivesCurrentDraftAndActivatesSource() {
         ContentRelease draft = release("vibe", "DRAFT");
         ContentRelease source = release("vibe", "ARCHIVED");
         when(releases.findDraft("vibe")).thenReturn(draft);
         when(releases.findVersion("vibe", 1)).thenReturn(source);
-        when(releases.readData(source)).thenReturn(Map.of(
-                "tools", List.of(Map.of("tool_key", "cursor"))));
-        when(releases.readData(draft)).thenReturn(Map.of("tools", List.of()));
 
         service.restore(admin, "vibe", 1);
 
         verify(releases, never()).add(any());
-        verify(releases).touchDraft(any(UUID.class), any(), any(OffsetDateTime.class));
-        verify(releases).replaceData(argThat(release -> release.getId().equals(draft.getId())), any());
+        verify(releases).restoreAsDraft(
+                argThat(release -> release.getId().equals(source.getId())),
+                argThat(release -> release.getId().equals(draft.getId())),
+                any(OffsetDateTime.class));
+        verify(releases, never()).replaceData(any(), any());
     }
 
     @Test
@@ -194,6 +193,8 @@ class ContentModuleServiceImplTest {
         release.setId(UUID.randomUUID());
         release.setModuleKey(module);
         release.setVersionNo(1);
+        release.setVersionName("测试版本");
+        release.setVersionDescription("测试版本描述");
         release.setState(state);
         release.setUpdatedAt(OffsetDateTime.now());
         return release;

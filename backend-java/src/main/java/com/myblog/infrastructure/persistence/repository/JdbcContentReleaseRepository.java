@@ -81,10 +81,14 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         return one("SELECT * FROM content_releases WHERE module_key = ? AND version_no = ? AND deleted_at IS NULL", moduleKey, versionNo);
     }
 
-    /** 查询模块的全部历史版本（不含草稿），按版本号倒序 */
+    /** 查询模块全部未删除版本，按最近发布时间或更新时间倒序 */
     @Override
     public List<ContentRelease> findVersions(String moduleKey) {
-        return jdbc.query("SELECT * FROM content_releases WHERE module_key = ? AND state <> 'DRAFT' AND deleted_at IS NULL ORDER BY version_no DESC",
+        return jdbc.query("""
+                SELECT * FROM content_releases
+                WHERE module_key = ? AND deleted_at IS NULL
+                ORDER BY COALESCE(published_at, updated_at, created_at) DESC, version_no DESC
+                """,
                 RELEASE_MAPPER, moduleKey);
     }
 
@@ -109,10 +113,12 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
     public void add(ContentRelease release) {
         jdbc.update("""
                 INSERT INTO content_releases
-                    (id, module_key, version_no, state, source_release_id, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, release.getId(), release.getModuleKey(), release.getVersionNo(), release.getState(),
-                release.getSourceReleaseId(), release.getCreatedAt(), release.getUpdatedAt());
+                    (id, module_key, version_no, version_name, version_description, state,
+                     source_release_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, release.getId(), release.getModuleKey(), release.getVersionNo(),
+                release.getVersionName(), release.getVersionDescription(), release.getState(), release.getSourceReleaseId(),
+                release.getCreatedAt(), release.getUpdatedAt());
     }
 
     /**
@@ -122,13 +128,20 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
      * @return 更新成功返回 true；期望时间戳不匹配（草稿已被他人改动）返回 false
      */
     @Override
-    public boolean touchDraft(UUID releaseId, OffsetDateTime expectedUpdatedAt, OffsetDateTime nextUpdatedAt) {
+    public boolean updateDraft(UUID releaseId, OffsetDateTime expectedUpdatedAt, OffsetDateTime nextUpdatedAt,
+                               String versionName, String versionDescription) {
         if (expectedUpdatedAt == null) {
-            return jdbc.update("UPDATE content_releases SET updated_at = ? WHERE id = ? AND state = 'DRAFT' AND deleted_at IS NULL",
-                    nextUpdatedAt, releaseId) == 1;
+            return jdbc.update("""
+                    UPDATE content_releases
+                    SET version_name = ?, version_description = ?, updated_at = ?
+                    WHERE id = ? AND state = 'DRAFT' AND deleted_at IS NULL
+                    """, versionName, versionDescription, nextUpdatedAt, releaseId) == 1;
         }
-        return jdbc.update("UPDATE content_releases SET updated_at = ? WHERE id = ? AND state = 'DRAFT' AND updated_at = ? AND deleted_at IS NULL",
-                nextUpdatedAt, releaseId, expectedUpdatedAt) == 1;
+        return jdbc.update("""
+                UPDATE content_releases
+                SET version_name = ?, version_description = ?, updated_at = ?
+                WHERE id = ? AND state = 'DRAFT' AND updated_at = ? AND deleted_at IS NULL
+                """, versionName, versionDescription, nextUpdatedAt, releaseId, expectedUpdatedAt) == 1;
     }
 
     /**
@@ -181,6 +194,23 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
                 WHERE id = ? AND state = 'DRAFT' AND deleted_at IS NULL
                 """, actorId, now, now, draft.getId());
         if (updated != 1) throw new IllegalStateException("draft state changed while publishing");
+    }
+
+    /** 将历史记录原地恢复为草稿；原草稿保留为归档记录，不复制任何模块数据。 */
+    @Override
+    public void restoreAsDraft(ContentRelease source, ContentRelease currentDraft, OffsetDateTime now) {
+        if (currentDraft != null) {
+            int archived = jdbc.update("""
+                    UPDATE content_releases SET state = 'ARCHIVED', updated_at = ?
+                    WHERE id = ? AND state = 'DRAFT' AND deleted_at IS NULL
+                    """, now, currentDraft.getId());
+            if (archived != 1) throw new IllegalStateException("draft state changed while restoring");
+        }
+        int restored = jdbc.update("""
+                UPDATE content_releases SET state = 'DRAFT', updated_at = ?
+                WHERE id = ? AND state IN ('ARCHIVED','OFFLINE') AND deleted_at IS NULL
+                """, now, source.getId());
+        if (restored != 1) throw new IllegalStateException("source state changed while restoring");
     }
 
     /** 下线当前已发布版本（状态置为 OFFLINE） */
@@ -239,6 +269,8 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         release.setId((UUID) rs.getObject("id"));
         release.setModuleKey(rs.getString("module_key"));
         release.setVersionNo(rs.getInt("version_no"));
+        release.setVersionName(rs.getString("version_name"));
+        release.setVersionDescription(rs.getString("version_description"));
         release.setState(rs.getString("state"));
         release.setPublishedBy((UUID) rs.getObject("published_by"));
         release.setSourceReleaseId((UUID) rs.getObject("source_release_id"));

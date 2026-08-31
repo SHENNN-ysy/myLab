@@ -169,13 +169,15 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 | PUT | `/api/v1/admin/content/{moduleKey}` | 完整保存模块草稿 |
 | POST | `/api/v1/admin/content/{moduleKey}/publish` | 校验并发布当前草稿 |
 | POST | `/api/v1/admin/content/{moduleKey}/offline` | 下线当前发布版本 |
-| GET | `/api/v1/admin/content/{moduleKey}/versions` | 查询非草稿版本列表 |
-| GET | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}` | 查询指定历史版本完整数据 |
-| POST | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}/restore` | 提取历史版本内容覆盖当前草稿（无草稿时新建草稿） |
+| GET | `/api/v1/admin/content/{moduleKey}/versions` | 查询全部未删除版本，包含当前线上和当前草稿 |
+| GET | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}` | 查询指定版本完整数据 |
+| POST | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}/restore` | 将归档或下线版本原地恢复为当前草稿 |
 | DELETE | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}` | 软删除指定历史版本并解除其资源引用 |
 | DELETE | `/api/v1/admin/content/{moduleKey}/draft` | 放弃当前草稿 |
 
-`DELETE .../versions/{versionNo}` 为软删除：版本本体及其在各模块子表中的数据行统一打 `deleted_at` 标记，版本号不会复用。版本不存在或为草稿返回 `10005`；`PUBLISHED` 线上版本不可删除，返回 `10006`，需先下线或发布新版本。删除后其独占引用的文件资源解除引用，可在文件管理中删除。
+`DELETE .../versions/{versionNo}` 为软删除：版本本体及其在各模块子表中的数据行统一打 `deleted_at` 标记，版本号不会复用，仪表盘 `history_count` 只统计未删除的 `ARCHIVED/OFFLINE` 版本。版本不存在或为草稿返回 `10005`；`PUBLISHED` 线上版本不可删除，返回 `10006`，需先下线或发布新版本。删除后其独占引用的文件资源解除引用，可在文件管理中删除。
+
+历史版本界面把接口结果分为“当前线上版本”“当前草稿版本”“其他版本”三组；其他版本按 `published_at`、`updated_at`、`created_at` 的优先级倒序展示。恢复时不会创建或复制版本：目标 `ARCHIVED/OFFLINE` 记录直接转为 `DRAFT`，原 `DRAFT` 转为 `ARCHIVED`，模块内容行仍归属于各自原版本。
 
 模块管理响应 `data`：
 
@@ -188,6 +190,11 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
   "published_data": { "items": [] },
   "draft_version": 2,
   "published_version": 1,
+  "draft_version_name": "技术栈图标更新",
+  "published_version_name": "技术栈首版",
+  "draft_version_description": "替换 Java 和 Vue 图标",
+  "published_version_description": "首次发布技术栈页面",
+  "history_count": 3,
   "status": "draft",
   "updated_at": "2026-08-09T10:00:00+08:00",
   "published_at": "2026-08-08T10:00:00+08:00"
@@ -201,11 +208,13 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 ```json
 {
   "expected_updated_at": "2026-08-09T10:00:00+08:00",
+  "version_name": "技术栈图标更新",
+  "version_description": "替换 Java 和 Vue 图标并调整熟练度",
   "data": {}
 }
 ```
 
-当前不存在草稿时 `expected_updated_at` 可以为 `null`；已存在草稿时必须传上次读取到的 `updated_at`。时间戳不匹配返回 HTTP 409、错误码 `12005`。保存采用完整替换语义，数组顺序决定 `sort_order`。
+`version_name` 和 `version_description` 必填，长度分别不超过 120 和 2000 个字符。当前不存在草稿时 `expected_updated_at` 可以为 `null`；已存在草稿时必须传上次读取到的 `updated_at`。时间戳不匹配返回 HTTP 409、错误码 `12005`。保存采用完整替换语义，数组顺序决定 `sort_order`。发布接口只发布数据库中已经保存的当前草稿，不会隐式保存管理页面里的未提交修改。
 
 ### 5.1 通用集合约定
 

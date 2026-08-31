@@ -47,7 +47,7 @@
                 type="info"
                 show-icon
                 message="草稿通过后端版本接口保存"
-                description="保存草稿不会影响博客前台；发布成功后公开接口切换到新版本。"
+                description="保存时需要填写版本名称和描述；只有已保存的草稿才能发布。"
               />
               <a-space>
                 <a-button
@@ -59,6 +59,7 @@
                 <a-button
                   type="primary"
                   :loading="publishing"
+                  :disabled="!hasDraft"
                   @click="emit('publish')"
                 >
                   发布

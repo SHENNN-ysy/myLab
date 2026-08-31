@@ -77,6 +77,7 @@
                 <a-button
                   type="primary"
                   :loading="publishing"
+                  :disabled="!moduleMeta?.draft_release_id"
                   @click="publishDraft"
                 >
                   发布
@@ -160,6 +161,7 @@ import { HistoryOutlined, PictureOutlined } from '@ant-design/icons-vue'
 import OssImageResourcePicker, { type OssImageResourceValue } from '@/components/content/OssImageResourcePicker.vue'
 import VersionHistoryModal from '@/components/content/VersionHistoryModal.vue'
 import { getContentModuleApi, publishContentApi, saveContentDraftApi, type ContentModule } from '@/api/content'
+import { requestVersionMetadata, type VersionMetadata } from '@/utils/versionMetadata'
 import type { HomeContentData, HomeImageData } from '@/types/content'
 
 interface HomeImageItem {
@@ -253,26 +255,35 @@ const validate = () => {
   return true
 }
 
-const persistDraft = async () => {
+const persistDraft = async (metadata: VersionMetadata) => {
   if (!moduleMeta.value || !validate()) return null
-  const result = await saveContentDraftApi('home', moduleMeta.value, payload())
+  const result = await saveContentDraftApi('home', moduleMeta.value, payload(), metadata)
   replaceData(result)
   return result
 }
 
 const saveDraft = async () => {
+  if (!moduleMeta.value || !validate()) return
+  const metadata = await requestVersionMetadata({
+    versionName: moduleMeta.value.draft_version_name,
+    versionDescription: moduleMeta.value.draft_version_description,
+  })
+  if (!metadata) return
   saving.value = true
   try {
-    if (await persistDraft()) message.success('首页图片草稿已保存')
+    if (await persistDraft(metadata)) message.success('首页图片草稿已保存')
   } finally {
     saving.value = false
   }
 }
 
 const publishDraft = async () => {
+  if (!moduleMeta.value?.draft_release_id) {
+    message.warning('请先保存草稿并填写版本信息，再执行发布')
+    return
+  }
   publishing.value = true
   try {
-    if (!await persistDraft()) return
     replaceData(await publishContentApi<HomeContentData>('home'))
     activePanel.value = 'current'
     message.success('首页图片已发布')

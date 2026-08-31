@@ -55,10 +55,11 @@ public class AdminContentController {
     }
 
     /**
-     * 完整保存模块草稿，请求体携带 expected_updated_at 与 data，整体覆盖式保存。
+     * 完整保存模块草稿，请求体携带版本名称、版本描述、expected_updated_at 与 data。
      */
     @PutMapping("/{moduleKey}")
-    @Operation(summary = "完整保存模块草稿", description = "请求体包含 expected_updated_at 和 data。")
+    @Operation(summary = "完整保存模块草稿",
+            description = "请求体包含 version_name、version_description、expected_updated_at 和 data。")
     public Result<ContentDtos.ModuleView> save(@AuthenticationPrincipal CurrentUser actor,
                                                @PathVariable String moduleKey,
                                                @RequestBody ContentDtos.SaveDraft command) {

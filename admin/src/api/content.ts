@@ -10,6 +10,11 @@ export interface ContentModule<T = unknown> {
   published_data?: T
   draft_version?: number
   published_version?: number
+  draft_version_name?: string
+  published_version_name?: string
+  draft_version_description?: string
+  published_version_description?: string
+  history_count: number
   status: 'draft' | 'published' | 'offline'
   updated_at?: string
   published_at?: string
@@ -19,10 +24,19 @@ export interface ContentVersion<T = unknown> {
   id: string
   module_key: ContentModuleKey
   version_no: number
-  state: 'PUBLISHED' | 'ARCHIVED' | 'OFFLINE'
+  version_name: string
+  version_description: string
+  state: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'OFFLINE'
   data: T
   source_release_id?: string
-  published_at: string
+  published_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface VersionMetadata {
+  versionName: string
+  versionDescription: string
 }
 
 export const getContentModuleApi = async <T>(key: ContentModuleKey): Promise<ContentModule<T>> => {
@@ -35,9 +49,16 @@ export const getContentModulesApi = async (): Promise<ContentModule[]> => {
   return res.data || []
 }
 
-export const saveContentDraftApi = async <T>(key: ContentModuleKey, module: ContentModule<T>, data: T): Promise<ContentModule<T>> => {
+export const saveContentDraftApi = async <T>(
+  key: ContentModuleKey,
+  module: ContentModule<T>,
+  data: T,
+  metadata: VersionMetadata,
+): Promise<ContentModule<T>> => {
   const res = await request.put(`/admin/content/${key}`, {
     expected_updated_at: module.updated_at || null,
+    version_name: metadata.versionName,
+    version_description: metadata.versionDescription,
     data
   })
   return res.data

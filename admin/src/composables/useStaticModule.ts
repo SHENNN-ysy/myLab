@@ -7,6 +7,7 @@ import {
   type ContentModule,
   type ContentModuleKey
 } from '@/api/content'
+import { requestVersionMetadata, type VersionMetadata } from '@/utils/versionMetadata'
 
 /**
  * 静态内容模块的通用持久化骨架：加载、保存草稿、发布。
@@ -39,26 +40,35 @@ export function useStaticModule<T>(moduleKey: ContentModuleKey, pageTitle: strin
     }
   }
 
-  const persistDraft = async () => {
+  const persistDraft = async (metadata: VersionMetadata) => {
     if (!moduleMeta.value || !options.validate()) return null
-    const result = await saveContentDraftApi<T>(moduleKey, moduleMeta.value, options.payload())
+    const result = await saveContentDraftApi<T>(moduleKey, moduleMeta.value, options.payload(), metadata)
     assign(result)
     return result
   }
 
   const saveDraft = async () => {
+    if (!moduleMeta.value || !options.validate()) return
+    const metadata = await requestVersionMetadata({
+      versionName: moduleMeta.value.draft_version_name,
+      versionDescription: moduleMeta.value.draft_version_description,
+    })
+    if (!metadata) return
     saving.value = true
     try {
-      if (await persistDraft()) message.success(`${pageTitle}草稿已保存`)
+      if (await persistDraft(metadata)) message.success(`${pageTitle}草稿已保存`)
     } finally {
       saving.value = false
     }
   }
 
   const publishDraft = async () => {
+    if (!moduleMeta.value?.draft_release_id) {
+      message.warning('请先保存草稿并填写版本信息，再执行发布')
+      return
+    }
     publishing.value = true
     try {
-      if (!await persistDraft()) return
       assign(await publishContentApi<T>(moduleKey))
       activePanel.value = 'current'
       message.success(`${pageTitle}已发布`)
