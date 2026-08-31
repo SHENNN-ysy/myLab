@@ -28,8 +28,3 @@ ALTER TABLE public.content_releases
     ADD CONSTRAINT ck_content_release_version_description CHECK (
         length(btrim(version_description)) BETWEEN 1 AND 2000
     );
-
-ALTER TABLE public.content_releases
-    DROP CONSTRAINT content_releases_source_release_id_fkey,
-    ADD CONSTRAINT content_releases_source_release_id_fkey
-        FOREIGN KEY (source_release_id) REFERENCES public.content_releases(id) ON DELETE SET NULL;

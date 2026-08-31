@@ -17,7 +17,7 @@ docker compose up -d --build backend
 
 MyLab 卡片使用 `PROJECT/ARTICLE` 类型统一承载首页项目与文章。全局标签位于 `mylab_tags`，不参与版本；`mylab_card_tags` 使用外键和排序字段保存卡片标签，接口仍以有序 `tag_ids` 数组交互。封面图片通过 `resources` 管理，Markdown 正文保存在 `mylab_cards.markdown_content`，随草稿、发布和历史版本一起复制。
 
-数据库由 Flyway 管理。`V1__baseline.sql` 创建完整基线，后续结构变更使用递增迁移文件；`V2__mylab_markdown_content.sql` 迁移 MyLab 正文，`V3__content_release_metadata.sql` 增加版本名称和描述并调整草稿恢复约束。
+数据库由 Flyway 管理。`V1__baseline.sql` 创建完整基线，后续结构变更使用递增迁移文件；`V2__mylab_markdown_content.sql` 迁移 MyLab 正文，`V3__content_release_metadata.sql` 增加版本名称和描述并调整草稿恢复约束，`V4__content_release_source_delete_policy.sql` 调整版本溯源外键的删除策略。
 
 接口和表结构详见：
 
