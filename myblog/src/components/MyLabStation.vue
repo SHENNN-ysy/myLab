@@ -143,6 +143,14 @@
                   <div class="train-marquee">
                     <span>{{ marqueeText }}</span>
                   </div>
+                  <!-- 对侧车门：车门打开后可见的关闭状态对侧双开门 -->
+                  <div
+                    class="train-opposite-door"
+                    aria-hidden="true"
+                  >
+                    <div class="train-opposite-leaf is-left" />
+                    <div class="train-opposite-leaf is-right" />
+                  </div>
                   <div class="train-door-leaf is-left" />
                   <div class="train-door-leaf is-right" />
                 </div>
@@ -152,6 +160,14 @@
                 >
                   <div class="train-marquee">
                     <span>{{ marqueeText }}</span>
+                  </div>
+                  <!-- 对侧车门：车门打开后可见的关闭状态对侧双开门 -->
+                  <div
+                    class="train-opposite-door"
+                    aria-hidden="true"
+                  >
+                    <div class="train-opposite-leaf is-left" />
+                    <div class="train-opposite-leaf is-right" />
                   </div>
                   <div class="train-door-leaf is-left" />
                   <div class="train-door-leaf is-right" />
@@ -353,7 +369,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .mylab-station {
-  padding: 100px 0;
+  /* 底部间距收窄：与下方全站统计区块更紧凑 */
+  padding: 100px 0 15px;
   position: relative;
   /* 站台警戒线黄色（项目全局变量中没有，本区块自定义） */
   --safety: #F5C518;
@@ -937,13 +954,13 @@ onBeforeUnmount(() => {
   border: 2.5px solid var(--ink);
 }
 
-/* 门内跑马灯条带：位于原对侧车门玻璃窗的高度，左右延伸至与门框边缘相触 */
+/* 门内跑马灯条带：贴近门洞顶部，左右延伸至与门框边缘相触，下方为对侧车门 */
 .train-marquee {
   position: absolute;
   left: 0;
   right: 0;
-  top: 14%;
-  height: 22%;
+  top: 6%;
+  height: 15%;
   background: #101C26;
   border-top: 2px solid var(--ink);
   border-bottom: 2px solid var(--ink);
@@ -964,6 +981,43 @@ onBeforeUnmount(() => {
 
 @keyframes marqueeScroll {
   to { transform: translateX(-100%); }
+}
+
+/* ---- 对侧关闭的车门：位于跑马灯下方、门叶（z-index 2）之下，静态双开门带玻璃窗 ---- */
+/* 两侧及顶部与门洞边缘、跑马灯保持间距，下边缘延伸至与地面（门洞底缘）相接 */
+.train-opposite-door {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 26%;
+  bottom: 0;
+  display: flex;
+  z-index: 1;
+  border: 2px solid var(--ink);
+}
+
+.train-opposite-leaf {
+  position: relative;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(180deg, #F7FCFF, #E3F0F9);
+}
+
+/* 中缝：两片门各出半条边线 */
+.train-opposite-leaf.is-left { border-right: 1.25px solid var(--ink); }
+.train-opposite-leaf.is-right { border-left: 1.25px solid var(--ink); }
+
+/* 玻璃窗 */
+.train-opposite-leaf::before {
+  content: '';
+  position: absolute;
+  top: 8%;
+  left: 14%;
+  right: 14%;
+  height: 42%;
+  background: linear-gradient(180deg, #EAF6FF, #9CC8E8);
+  border: 2px solid var(--ink);
+  border-radius: 3px;
 }
 
 .train-door-leaf {

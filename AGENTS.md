@@ -26,7 +26,7 @@ MyBlog/
 ├── nginx/                   # 本地 HTTP 网关配置
 ├── deploy/                  # 生产 Compose、HTTPS Nginx、Registry、Jenkins
 ├── docs/                    # API 文档、数据库设计、测试工作流
-├── scripts/                 # 运维脚本（OSS 静态资源上传、库基线校验）
+├── scripts/                 # 运维脚本（Registry 镜像查询与清理）
 ├── docker-compose.yml       # 本地一键部署（从源码构建）
 ├── Jenkinsfile.ci           # CI：质量门 + master 镜像构建与推送
 ├── Jenkinsfile.cd           # CD：指定 Registry tag 拉取部署
@@ -147,6 +147,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 - `Jenkinsfile.ci` 顶层为 `agent none`，禁止在顶层 `environment` 调用 `sh`；`DOCKER_GID` 必须在已分配节点的阶段内校验并传给 Maven 容器
 - Jenkins 使用 `deploy/.env` 的 `JENKINS_ROUTE` 作为控制器 `--prefix`，并通过外部网络 `myblog-jenkins-proxy` 由生产 Nginx 提供 HTTPS 与 GitHub Webhook 入口
 - 回滚：从 Registry 最近保留版本中选择 tag，重新触发 CD
+- ARMS 应用监控（可选）：探针放 `deploy/AliyunJavaAgent/`（gitignore 不入库），compose 挂载到 backend `/opt/arms`，在 `.env` 配 `ARMS_AGENT_OPTS` JVM 参数（经 `JDK_JAVA_OPTIONS` 注入）即启用，留空不启用；详见 deploy/README.md 第 11 节
 
 ## 6. 关键约定
 

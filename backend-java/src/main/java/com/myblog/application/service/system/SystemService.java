@@ -9,8 +9,11 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,6 +23,10 @@ import java.util.Map;
  */
 @Service
 public class SystemService {
+
+    /** Linux 宿主机内存信息文件：容器内该文件不做 cgroup 虚拟化，读到的始终为宿主机口径 */
+    private static final Path MEMINFO_PATH = Path.of("/proc/meminfo");
+    private static final long KB_TO_BYTES = 1024L;
 
     private final DatabaseDiagnostics database;
     private final CacheDiagnostics cache;
@@ -66,7 +73,7 @@ public class SystemService {
         result.put("timezone", ZoneId.systemDefault().toString());
         result.put("cpuCore", os.getAvailableProcessors());
         result.put("cpuArch", System.getProperty("os.arch"));
-        result.put("memoryTotal", os.getTotalMemorySize());
+        result.put("memoryTotal", hostMemory(MEMINFO_PATH).totalBytes());
         result.put("swapTotal", os.getTotalSwapSpaceSize());
         result.put("diskTotal", root.getTotalSpace());
         String version = getClass().getPackage().getImplementationVersion();
@@ -78,15 +85,14 @@ public class SystemService {
 
     /**
      * 服务器动态指标：CPU、负载、物理内存、Swap、磁盘与应用运行时长等实时数据（仅管理员）。
-     * 内存与 Swap 为操作系统口径（容器内为容器可见的宿主机口径）；appUptime 是本应用进程的运行秒数。
+     * 内存取宿主机口径（/proc/meminfo），Swap、负载为操作系统口径，appUptime 是本应用进程的运行秒数。
      */
     public Map<String, Object> dynamicInfo(CurrentUser actor) {
         Authorization.requireAdmin(actor);
         File root = new File("/");
         var os = ManagementFactory.getPlatformMXBean(com.sun.management.OperatingSystemMXBean.class);
 
-        long memoryTotal = os.getTotalMemorySize();
-        long memoryFree = os.getFreeMemorySize();
+        HostMemory memory = hostMemory(MEMINFO_PATH);
         long swapTotal = os.getTotalSwapSpaceSize();
         long swapFree = os.getFreeSwapSpaceSize();
 
@@ -94,8 +100,8 @@ public class SystemService {
         result.put("cpuUsage", cpuUsagePercent(os));
         // Windows 等平台返回 -1 表示不可用，由前端兜底显示
         result.put("load1", os.getSystemLoadAverage());
-        result.put("memoryUsed", memoryTotal - memoryFree);
-        result.put("memoryAvailable", memoryFree);
+        result.put("memoryUsed", memory.totalBytes() - memory.availableBytes());
+        result.put("memoryAvailable", memory.availableBytes());
         result.put("swapUsed", swapTotal - swapFree);
         result.put("appUptime", (System.currentTimeMillis() - startedAt) / 1000);
         result.put("diskUsed", root.getTotalSpace() - root.getFreeSpace());
@@ -113,4 +119,63 @@ public class SystemService {
         if (load < 0) return 0;
         return Math.round(load * 1000) / 10.0;
     }
+
+    /**
+     * 宿主机内存视图（字节）。容器内 JDK 的 OperatingSystemMXBean 返回 cgroup 限额（本项目
+     * 为 compose 的 mem_limit），而 /proc/meminfo 不做 cgroup 虚拟化、始终为宿主机口径；
+     * 仅在 /proc/meminfo 不可用（非 Linux 环境或读取失败）时回退 MXBean。
+     */
+    HostMemory hostMemory(Path meminfoPath) {
+        HostMemory meminfo = readMeminfo(meminfoPath);
+        if (meminfo != null) {
+            return meminfo;
+        }
+        var os = ManagementFactory.getPlatformMXBean(com.sun.management.OperatingSystemMXBean.class);
+        return new HostMemory(os.getTotalMemorySize(), os.getFreeMemorySize());
+    }
+
+    /**
+     * 解析 /proc/meminfo 的 MemTotal 与 MemAvailable；文件缺失、字段不全或格式非法返回 null。
+     * 可用量用 MemAvailable 而非 MemFree（后者不含可回收缓存，会严重低估可用内存）。
+     */
+    private static HostMemory readMeminfo(Path path) {
+        try {
+            if (!Files.isRegularFile(path)) {
+                return null;
+            }
+            Long totalKb = null;
+            Long availableKb = null;
+            for (String line : Files.readAllLines(path)) {
+                if (line.startsWith("MemTotal:")) {
+                    totalKb = parseKb(line);
+                } else if (line.startsWith("MemAvailable:")) {
+                    availableKb = parseKb(line);
+                }
+                if (totalKb != null && availableKb != null) {
+                    break;
+                }
+            }
+            return (totalKb != null && availableKb != null)
+                    ? new HostMemory(totalKb * KB_TO_BYTES, availableKb * KB_TO_BYTES)
+                    : null;
+        } catch (IOException e) {
+            return null; // 读取失败时回退 MXBean 口径
+        }
+    }
+
+    /** 解析 "MemTotal:    16384000 kB" 形式的行，返回 kB 数值；格式非法返回 null */
+    private static Long parseKb(String line) {
+        String[] tokens = line.split("\\s+");
+        if (tokens.length <= 1) {
+            return null;
+        }
+        try {
+            return Long.parseLong(tokens[1]);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** 宿主机内存视图：总量与可用量（字节） */
+    record HostMemory(long totalBytes, long availableBytes) { }
 }

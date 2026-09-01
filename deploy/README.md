@@ -378,7 +378,27 @@ docker compose --env-file deploy/.env \
 
 不要执行根目录 `docker compose up -d --build` 代替生产 CD；该命令属于本地一键部署，不使用 Registry，也不包含生产 HTTPS/Jenkins 配置。
 
-## 11. 上线验收
+## 11. ARMS 应用监控（可选）
+
+后端支持接入阿里云 ARMS Java 应用监控（APM），采用「运行时挂载探针 + JVM 参数注入」方式，CI/CD 与镜像构建零改动：
+
+1. ARMS 控制台「Java 应用监控 → 开始接入 → **手动安装**」（不是容器服务环境，后者仅适用于 ACK 集群），下载 `AliyunJavaAgent.zip`；
+2. 解压上传到宿主机 `/opt/myblog/deploy/AliyunJavaAgent/`（含 `aliyun-java-agent.jar` 与 `version`，约 60MB，已 gitignore 不入库），可用 `ARMS_AGENT_DIR` 覆盖该路径；compose 将其挂载到 backend 容器 `/opt/arms`；
+3. 在宿主机 `/opt/myblog/deploy/.env` 中配置（licenseKey 取自控制台向导）：
+   ```
+   ARMS_AGENT_OPTS=-javaagent:/opt/arms/aliyun-java-agent.jar -Darms.licenseKey=<licenseKey> -Darms.appName=myblog-backend
+   ```
+4. 走正常 CD 流程部署（`up -d --no-build` 检测到 backend 环境变量与挂载变化会自动重建容器），无需为此单独发布镜像。
+
+要点：
+
+- Agent 版本 ≥ 4.0.0 时只能用 JVM 参数方式（`-Darms.licenseKey` / `-Darms.appName`），改 `arms-agent.config` 无效；
+- 参数经 `JDK_JAVA_OPTIONS` 注入，与镜像内 `JAVA_TOOL_OPTIONS` 的堆参数叠加；`ARMS_AGENT_OPTS` 留空即完全不启用，探针目录缺失也不影响启动（但二者缺一而另一已配置时 JVM 会因找不到 jar 启动失败，属预期 fail-fast）；
+- 挂载路径必须是宿主机绝对路径：CD 在 Jenkins 容器内执行 compose，相对路径会按 Jenkins workspace 解析，导致宿主机挂载到空目录；
+- 容器以非 root 用户运行，宿主机目录需放开读权限（`chmod -R a+rX`）；探针会在挂载目录写日志，建议 `mkdir -p logs && chmod 777 logs` 预建可写日志目录；
+- 服务器需能出站访问 ARMS 接入点（同地域 ECS 自动走内网接入点）；本地 `docker-compose.yml` 同样支持（挂载 `./deploy/AliyunJavaAgent`，本地 compose 直接在宿主机执行，相对路径无此问题）。
+
+## 12. 上线验收
 
 - 功能分支 push、PR 创建和 PR 更新不会触发 Jenkins；
 - PR 合并到 `master` 后自动触发一次 CI，三个仓库出现相同 release tag；

@@ -8,10 +8,15 @@ import com.myblog.common.security.CurrentUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.env.Environment;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -136,5 +141,61 @@ class SystemServiceTest {
         long memoryAvailable = (Long) info.get("memoryAvailable");
         assertThat(memoryUsed).isGreaterThanOrEqualTo(0L);
         assertThat(memoryAvailable).isGreaterThanOrEqualTo(0L);
+    }
+
+    @Test
+    void hostMemoryParsesMeminfoWithHostCaliber(@TempDir Path dir) throws IOException {
+        Path meminfo = dir.resolve("meminfo");
+        Files.write(meminfo, List.of(
+                "MemTotal:       16384000 kB",
+                "MemFree:         2048000 kB",
+                "MemAvailable:   12288000 kB"));
+
+        SystemService.HostMemory memory = service.hostMemory(meminfo);
+
+        assertThat(memory.totalBytes()).isEqualTo(16384000L * 1024);
+        assertThat(memory.availableBytes()).isEqualTo(12288000L * 1024);
+    }
+
+    @Test
+    void hostMemoryFallsBackToMxBeanWhenMeminfoMissing(@TempDir Path dir) {
+        SystemService.HostMemory memory = service.hostMemory(dir.resolve("nonexistent"));
+
+        assertThat(memory.totalBytes()).isGreaterThan(0L);
+        assertThat(memory.availableBytes()).isGreaterThanOrEqualTo(0L);
+    }
+
+    @Test
+    void hostMemoryFallsBackWhenMemAvailableAbsent(@TempDir Path dir) throws IOException {
+        Path meminfo = dir.resolve("meminfo");
+        Files.write(meminfo, List.of("MemTotal:       16384000 kB"));
+
+        SystemService.HostMemory memory = service.hostMemory(meminfo);
+
+        assertThat(memory.totalBytes()).isGreaterThan(0L);
+    }
+
+    @Test
+    void hostMemoryFallsBackWhenMeminfoValueMalformed(@TempDir Path dir) throws IOException {
+        Path meminfo = dir.resolve("meminfo");
+        Files.write(meminfo, List.of(
+                "MemTotal:       not-a-number kB",
+                "MemAvailable:   12288000 kB"));
+
+        SystemService.HostMemory memory = service.hostMemory(meminfo);
+
+        assertThat(memory.totalBytes()).isGreaterThan(0L);
+    }
+
+    @Test
+    void hostMemoryFallsBackWhenMeminfoLineHasNoValue(@TempDir Path dir) throws IOException {
+        Path meminfo = dir.resolve("meminfo");
+        Files.write(meminfo, List.of(
+                "MemTotal:",
+                "MemAvailable:   12288000 kB"));
+
+        SystemService.HostMemory memory = service.hostMemory(meminfo);
+
+        assertThat(memory.totalBytes()).isGreaterThan(0L);
     }
 }
