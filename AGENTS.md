@@ -145,6 +145,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 - **Jenkinsfile.registry-cleanup**：每天 03:30 通过 Registry V2 HTTP API 删除非保留 manifest，再执行 garbage collection
 - Jenkins 容器使用 `deploy/jenkins/Dockerfile` 安装 Docker CLI、Buildx、Compose、`curl`、`jq` 与 `flock`
 - `Jenkinsfile.ci` 顶层为 `agent none`，禁止在顶层 `environment` 调用 `sh`；`DOCKER_GID` 必须在已分配节点的阶段内校验并传给 Maven 容器
+- Maven 依赖缓存挂载点必须是 `/home/ubuntu/.m2`：Jenkins `inside()` 强制容器以 `-u 1000:1000` 运行（maven 镜像内为 `ubuntu` 用户，home=`/home/ubuntu`），挂 `/root/.m2` 永远不会被读到，表现为每次 CI 全量下载依赖
 - Jenkins 使用 `deploy/.env` 的 `JENKINS_ROUTE` 作为控制器 `--prefix`，并通过外部网络 `myblog-jenkins-proxy` 由生产 Nginx 提供 HTTPS 与 GitHub Webhook 入口
 - 回滚：从 Registry 最近保留版本中选择 tag，重新触发 CD
 - ARMS 应用监控（可选）：探针放 `deploy/AliyunJavaAgent/`（gitignore 不入库），compose 挂载到 backend `/opt/arms`，在 `.env` 配 `ARMS_AGENT_OPTS` JVM 参数（经 `JDK_JAVA_OPTIONS` 注入）即启用，留空不启用；详见 deploy/README.md 第 11 节
