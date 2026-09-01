@@ -150,7 +150,8 @@ onBeforeUnmount(() => {
 #contact {
   position: relative;
   overflow: hidden;
-  padding: clamp(1.5rem, 3vw, 2.5rem) 0;
+  /* 上下视觉间距均为 30px：底部少 2.4px 是为抵消末行文字行盒内的墨迹下余量（约 2.4px） */
+  padding: 1.875rem 0 1.725rem;
   text-align: center;
   background: linear-gradient(180deg, #1B4965 0%, #0D1B2A 100%);
 }

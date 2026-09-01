@@ -73,8 +73,14 @@ services:
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
       INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD}
       LOG_PATH: /logs
+      # ARMS 应用监控 JVM 参数（可选，默认空即不启用；JDK_JAVA_OPTIONS 由 JVM 自动读取，
+      # 与 Dockerfile 中 JAVA_TOOL_OPTIONS 的堆参数叠加生效）
+      JDK_JAVA_OPTIONS: ${ARMS_AGENT_OPTS:-}
     volumes:
       - ${APP_LOG_DIR:-/data/myblog/logs}:/logs
+      # ARMS 探针目录（60MB 二进制不入库，需自行上传到宿主机；必须用宿主机绝对路径，
+      # CD 在 Jenkins 容器内执行，相对路径会按 Jenkins workspace 解析导致挂载错误）
+      - ${ARMS_AGENT_DIR:-/opt/myblog/deploy/AliyunJavaAgent}:/opt/arms
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

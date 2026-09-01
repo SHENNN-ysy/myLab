@@ -65,3 +65,6 @@ logs/
 # SSL 证书与私钥（不入库，部署时放置）
 nginx/certs/
 deploy/nginx/certs/
+
+# 阿里云 ARMS 探针（60MB 二进制，不入库，部署时放置）
+deploy/AliyunJavaAgent/
