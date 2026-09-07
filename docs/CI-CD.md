@@ -11,6 +11,15 @@
 
 本地环境不运行 Jenkins 和 Registry。生产应用 Compose 不包含 `build`，CD 只能使用 CI 发布的不可变镜像。
 
+### 1.1 服务器内存预算（2C/3.4G 单机）
+
+CI 与生产同机部署，内存峰值叠加曾把机器打满导致流水线假死（2026-09-07）。现有约束：
+
+- 宿主机配置 2GB swapfile（`/etc/fstab` 持久化，`vm.swappiness=10`），兜底构建期内存尖峰
+- Jenkins JVM 限堆 `JAVA_OPTS=-Xmx768m -XX:MaxMetaspaceSize=256m`（`deploy/jenkins/docker-compose.yml`）
+- CI 中 Maven 主 JVM 限堆 `MAVEN_OPTS=-Xmx512m`（`Jenkinsfile.ci`），surefire/failsafe 的 fork JVM 限堆 `-Xmx512m`（`backend-java/pom.xml` 的 `argLine`，`@{argLine}` 占位保留 JaCoCo agent）
+- 排查历史问题时注意：无 swap 时内存耗尽不会触发 OOM killer 日志，表现为全系统爬行、流水线卡死无报错
+
 ## 2. 流水线
 
 ```text

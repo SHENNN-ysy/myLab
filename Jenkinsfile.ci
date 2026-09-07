@@ -73,7 +73,8 @@ pipeline {
                         dir('backend-java') {
                             // verify 包含 Checkstyle、单测、*IT 集成测试、SpotBugs 与 JaCoCo。
                             // 使用项目内的 maven-settings.xml（aliyun 镜像），本地仓库走宿主机缓存挂载。
-                            sh 'mvn -B verify -s docker/maven-settings.xml'
+                            // MAVEN_OPTS 限制 Maven 主 JVM 堆上限（CI 服务器内存有限）。
+                            sh 'MAVEN_OPTS="-Xmx512m" mvn -B verify -s docker/maven-settings.xml'
                         }
                     }
                 }

@@ -13,6 +13,8 @@ services:
       JENKINS_OPTS: --prefix=${JENKINS_ROUTE:-/jenkins}
       DOCKER_GID: ${DOCKER_GID}
       TZ: ${TZ:-Asia/Shanghai}
+      # 限制 Jenkins JVM 堆/元空间上限，给 CI 构建（Maven 双 JVM + Testcontainers）让出内存
+      JAVA_OPTS: -Xmx768m -XX:MaxMetaspaceSize=256m
     group_add:
       - ${DOCKER_GID:?DOCKER_GID must match /var/run/docker.sock}
     volumes:
