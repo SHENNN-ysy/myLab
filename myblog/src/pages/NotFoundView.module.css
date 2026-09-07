@@ -1,0 +1,30 @@
+/* NotFoundView 样式：原 NotFoundView.vue scoped 样式平移，类名不变 */
+.not-found {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  background: #f8fafc;
+  color: #183142;
+  text-align: center;
+}
+
+.not-found__code {
+  margin: 0;
+  font-size: clamp(4rem, 18vw, 9rem);
+  font-weight: 800;
+  line-height: 0.9;
+}
+
+/* 原 scoped 元素选择器，保持全局语义 */
+:global(h1) {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+:global(a) {
+  color: inherit;
+  text-underline-offset: 0.25em;
+}

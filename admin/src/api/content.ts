@@ -40,13 +40,12 @@ export interface VersionMetadata {
 }
 
 export const getContentModuleApi = async <T>(key: ContentModuleKey): Promise<ContentModule<T>> => {
-  const res = await request.get(`/admin/content/${key}`)
-  return res.data
+  return request.get<ContentModule<T>>(`/admin/content/${key}`)
 }
 
 export const getContentModulesApi = async (): Promise<ContentModule[]> => {
-  const res = await request.get('/admin/content')
-  return res.data || []
+  const data = await request.get<ContentModule[]>('/admin/content')
+  return data || []
 }
 
 export const saveContentDraftApi = async <T>(
@@ -55,39 +54,35 @@ export const saveContentDraftApi = async <T>(
   data: T,
   metadata: VersionMetadata,
 ): Promise<ContentModule<T>> => {
-  const res = await request.put(`/admin/content/${key}`, {
+  return request.put<ContentModule<T>>(`/admin/content/${key}`, {
     expected_updated_at: module.updated_at || null,
     version_name: metadata.versionName,
     version_description: metadata.versionDescription,
     data
   })
-  return res.data
 }
 
 export const publishContentApi = async <T>(key: ContentModuleKey): Promise<ContentModule<T>> => {
-  const res = await request.post(`/admin/content/${key}/publish`)
-  return res.data
+  return request.post<ContentModule<T>>(`/admin/content/${key}/publish`)
 }
 
 export const offlineContentApi = async <T>(key: ContentModuleKey): Promise<ContentModule<T>> => {
-  const res = await request.post(`/admin/content/${key}/offline`)
-  return res.data
+  return request.post<ContentModule<T>>(`/admin/content/${key}/offline`)
 }
 
 export const getContentVersionsApi = async <T>(key: ContentModuleKey): Promise<ContentVersion<T>[]> => {
-  const res = await request.get(`/admin/content/${key}/versions`)
-  return res.data || []
+  const data = await request.get<ContentVersion<T>[]>(`/admin/content/${key}/versions`)
+  return data || []
 }
 
 export const restoreContentVersionApi = async <T>(key: ContentModuleKey, version: number): Promise<ContentModule<T>> => {
-  const res = await request.post(`/admin/content/${key}/versions/${version}/restore`)
-  return res.data
+  return request.post<ContentModule<T>>(`/admin/content/${key}/versions/${version}/restore`)
 }
 
 export const deleteContentDraftApi = async (key: ContentModuleKey): Promise<void> => {
-  await request.delete(`/admin/content/${key}/draft`)
+  await request.delete<void>(`/admin/content/${key}/draft`)
 }
 
 export const deleteContentVersionApi = async (key: ContentModuleKey, version: number): Promise<void> => {
-  await request.delete(`/admin/content/${key}/versions/${version}`)
+  await request.delete<void>(`/admin/content/${key}/versions/${version}`)
 }

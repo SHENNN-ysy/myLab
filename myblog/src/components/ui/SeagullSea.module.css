@@ -1,0 +1,13 @@
+.seagull-sea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* top 仅为初始值：挂载后由 alignHorizon() 动态设置，
+     使海平面（画布底上 26px）落在描述文字与图片面板间距的中间 */
+  top: -14px;
+  width: 100%;
+  height: 300px;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}

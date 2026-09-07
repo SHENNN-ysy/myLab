@@ -4,17 +4,17 @@
 # 本服务不直接暴露主机端口；也可单独构建用于本地调试。
 # ============================================================
 
-# ---------- 阶段 1：构建 Vue/TS 应用 ----------
+# ---------- 阶段 1：构建 React/TS 应用 ----------
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 利用缓存：先只复制 lock 文件，依赖不变时跳过安装
+# 利用缓存：先只复制 lock 文件，依赖不变时跳过安装（npm ci 严格按 lock 安装，与 CI 一致）
 COPY package.json package-lock.json* ./
 RUN npm config set registry https://registry.npmmirror.com \
-    && npm install --no-audit --no-fund
+    && npm ci --no-audit --no-fund
 
-# 复制源码并构建（build 内含 vue-tsc 类型检查）
+# 复制源码并构建（build 内含 tsc 类型检查）
 COPY . .
 RUN npm run build
 

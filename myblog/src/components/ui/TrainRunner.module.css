@@ -1,0 +1,15 @@
+/* MyLab 区块像素列车背景条带：轨道线对齐“描述文字与场景面板”间距的中间 */
+.train-runner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* top 仅为初始值：挂载后由 alignTrack() 动态设置，
+     使轨道线（画布底上 26px）落在描述文字与场景面板间距的中间 */
+  top: 0;
+  width: 100%;
+  height: 300px;
+  opacity: 0.6;
+  pointer-events: none;
+  /* 背景 ::before（z-index: -2）之上、内容容器（z-index: 1）之下 */
+  z-index: 0;
+}

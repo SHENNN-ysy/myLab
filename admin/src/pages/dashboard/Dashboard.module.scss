@@ -1,0 +1,17 @@
+.health-alert { margin-bottom: 20px; }
+.metric-cards { margin-bottom: 20px; row-gap: 20px; }
+.metric-card { height: 100%; border: 0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
+.metric-card small { display: block; margin-top: 12px; color: #8c8c8c; }
+.trend-card { margin-bottom: 20px; }
+.trend-chart { width: 100%; height: 360px; }
+.trend-note { margin: 8px 0 0; color: #8c8c8c; font-size: 12px; text-align: right; }
+.module-cards { row-gap: 20px; }
+.module-card { height: 100%; }
+.module-head { display: flex; align-items: center; justify-content: space-between; }
+.module-card p { margin: 12px 0 0; color: #595959; }
+.module-card small { display: block; margin-top: 14px; color: #8c8c8c; }
+
+@media (max-width: 576px) {
+  .trend-chart { height: 300px; }
+  .trend-note { text-align: left; }
+}

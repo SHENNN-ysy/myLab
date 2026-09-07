@@ -1,0 +1,12 @@
+.page-head,
+.draft-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.page-head h2 { margin: 0; font-size: 18px; }
+.page-head p { margin: 4px 0 0; color: #8c8c8c; font-size: 13px; font-weight: 400; }
+.panel-tip { margin-bottom: 18px; }
+.draft-toolbar { align-items: flex-start; margin-bottom: 18px; }
+/* antd 组件内部元素无 scoped 类名，需 :global 保持原 scoped 语义 */
+.draft-toolbar :global(.ant-alert) { flex: 1; }
+@media (max-width: 900px) {
+  .page-head,
+  .draft-toolbar { align-items: stretch; flex-direction: column; }
+}

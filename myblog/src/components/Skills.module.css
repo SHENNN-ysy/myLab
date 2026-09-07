@@ -1,0 +1,339 @@
+/* Skills 区块样式（等价 Skills.vue 的 <style scoped>）
+ * 说明：#skills 是锚点 id，用 :global 保持原 scoped 中 id 选择器的全局语义；
+ * 元素选择器（img/span/svg）与 keyframes 按 CSS Modules 语义局部作用。 */
+
+:global(#skills) {
+  position: relative;
+  background: transparent;
+  padding: 80px 0 80px;
+}
+
+:global(#skills)::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* 压到背景球（z-index: -1）之下：球体浮在深色背景上、技能卡片下 */
+  z-index: -2;
+  background: linear-gradient(180deg, #1B4965 0%, #0D1B2A 100%);
+  pointer-events: none;
+}
+
+:global(#skills) > * {
+  position: relative;
+  z-index: 1;
+}
+
+:global(#skills) .section-title {
+  color: var(--bg);
+}
+
+:global(#skills) .section-desc {
+  color: rgba(244, 240, 235, 0.6);
+}
+
+:global(#skills) .section-num {
+  color: rgba(244, 240, 235, 0.3);
+}
+
+.container {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 3rem;
+}
+
+.section-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+
+.section-num {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-muted);
+  padding-top: 0.5rem;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 1rem;
+}
+
+.section-title em {
+  font-style: italic;
+  color: #FF6B6B;
+}
+
+.section-desc {
+  font-size: 0.95rem;
+  color: var(--ink-light);
+  max-width: 760px;
+  font-weight: 300;
+  line-height: 1.8;
+  white-space: nowrap;
+}
+
+.skills-layout {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.skill-item {
+  position: relative;
+  background: rgba(13, 27, 42, 0.6);
+  border: 1px solid rgba(91, 164, 230, 0.2);
+  border-radius: 12px;
+  padding: 1.6rem 1.4rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.3s,
+              border-color 0.3s,
+              background 0.3s;
+  cursor: default;
+}
+
+.skill-name {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+}
+
+.skill-new-badge {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.22rem 0.48rem;
+  border: 1px solid rgba(46, 196, 182, 0.5);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(46, 196, 182, 0.15), rgba(255, 255, 255, 0.1));
+  color: #2EC4B6;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(46, 196, 182, 0.15);
+}
+
+.skill-new-badge::after {
+  content: '';
+  position: absolute;
+  inset: -30% auto -30% -45%;
+  width: 42%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+  animation: badgeShine 2.4s ease-in-out infinite;
+}
+
+.badge-star {
+  position: relative;
+  z-index: 1;
+  font-size: 0.7rem;
+  animation: starTwinkle 1.15s ease-in-out infinite;
+}
+
+.skill-new-badge span:last-child {
+  position: relative;
+  z-index: 1;
+}
+
+.skill-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(91, 164, 230, 0.15);
+  border-color: var(--accent);
+  background: rgba(91, 164, 230, 0.12);
+}
+
+.has-gradient-bar .skill-track {
+  height: 7px;
+  background: rgba(91, 164, 230, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.4rem;
+  position: relative;
+}
+
+.has-gradient-bar .skill-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0;
+  transition: width 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.has-coral-bar .skill-fill {
+  background: linear-gradient(90deg, #5BA4E6, #f0a090) !important;
+}
+
+.has-teal-bar .skill-fill {
+  background: linear-gradient(90deg, #5BA4E6, #2EC4B6) !important;
+}
+
+.has-gray-white-bar .skill-fill {
+  background: linear-gradient(90deg, rgba(216, 222, 230, 0.55), #f4f0eb) !important;
+}
+
+.skill-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* 原 :deep(svg)：v-html 注入的 svg 不带模块类名，用 :global 保持穿透 */
+.skill-icon :global(svg) {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.skill-icon img,
+.skill-icon span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.skill-name {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+}
+
+.skill-track {
+  height: 5px;
+  background: rgba(91, 164, 230, 0.15);
+  border-radius: 100px;
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+
+.skill-fill {
+  height: 100%;
+  border-radius: 100px;
+  width: 0;
+  transition: width 1.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.skill-item .skill-fill.proficient {
+  background: linear-gradient(90deg, var(--accent), #2EC4B6);
+}
+
+.skill-item .skill-fill.competent {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.skill-fill.novice {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.skill-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.skill-pct {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.skill-level {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #f0a090;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid rgba(240, 160, 144, 0.5);
+}
+
+.has-teal-bar .skill-level {
+  color: #2EC4B6;
+  border-color: rgba(46, 196, 182, 0.5);
+}
+
+.has-gray-white-bar .skill-level {
+  color: #d8dee6;
+  border-color: rgba(216, 222, 230, 0.5);
+}
+
+@keyframes badgeShine {
+  0% { left: -45%; opacity: 0; }
+  20% { opacity: 1; }
+  48% { left: 115%; opacity: 0.95; }
+  100% { left: 115%; opacity: 0; }
+}
+
+@keyframes starTwinkle {
+  0%, 100% {
+    opacity: 0.65;
+    transform: scale(0.86) rotate(0deg);
+    filter: drop-shadow(0 0 0 rgba(46, 196, 182, 0));
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.18) rotate(18deg);
+    filter: drop-shadow(0 0 6px rgba(46, 196, 182, 0.6));
+  }
+}
+
+@media (max-width: 1100px) {
+  .skills-layout {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .section-desc {
+    max-width: 560px;
+    white-space: normal;
+  }
+
+  .skills-layout {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .skills-layout {
+    grid-template-columns: 1fr;
+  }
+}

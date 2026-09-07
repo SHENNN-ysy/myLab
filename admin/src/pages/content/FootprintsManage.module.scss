@@ -1,0 +1,13 @@
+/* 足迹管理页样式（原样迁移自旧 Vue 组件 scoped 样式，类名不变） */
+.content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.content-grid p { color: #595959; }
+.multiline { color: #595959; line-height: 1.7; white-space: pre-wrap; }
+.photo-wall { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 16px; }
+.photo-wall img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 6px; }
+.photo-empty { margin-top: 14px; padding: 10px 0; background: #fafafa; border-radius: 6px; }
+.photo-editor-list { display: flex; flex-direction: column; gap: 10px; }
+.photo-editor-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; border: 1px solid #f0f0f0; border-radius: 8px; }
+@media (max-width: 900px) {
+  .content-grid { grid-template-columns: 1fr; }
+  .photo-editor-item { grid-template-columns: 1fr; }
+}

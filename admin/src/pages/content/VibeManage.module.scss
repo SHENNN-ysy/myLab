@@ -1,0 +1,4 @@
+.vibe-manage {
+  /* antd 组件内部元素无 scoped 类名，需 :global 保持原 scoped 语义 */
+  :global(.ant-input-number) { width: 100%; }
+}

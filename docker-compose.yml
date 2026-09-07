@@ -79,7 +79,8 @@ services:
       OSS_CDN_DOMAIN: ${OSS_CDN_DOMAIN}
       OSS_MAX_FILE_SIZE_MB: ${OSS_MAX_FILE_SIZE_MB:-10}
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
-      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD}
+      # 未配置时兜底 admin123（空值也按未配置处理），仅用于首次建号/种子接管
+      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD:-admin123}
       LOG_PATH: /logs
       # ARMS 应用监控 JVM 参数（可选，默认空即不启用；JDK_JAVA_OPTIONS 由 JVM 自动读取，
       # 与 Dockerfile 中 JAVA_TOOL_OPTIONS 的堆参数叠加生效）

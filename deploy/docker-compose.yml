@@ -74,7 +74,8 @@ services:
       OSS_CDN_DOMAIN: ${OSS_CDN_DOMAIN}
       OSS_MAX_FILE_SIZE_MB: ${OSS_MAX_FILE_SIZE_MB:-10}
       INIT_ADMIN_USERNAME: ${INIT_ADMIN_USERNAME:-admin}
-      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD}
+      # 生产必须显式配置强口令，缺失时直接报错（避免空密码静默接管种子管理员）
+      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD:?INIT_ADMIN_PASSWORD must be set in deploy/.env}
       LOG_PATH: /logs
       # ARMS 应用监控 JVM 参数（可选，默认空即不启用；JDK_JAVA_OPTIONS 由 JVM 自动读取，
       # 与 Dockerfile 中 JAVA_TOOL_OPTIONS 的堆参数叠加生效）

@@ -68,7 +68,7 @@ app:
   oss-cdn-domain: ${OSS_CDN_DOMAIN:}
   oss-max-file-size-mb: ${OSS_MAX_FILE_SIZE_MB:10}
   initial-admin-username: ${INIT_ADMIN_USERNAME:admin}
-  initial-admin-password: ${INIT_ADMIN_PASSWORD}
+  initial-admin-password: ${INIT_ADMIN_PASSWORD:admin123} # 未配置时兜底 admin123，仅用于首次建号/种子接管，生产务必显式配置强口令
   engagement-hash-secret: ${ENGAGEMENT_HASH_SECRET:${JWT_SECRET}}
   # 生产默认强制 Secure（仅 HTTPS 发送）；本地纯 HTTP 调试由 application-dev.yml 覆盖为 false
   visitor-cookie-secure: true

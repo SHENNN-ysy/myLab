@@ -1,0 +1,57 @@
+.page-head, .draft-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.page-head h2 { margin: 0; font-size: 18px; }
+.page-head p { margin: 4px 0 0; color: #8c8c8c; font-size: 13px; font-weight: 400; }
+.panel-tip { margin-bottom: 16px; }
+.draft-toolbar { align-items: flex-start; margin-bottom: 18px; }
+/* antd 组件内部元素无 scoped 类名，需 :global 保持原 scoped 语义 */
+.draft-toolbar :global(.ant-alert) { flex: 1; }
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.tag-table { margin-bottom: 24px; }
+.card-editor { display: grid; gap: 16px; }
+.editor-section { padding: 18px; background: #fafafa; border: 1px solid #f0f0f0; border-radius: 10px; }
+.project-section { background: #f6faff; border-color: #d6e4ff; }
+.editor-section-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+.editor-section-head h4 { margin: 0; color: #262626; font-size: 15px; line-height: 22px; }
+.editor-section-head p { margin: 2px 0 0; color: #8c8c8c; font-size: 12px; line-height: 18px; }
+.editor-section-index { display: grid; flex: 0 0 24px; place-items: center; height: 24px; color: #1677ff; font-size: 12px; font-weight: 600; background: #e6f4ff; border-radius: 50%; }
+.editor-field { margin-bottom: 0; }
+.editor-field :global(.ant-form-item-row) { display: block; }
+.editor-field :global(.ant-form-item-label) { display: block; padding: 0 0 6px; text-align: left; }
+.editor-field :global(.ant-form-item-label > label) { height: auto; color: #434343; font-size: 13px; font-weight: 600; }
+.editor-field :global(.ant-form-item-control) { display: block; max-width: none; }
+.editor-field :global(.ant-select), .editor-field :global(.ant-input-number) { width: 100%; }
+/* OssImageResourcePicker 的类名经 CSS Modules 哈希无法直接命中，改从 antd 表单控件容器定位其根节点与内部选中框（原 :deep(.oss-picker/.oss-document-picker/.selected-resource)） */
+.resource-field :global(.ant-form-item-control-input-content) > div,
+.resource-field :global(.ant-form-item-control-input-content) > div > div { width: 100%; min-width: 0; }
+.markdown-editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); overflow: hidden; border: 1px solid #d9d9d9; border-radius: 8px; }
+.markdown-pane { min-width: 0; background: #fff; }
+.markdown-pane + .markdown-pane { border-left: 1px solid #e8e8e8; }
+.markdown-pane header { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 40px; padding: 0 12px; color: #595959; background: #fafafa; border-bottom: 1px solid #e8e8e8; }
+.markdown-pane header span { color: #8c8c8c; font-size: 12px; }
+.markdown-pane :global(textarea.ant-input) { min-height: 420px; resize: vertical; border: 0; border-radius: 0; box-shadow: none; }
+.markdown-preview { min-height: 420px; max-height: 640px; padding: 16px 20px; overflow: auto; color: #262626; line-height: 1.75; }
+.markdown-preview :global(h1), .markdown-preview :global(h2), .markdown-preview :global(h3), .markdown-preview :global(h4) { margin: 1.2em 0 0.55em; color: #1f1f1f; line-height: 1.35; }
+.markdown-preview :global(p) { margin: 0 0 0.9em; }
+.markdown-preview :global(ul) { padding-left: 22px; }
+.markdown-preview :global(blockquote) { margin: 12px 0; padding: 8px 14px; color: #595959; background: #fafafa; border-left: 4px solid #91caff; }
+.markdown-preview :global(pre) { padding: 14px; overflow: auto; color: #f5f5f5; background: #1f1f1f; border-radius: 6px; }
+.markdown-preview :global(code) { font-family: Consolas, Monaco, monospace; }
+.markdown-preview :global(img) { max-width: 100%; height: auto; border-radius: 6px; }
+.preview-pane :global(.ant-empty) { display: grid; min-height: 420px; place-content: center; }
+.editor-status { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 18px; background: #fff; border: 1px solid #f0f0f0; border-radius: 10px; }
+.editor-status > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.editor-status strong { color: #262626; font-size: 14px; }
+.editor-status span { color: #8c8c8c; font-size: 12px; }
+.card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.lab-card { overflow: hidden; background: #fff; border: 1px solid #f0f0f0; border-radius: 10px; }
+.lab-card > img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #f5f5f5; }
+.lab-card-body { padding: 14px; }
+.lab-card-body h3 { margin: 9px 0; font-size: 16px; }
+.lab-card-body p { min-height: 64px; color: #595959; line-height: 1.6; }
+.card-meta { display: flex; align-items: center; justify-content: space-between; color: #8c8c8c; font-size: 12px; }
+.row-actions button { padding: 2px 5px; color: #1677ff; cursor: pointer; background: transparent; border: 0; }
+.row-actions button:disabled { color: #bfbfbf; cursor: not-allowed; }
+.row-actions .danger { color: #ff4d4f; }
+@media (max-width: 1050px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .markdown-editor { grid-template-columns: 1fr; } .markdown-pane + .markdown-pane { border-top: 1px solid #e8e8e8; border-left: 0; } }
+@media (max-width: 720px) { .page-head, .draft-toolbar { align-items: stretch; flex-direction: column; } .card-grid { grid-template-columns: 1fr; } .editor-section { padding: 14px; } .editor-status { align-items: flex-start; } }

@@ -1,5 +1,3 @@
-import { message } from 'ant-design-vue'
-
 /** 生成前端临时 ID（保存后以后端 row_id 为准） */
 export const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
@@ -24,9 +22,9 @@ export const enabledCount = (items: Array<{ enabled: boolean }>) => items.filter
 
 export const canEnable = (items: Array<{ enabled: boolean }>, limit: number) => enabledCount(items) < limit
 
-/** 启用数超限时回退开关并提示 */
+/** 启用数超限时回退开关并提示（infra 阶段先 console.warn，页面迁移时接 antd message） */
 export const onEnabledChange = <T extends { enabled: boolean }>(items: T[], item: T, checked: boolean, limit: number, label: string) => {
   if (!checked || enabledCount(items) <= limit) return
   item.enabled = false
-  message.warning(`${label}最多只能启用 ${limit} 条`)
+  console.warn(`${label}最多只能启用 ${limit} 条`)
 }

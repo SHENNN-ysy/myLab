@@ -1,35 +1,7 @@
-export interface Skill {
-  name: string
-  percentage: number
-  level: 'proficient' | 'competent' | 'novice'
-  icon: string
-}
+import type { AITool, Game, Hobby, Skill } from '@/types'
 
-export interface Hobby {
-  id: string
-  name: string
-  tag: string
-  position: { x: number; y: number }
-  isSelf?: boolean
-  tip: {
-    title: string
-    coords: string
-    scene: string
-  }
-}
-
-export interface Game {
-  name: string
-  tag: string
-  image: string
-  subtitle: string
-}
-
-export interface AITool {
-  name: string
-  percentage: number
-  description: string
-}
+// 兼容旧 Vue 代码的类型引用（组件迁移阶段统一切换到 @/types）
+export type { AITool, Game, Hobby, Skill } from '@/types'
 
 export const skills: Skill[] = [
   { name: 'C# / .NET', percentage: 80, level: 'proficient', icon: 'grid' },

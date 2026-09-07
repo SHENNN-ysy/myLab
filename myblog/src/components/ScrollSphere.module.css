@@ -1,0 +1,33 @@
+.scroll-sphere-layer {
+  position: fixed;
+  inset: 0;
+  /* 沉到所有内容之下（body 背景之上），不遮挡任何组件 */
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* MyLab 路由：浮到蓝色页头（z-index: 0）之上，避免月亮被页头面板遮挡；
+   仍低于导航（z-index: 60）与移动端抽屉（z-index: 70） */
+.scroll-sphere-layer.is-over-content {
+  z-index: 1;
+}
+
+.scroll-sphere {
+  position: absolute;
+  /* 锚定右上角（同 qzq.at 的 top-32 right-32），位移全部由 transform 驱动 */
+  top: 8rem;
+  right: 8rem;
+  width: clamp(210px, 25.5vw, 394px);
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  /* 月亮样貌：使用从真实月面照片抠出的圆形 PNG（public/assets/moon.png） */
+  background: url('/assets/moon.png') center / cover no-repeat;
+  box-shadow:
+    0 0 80px rgba(250, 250, 230, 0.35),
+    0 24px 70px rgba(91, 164, 230, 0.14);
+  /* 半透 + 轻模糊：降低存在感，只做氛围 */
+  filter: blur(4px);
+  opacity: 0.25;
+  will-change: transform;
+}
