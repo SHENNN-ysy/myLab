@@ -75,6 +75,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
      */
     @Override
     public Map<String, Object> publicContent() {
+        // 缓存仅保存数据库原始摘要；URL 与启用状态仍在每次响应时动态处理。
         Map<String, Object> rawContent = publicCache.readAll(this::loadPublicContent);
         Map<String, Object> result = new LinkedHashMap<>();
         for (String key : KEYS) {
@@ -83,6 +84,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return result;
     }
 
+    /** 缓存未命中时从 PostgreSQL 汇总原始摘要，MyLab 此处不加载 Markdown 正文。 */
     private Map<String, Object> loadPublicContent() {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String key : KEYS) {
@@ -99,6 +101,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
      */
     @Override
     public Object publicModule(String moduleKey) {
+        // 单模块接口主要供后台按模块加载，按约定直接查询数据库，不读写公开缓存。
         requireKey(moduleKey);
         ContentRelease release = releases.findPublished(moduleKey);
         if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, moduleKey);
@@ -112,6 +115,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     @Override
     @SuppressWarnings("unchecked")
     public Object publicMylabDetail(String postKey) {
+        // Hash 中保存原始详情和 Markdown，公开 URL 在命中缓存后仍重新生成。
         Map<String, Object> detail = publicCache.readMylabDetail(postKey, () -> loadPublicMylabDetail(postKey));
         Map<String, Object> root = (Map<String, Object>) publicData("mylab", detail);
         List<Map<String, Object>> cards = (List<Map<String, Object>>) root.getOrDefault("cards", List.of());
@@ -119,6 +123,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
                 .findFirst().orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, postKey));
     }
 
+    /** MyLab 详情缓存未命中时，仅查询当前已发布版本中的指定文章。 */
     private Map<String, Object> loadPublicMylabDetail(String postKey) {
         ContentRelease release = releases.findPublished("mylab");
         if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, "mylab");
@@ -210,6 +215,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         Object data = releases.readData(draft);
         validate(moduleKey, data, true);
         releases.publish(draft, releases.findCurrent(moduleKey), actor.id(), OffsetDateTime.now());
+        // 仅发布事务事件；真正删除缓存由 AFTER_COMMIT 监听器执行。
         events.publishEvent(new PublishedContentChangedEvent(moduleKey));
         log.info("内容已发布：operator={}, module={}, version={}",
                 actor.username(), moduleKey, draft.getVersionNo());
@@ -228,6 +234,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         ContentRelease current = releases.findPublished(moduleKey);
         if (current == null) throw conflict("当前模块没有已发布版本");
         releases.offline(current, OffsetDateTime.now());
+        // 事务回滚时事件不会触发缓存删除，避免数据库与缓存状态错位。
         events.publishEvent(new PublishedContentChangedEvent(moduleKey));
         log.info("内容已下线：operator={}, module={}, version={}",
                 actor.username(), moduleKey, current.getVersionNo());

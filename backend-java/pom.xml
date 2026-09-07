@@ -158,7 +158,19 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- 限制单测 fork JVM 堆上限（CI 服务器内存有限）；@{argLine} 保留 JaCoCo agent 注入 -->
+                    <argLine>@{argLine} -Xmx512m</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <!-- 集成测试 fork JVM 同样限堆；@{argLine} 保留 JaCoCo agent 注入 -->
+                    <argLine>@{argLine} -Xmx512m</argLine>
+                </configuration>
                 <!-- *IT.java 集成测试（Testcontainers 起真实 PG/Redis）在 integration-test/verify 阶段执行，
                      与 surefire 的单元测试互不干扰 -->
                 <executions>

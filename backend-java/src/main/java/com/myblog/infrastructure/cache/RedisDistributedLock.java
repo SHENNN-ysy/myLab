@@ -25,16 +25,19 @@ public class RedisDistributedLock implements DistributedLock {
         this.redis = redis;
     }
 
+    /** 通过 SET NX 和租约时间原子获取锁，Redis 到期后自动释放。 */
     @Override
     public boolean tryAcquire(String name, String token, Duration lease) {
         return Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(key(name), token, lease));
     }
 
+    /** Lua 在服务端原子比较 token 并删除，防止过期锁被旧持有者误删。 */
     @Override
     public void release(String name, String token) {
         redis.execute(RELEASE_SCRIPT, List.of(key(name)), token);
     }
 
+    /** 将应用层逻辑锁名转换为固定命名空间下的 Redis Key。 */
     private String key(String name) {
         return LOCK_PREFIX + name;
     }

@@ -15,6 +15,7 @@ public class PublicContentCacheInvalidationListener {
         this.cache = cache;
     }
 
+    /** 仅在发布或下线事务成功提交后执行，回滚事务不会污染缓存。 */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPublishedContentChanged(PublishedContentChangedEvent event) {
         cache.invalidate(event.moduleKey());
