@@ -82,7 +82,6 @@ class FileServiceImplTest {
 
     @Test
     void uploadStoresImageUnderSelectedDirectory() {
-        when(props.ossObjectPrefix()).thenReturn("");
         when(props.ossMaxFileSizeMb()).thenReturn(10);
         when(props.ossBucket()).thenReturn("ysy-myblog");
         UploadFile upload = new UploadFile("icon", "logo.png", "image/png", 3,
@@ -93,7 +92,8 @@ class FileServiceImplTest {
         verify(storage).upload(startsWith("icon/"), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.eq(3L), org.mockito.ArgumentMatchers.eq("image/png"));
         assertThat(result.directory()).isEqualTo("icon");
-        assertThat(result.objectKey()).startsWith("icon/");
+        assertThat(result.objectKey())
+                .matches("icon/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.png");
     }
 
     @Test
@@ -149,8 +149,7 @@ class FileServiceImplTest {
     }
 
     @Test
-    void listStripsConfiguredPrefixWhenResolvingDirectory() {
-        when(props.ossObjectPrefix()).thenReturn("blog");
+    void listRecognizesDirectoryInLegacyPrefixedKey() {
         FileRecord image = resource("blog/hero/2026/08/banner.png", "image/png");
         when(storage.publicUrl("blog/hero/2026/08/banner.png")).thenReturn("https://cdn.example.com/banner.png");
         when(files.findPage(1, 20, null)).thenReturn(PageResult.of(List.of(image), 1, 20, 1));
@@ -240,8 +239,7 @@ class FileServiceImplTest {
     }
 
     @Test
-    void uploadUsesConfiguredObjectPrefix() {
-        when(props.ossObjectPrefix()).thenReturn(" /blog/ ");
+    void uploadDoesNotCreatePrefixOrDateSubdirectories() {
         when(props.ossMaxFileSizeMb()).thenReturn(10);
         when(props.ossBucket()).thenReturn("ysy-myblog");
         UploadFile upload = new UploadFile("icon", "logo.png", "image/png", 3,
@@ -249,13 +247,12 @@ class FileServiceImplTest {
 
         FileOutVO result = service.upload(admin, upload);
 
-        assertThat(result.objectKey()).startsWith("blog/icon/");
+        assertThat(result.objectKey()).matches("icon/[^/]+\\.png");
         assertThat(result.directory()).isEqualTo("icon");
     }
 
     @Test
     void uploadDerivesExtensionFromMediaType() {
-        when(props.ossObjectPrefix()).thenReturn("");
         when(props.ossMaxFileSizeMb()).thenReturn(10);
         when(props.ossBucket()).thenReturn("ysy-myblog");
 

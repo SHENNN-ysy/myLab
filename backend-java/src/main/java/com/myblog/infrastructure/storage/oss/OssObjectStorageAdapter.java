@@ -34,7 +34,7 @@ public class OssObjectStorageAdapter implements ObjectStorage {
     }
 
     /**
-     * 上传对象到 OSS，并设置 30 天 immutable 缓存头（objectKey 含内容哈希，内容不变）。
+     * 上传对象到 OSS，并设置 30 天 immutable 缓存头（objectKey 使用唯一 UUID，不会被覆盖）。
      *
      * @throws InternalException 存储未配置或上传失败时抛出
      */

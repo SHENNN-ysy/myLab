@@ -50,6 +50,11 @@ mybatis-plus:
     map-underscore-to-camel-case: true
   global-config.banner: false
 app:
+  content-cache:
+    enabled: ${CONTENT_CACHE_ENABLED:true}
+    ttl: ${CONTENT_CACHE_TTL:6h}
+    lock-ttl: ${CONTENT_CACHE_LOCK_TTL:5s}
+    wait-timeout: ${CONTENT_CACHE_WAIT_TIMEOUT:1s}
   jwt-secret: ${JWT_SECRET}
   access-expire-minutes: ${JWT_ACCESS_EXPIRE_MINUTES:30}
   refresh-expire-days: ${JWT_REFRESH_EXPIRE_DAYS:14}
@@ -61,7 +66,6 @@ app:
   oss-access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
   oss-bucket: ${OSS_BUCKET:}
   oss-cdn-domain: ${OSS_CDN_DOMAIN:}
-  oss-object-prefix: ${OSS_OBJECT_PREFIX:}
   oss-max-file-size-mb: ${OSS_MAX_FILE_SIZE_MB:10}
   initial-admin-username: ${INIT_ADMIN_USERNAME:admin}
   initial-admin-password: ${INIT_ADMIN_PASSWORD}

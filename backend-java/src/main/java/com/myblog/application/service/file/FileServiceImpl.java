@@ -17,8 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -60,7 +60,7 @@ public class FileServiceImpl implements FileService {
     public PageResult<FileOutVO> list(CurrentUser actor, long page, long size, String directory) {
         Authorization.requireAdmin(actor);
         String normalizedDirectory = normalizeOptionalDirectory(directory);
-        // 查询按逻辑目录匹配，不依赖部署环境是否配置额外的 OSS 公共前缀。
+        // 查询按逻辑目录匹配，同时兼容历史数据中可能存在的额外路径前缀。
         String objectKeyPrefix = normalizedDirectory == null ? null : normalizedDirectory + "/";
         PageResult<FileRecord> result = files.findPage(page, size, objectKeyPrefix);
         return PageResult.of(result.records().stream().map(this::toVo).toList(),
@@ -70,7 +70,7 @@ public class FileServiceImpl implements FileService {
     @Override
     @Transactional
     /**
-     * 上传：校验目录、类型、大小后，按「目录/年月/UUID.扩展名」生成对象 key 上传，并落库文件记录。
+     * 上传：校验目录、类型、大小后，按「目录/UUID.扩展名」生成对象 key 上传，并落库文件记录。
      */
     public FileOutVO upload(CurrentUser actor, UploadFile file) {
         Authorization.requireAdmin(actor);
@@ -93,8 +93,7 @@ public class FileServiceImpl implements FileService {
         }
         String name = Objects.requireNonNullElse(file.originalName(), "file");
         String ext = extensionFor(contentType);
-        String datePath = LocalDate.now().toString().replace("-", "/").substring(0, 7);
-        String key = directoryPrefix(directory) + datePath + "/" + UUID.randomUUID().toString().replace("-", "")
+        String key = directory + "/" + UUID.randomUUID()
                 + (ext.isEmpty() ? "" : "." + ext);
         storage.upload(key, file.content(), file.size(), contentType);
 
@@ -179,29 +178,16 @@ public class FileServiceImpl implements FileService {
                 record.getCreatedAt(), url);
     }
 
-    /** 拼接对象 key 前缀：配置的公共前缀（可选）+ 业务目录。 */
-    private String directoryPrefix(String directory) {
-        String configuredPrefix = Objects.requireNonNullElse(props.ossObjectPrefix(), "").trim()
-                .replaceAll("^/+|/+$", "");
-        return configuredPrefix.isEmpty()
-                ? directory + "/"
-                : configuredPrefix + "/" + directory + "/";
-    }
-
-    /** 从对象 key 反推业务目录，剥离配置前缀后取首段；不在白名单内返回 null。 */
+    /** 从对象 key 反推业务目录，并兼容历史数据中额外的路径层级。 */
     private String directoryOf(String objectKey) {
         if (objectKey == null) {
             return null;
         }
         String normalized = objectKey.replace('\\', '/').replaceFirst("^/+", "");
-        String configuredPrefix = Objects.requireNonNullElse(props.ossObjectPrefix(), "").trim()
-                .replaceAll("^/+|/+$", "");
-        if (!configuredPrefix.isEmpty() && normalized.startsWith(configuredPrefix + "/")) {
-            normalized = normalized.substring(configuredPrefix.length() + 1);
-        }
-        int separator = normalized.indexOf('/');
-        String candidate = separator < 0 ? normalized : normalized.substring(0, separator);
-        return ALLOWED_DIRECTORIES.contains(candidate) ? candidate : null;
+        return Arrays.stream(normalized.split("/"))
+                .filter(ALLOWED_DIRECTORIES::contains)
+                .findFirst()
+                .orElse(null);
     }
 
     /** 归一化并校验目录入参，为空或不在白名单时抛校验异常。 */

@@ -97,6 +97,8 @@ starter ────────> application / common / infrastructure
 - 历史列表包含当前线上、当前草稿和其他未删除版本；仪表盘历史数量不得包含软删除版本
 - MyLab Markdown 正文保存在 `mylab_cards.markdown_content` 并参与版本复制；公开列表不返回正文，单篇详情接口按 `post_key` 返回正文
 - `mylab_resources` 只保存卡片封面图片引用；Markdown 文件可在后台本地读取到编辑区，但不上传 OSS
+- 新上传 OSS 图片的 object key 固定为 `业务目录/UUID.扩展名`；不配置统一前缀和日期目录，历史 key 继续兼容读取
+- 前台 `/public/content` 与 MyLab 单篇详情使用 Redis Cache-Aside；公开单模块和后台管理接口直查 PG；发布/下线提交后失效缓存
 
 ### 认证与安全
 - JWT 双令牌（access + refresh），退出登录把 jti 写入 Redis 黑名单吊销
@@ -186,6 +188,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 | 错误码文档 | [docs/错误码文档.md](docs/错误码文档.md) | ErrorCode 枚举与语义 |
 | 数据库设计 | [docs/数据库表结构重设计.md](docs/数据库表结构重设计.md) | 版本化内容系统表设计 |
 | 测试工作流 | [docs/测试工作流.md](docs/测试工作流.md) | 测试约定与流程 |
+| Redis 公开内容缓存 | [docs/Redis公开内容缓存开发说明.md](docs/Redis公开内容缓存开发说明.md) | 前台公开内容缓存、分布式锁与失效机制 |
 | 部署说明 | [deploy/README.md](deploy/README.md) | Nginx/SSL/域名配置细节 |
 | 本地环境变量模板 | [.env.example](.env.example) | 本地一键部署配置 |
 | 生产环境变量模板 | [deploy/.env.example](deploy/.env.example) | 生产 CI/CD 配置 |

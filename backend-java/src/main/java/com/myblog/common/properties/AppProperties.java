@@ -18,7 +18,6 @@ public record AppProperties(
         String ossAccessKeySecret,
         String ossBucket,
         String ossCdnDomain, // OSS 文件对外访问的 CDN 域名
-        String ossObjectPrefix, // OSS 对象键的统一前缀
         int ossMaxFileSizeMb, // 上传文件大小上限（MB）
         String initialAdminUsername, // 首次启动时创建的初始管理员账号
         String initialAdminPassword) {

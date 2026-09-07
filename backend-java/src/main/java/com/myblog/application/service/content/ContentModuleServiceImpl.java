@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.myblog.application.model.dto.ContentDtos;
 import com.myblog.application.model.entity.ContentRelease;
 import com.myblog.application.model.entity.FileRecord;
+import com.myblog.application.model.event.PublishedContentChangedEvent;
 import com.myblog.application.port.ObjectStorage;
 import com.myblog.application.repository.ContentReleaseRepository;
 import com.myblog.application.repository.FileRepository;
@@ -19,6 +20,7 @@ import com.myblog.common.json.JacksonObjectMapper;
 import com.myblog.common.security.Authorization;
 import com.myblog.common.security.CurrentUser;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,15 +54,20 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     private final MylabPublicRepository mylabPublic;
     private final FileRepository resources;
     private final ObjectStorage storage;
+    private final PublicContentCacheService publicCache;
+    private final ApplicationEventPublisher events;
 
     public ContentModuleServiceImpl(ContentReleaseRepository releases, MylabTagRepository tags,
                                     FileRepository resources, ObjectStorage storage,
-                                    MylabPublicRepository mylabPublic) {
+                                    MylabPublicRepository mylabPublic, PublicContentCacheService publicCache,
+                                    ApplicationEventPublisher events) {
         this.releases = releases;
         this.tags = tags;
         this.resources = resources;
         this.storage = storage;
         this.mylabPublic = mylabPublic;
+        this.publicCache = publicCache;
+        this.events = events;
     }
 
     /**
@@ -68,13 +75,21 @@ public class ContentModuleServiceImpl implements ContentModuleService {
      */
     @Override
     public Map<String, Object> publicContent() {
+        Map<String, Object> rawContent = publicCache.readAll(this::loadPublicContent);
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (String key : KEYS) {
+            if (rawContent.containsKey(key)) result.put(key, publicData(key, rawContent.get(key)));
+        }
+        return result;
+    }
+
+    private Map<String, Object> loadPublicContent() {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String key : KEYS) {
             ContentRelease release = releases.findPublished(key);
-            if (release != null) {
-                Object data = "mylab".equals(key) ? mylabPublic.readSummary(release.getId()) : releases.readData(release);
-                result.put(key, publicData(key, data));
-            }
+            if (release == null) continue;
+            Object data = "mylab".equals(key) ? mylabPublic.readSummary(release.getId()) : releases.readData(release);
+            result.put(key, data);
         }
         return result;
     }
@@ -97,14 +112,19 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     @Override
     @SuppressWarnings("unchecked")
     public Object publicMylabDetail(String postKey) {
-        ContentRelease release = releases.findPublished("mylab");
-        if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, "mylab");
-        Map<String, Object> detail = mylabPublic.readDetail(release.getId(), postKey);
-        if (detail == null) throw new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, postKey);
+        Map<String, Object> detail = publicCache.readMylabDetail(postKey, () -> loadPublicMylabDetail(postKey));
         Map<String, Object> root = (Map<String, Object>) publicData("mylab", detail);
         List<Map<String, Object>> cards = (List<Map<String, Object>>) root.getOrDefault("cards", List.of());
         return cards.stream().filter(card -> postKey.equals(card.get("post_key")))
                 .findFirst().orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, postKey));
+    }
+
+    private Map<String, Object> loadPublicMylabDetail(String postKey) {
+        ContentRelease release = releases.findPublished("mylab");
+        if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, "mylab");
+        Map<String, Object> detail = mylabPublic.readDetail(release.getId(), postKey);
+        if (detail == null) throw new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, postKey);
+        return detail;
     }
 
     /**
@@ -190,6 +210,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         Object data = releases.readData(draft);
         validate(moduleKey, data, true);
         releases.publish(draft, releases.findCurrent(moduleKey), actor.id(), OffsetDateTime.now());
+        events.publishEvent(new PublishedContentChangedEvent(moduleKey));
         log.info("内容已发布：operator={}, module={}, version={}",
                 actor.username(), moduleKey, draft.getVersionNo());
         return view(moduleKey);
@@ -207,6 +228,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         ContentRelease current = releases.findPublished(moduleKey);
         if (current == null) throw conflict("当前模块没有已发布版本");
         releases.offline(current, OffsetDateTime.now());
+        events.publishEvent(new PublishedContentChangedEvent(moduleKey));
         log.info("内容已下线：operator={}, module={}, version={}",
                 actor.username(), moduleKey, current.getVersionNo());
         return view(moduleKey);

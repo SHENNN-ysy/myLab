@@ -1,5 +1,6 @@
 package com.myblog;
 
+import com.myblog.infrastructure.cache.RedisPublicContentCache;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -67,8 +68,11 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
 
         // 发布：DRAFT 转 PUBLISHED 并记录发布人/时间，旧线上版本（若有）归档
         UUID previousCurrent = currentVibeReleaseId();
+        assertStatusAndCode(rest.getForEntity("/api/v1/public/content", JsonNode.class), HttpStatus.OK, 0);
+        assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isTrue();
         JsonNode published = assertStatusAndCode(
                 exchange(VIBE_URL + "/publish", HttpMethod.POST, admin, null), HttpStatus.OK, 0);
+        assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isFalse();
         Integer publishedVersion = published.path("data").path("published_version").intValue();
         assertThat(publishedVersion).isNotNull();
         Map<String, Object> release = jdbc.queryForMap(
@@ -204,6 +208,26 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin,
                         Map.of("version_name", "缺少描述", "data", vibeData(uniqueKey("apitest-tool-"), "缺描述"))),
                 HttpStatus.UNPROCESSABLE_ENTITY, 12004);
+    }
+
+    @Test
+    void failedPublishKeepsExistingPublicCache() {
+        String admin = loginAs("admin");
+        exchange(VIBE_URL + "/draft", HttpMethod.DELETE, admin, null);
+        Map<String, Object> incomplete = Map.of("tools", List.of(Map.of(
+                "tool_key", uniqueKey("apitest-invalid-publish-"),
+                "percentage", 50,
+                "enabled", true)));
+        assertStatusAndCode(exchange(VIBE_URL, HttpMethod.PUT, admin,
+                draftPayload("不可发布草稿", "验证事务回滚不失效缓存", incomplete)), HttpStatus.OK, 0);
+        assertStatusAndCode(rest.getForEntity("/api/v1/public/content", JsonNode.class), HttpStatus.OK, 0);
+        assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isTrue();
+
+        assertStatusAndCode(exchange(VIBE_URL + "/publish", HttpMethod.POST, admin, null),
+                HttpStatus.UNPROCESSABLE_ENTITY, 12004);
+
+        assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isTrue();
+        exchange(VIBE_URL + "/draft", HttpMethod.DELETE, admin, null);
     }
 
     @Test
