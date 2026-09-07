@@ -31,17 +31,20 @@ public class RedisPublicContentCache implements PublicContentCache {
         this.properties = properties;
     }
 
+    /** 从 String Key 读取全部模块原始摘要。 */
     @Override
     public Optional<Map<String, Object>> getAll() {
         String value = redis.opsForValue().get(ALL_KEY);
         return decode(value, () -> redis.delete(ALL_KEY), ALL_KEY);
     }
 
+    /** 写入全量摘要并原子设置统一缓存 TTL。 */
     @Override
     public void putAll(Map<String, Object> content) {
         redis.opsForValue().set(ALL_KEY, encode(content), properties.ttl());
     }
 
+    /** 使用 postKey 作为 Hash field 读取单篇原始详情。 */
     @Override
     public Optional<Map<String, Object>> getMylabDetail(String postKey) {
         Object value = redis.opsForHash().get(MYLAB_DETAILS_KEY, postKey);
@@ -50,22 +53,26 @@ public class RedisPublicContentCache implements PublicContentCache {
                 MYLAB_DETAILS_KEY + ":" + postKey);
     }
 
+    /** 写入详情 field 后刷新整个 Hash 的 TTL。 */
     @Override
     public void putMylabDetail(String postKey, Map<String, Object> detail) {
         redis.opsForHash().put(MYLAB_DETAILS_KEY, postKey, encode(detail));
         redis.expire(MYLAB_DETAILS_KEY, properties.ttl());
     }
 
+    /** 删除全部模块摘要缓存。 */
     @Override
     public void evictAll() {
         redis.delete(ALL_KEY);
     }
 
+    /** 删除整个 MyLab 详情 Hash，防止发布后保留旧文章 field。 */
     @Override
     public void evictMylabDetails() {
         redis.delete(MYLAB_DETAILS_KEY);
     }
 
+    /** 反序列化失败时删除损坏条目，使下一次读取可以从数据库恢复。 */
     private Optional<Map<String, Object>> decode(String value, Runnable delete, String key) {
         if (value == null) return Optional.empty();
         try {
@@ -77,6 +84,7 @@ public class RedisPublicContentCache implements PublicContentCache {
         }
     }
 
+    /** 使用项目统一 ObjectMapper 把原始公开数据编码为 JSON。 */
     private String encode(Map<String, Object> value) {
         try {
             return OBJECT_MAPPER.writeValueAsString(value);
