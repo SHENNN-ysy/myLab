@@ -2,6 +2,7 @@ package com.myblog.application.service.content;
 
 import com.myblog.application.model.dto.ContentDtos;
 import com.myblog.application.model.entity.ContentRelease;
+import com.myblog.application.model.event.PublishedContentChangedEvent;
 import com.myblog.application.port.ObjectStorage;
 import com.myblog.application.repository.ContentReleaseRepository;
 import com.myblog.application.repository.FileRepository;
@@ -10,6 +11,7 @@ import com.myblog.application.repository.MylabPublicRepository;
 import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.security.CurrentUser;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +22,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,6 +30,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,13 +41,21 @@ class ContentModuleServiceImplTest {
     @Mock FileRepository resources;
     @Mock ObjectStorage storage;
     @Mock MylabPublicRepository mylabPublic;
+    @Mock PublicContentCacheService publicCache;
+    @Mock ApplicationEventPublisher events;
 
     private ContentModuleServiceImpl service;
     private CurrentUser admin;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic);
+        lenient().when(publicCache.readAll(any())).thenAnswer(invocation ->
+                ((Supplier<Map<String, Object>>) invocation.getArgument(0)).get());
+        lenient().when(publicCache.readMylabDetail(any(), any())).thenAnswer(invocation ->
+                ((Supplier<Map<String, Object>>) invocation.getArgument(1)).get());
+        service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic,
+                publicCache, events);
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
@@ -75,6 +88,8 @@ class ContentModuleServiceImplTest {
 
         verify(releases).publish(any(ContentRelease.class), any(ContentRelease.class),
                 any(UUID.class), any(OffsetDateTime.class));
+        verify(events).publishEvent(argThat((Object event) -> event instanceof PublishedContentChangedEvent changed
+                && "skills".equals(changed.moduleKey())));
     }
 
     @Test
@@ -90,6 +105,8 @@ class ContentModuleServiceImplTest {
         Map<String, Object> result = (Map<String, Object>) service.publicModule("mylab");
 
         assertThat((List<?>) result.get("cards")).hasSize(1);
+        verify(publicCache, never()).readAll(any());
+        verify(publicCache, never()).readMylabDetail(any(), any());
     }
 
     @Test
@@ -104,6 +121,28 @@ class ContentModuleServiceImplTest {
 
         assertThat(images.getFirst().get("image_url")).isEqualTo("/assets/hero/hero-1.webp");
         verify(storage, never()).publicUrl(any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void cachedRawContentRegeneratesObjectStorageUrlForEveryResponse() {
+        Map<String, Object> cached = Map.of("home", Map.of(
+                "images", List.of(Map.of("image_object_key", "hero/image.png"))));
+        doReturn(cached).when(publicCache).readAll(any());
+        when(storage.configured()).thenReturn(true);
+        when(storage.publicUrl("hero/image.png")).thenReturn("https://signed.example/one",
+                "https://signed.example/two");
+
+        Map<String, Object> first = service.publicContent();
+        Map<String, Object> second = service.publicContent();
+
+        List<Map<String, Object>> firstImages = (List<Map<String, Object>>)
+                ((Map<String, Object>) first.get("home")).get("images");
+        List<Map<String, Object>> secondImages = (List<Map<String, Object>>)
+                ((Map<String, Object>) second.get("home")).get("images");
+        assertThat(firstImages.getFirst().get("image_url")).isEqualTo("https://signed.example/one");
+        assertThat(secondImages.getFirst().get("image_url")).isEqualTo("https://signed.example/two");
+        verify(releases, never()).findPublished(any());
     }
 
     @Test

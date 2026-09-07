@@ -13,20 +13,18 @@ export interface MylabTag {
 export type MylabTagWrite = Pick<MylabTag, 'tag_key' | 'name' | 'enabled' | 'sort_order'>
 
 export const getMylabTagsApi = async (): Promise<MylabTag[]> => {
-  const res = await request.get('/admin/mylab/tags')
-  return res.data || []
+  const data = await request.get<MylabTag[]>('/admin/mylab/tags')
+  return data || []
 }
 
 export const createMylabTagApi = async (tag: MylabTagWrite): Promise<MylabTag> => {
-  const res = await request.post('/admin/mylab/tags', tag)
-  return res.data
+  return request.post<MylabTag>('/admin/mylab/tags', tag)
 }
 
 export const updateMylabTagApi = async (id: string, tag: MylabTagWrite): Promise<MylabTag> => {
-  const res = await request.put(`/admin/mylab/tags/${id}`, tag)
-  return res.data
+  return request.put<MylabTag>(`/admin/mylab/tags/${id}`, tag)
 }
 
 export const deleteMylabTagApi = async (id: string): Promise<void> => {
-  await request.delete(`/admin/mylab/tags/${id}`)
+  await request.delete<void>(`/admin/mylab/tags/${id}`)
 }

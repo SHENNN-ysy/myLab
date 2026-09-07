@@ -9,6 +9,7 @@ import com.myblog.application.repository.MylabTagRepository;
 import com.myblog.application.repository.MylabPublicRepository;
 import com.myblog.common.exception.ValidationException;
 import com.myblog.common.security.CurrentUser;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,13 +47,16 @@ class ContentModuleServiceImplValidationTest {
     @Mock FileRepository resources;
     @Mock ObjectStorage storage;
     @Mock MylabPublicRepository mylabPublic;
+    @Mock PublicContentCacheService publicCache;
+    @Mock ApplicationEventPublisher events;
 
     private ContentModuleServiceImpl service;
     private CurrentUser admin;
 
     @BeforeEach
     void setUp() {
-        service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic);
+        service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic,
+                publicCache, events);
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 

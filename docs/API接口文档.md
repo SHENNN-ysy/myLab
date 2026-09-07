@@ -142,6 +142,8 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 | GET | `/api/v1/public/content/{moduleKey}` | 获取指定模块当前发布内容 |
 | GET | `/api/v1/public/mylab/{postKey}` | 获取当前发布版本中的指定 MyLab 卡片详情 |
 
+`/api/v1/public/content` 和 MyLab 单篇详情使用 Redis Cache-Aside 缓存；Redis 未命中或不可用时回源 PostgreSQL。`/api/v1/public/content/{moduleKey}` 不使用缓存，始终直接查询当前发布版本。发布或下线事务提交后会清理受影响的公开缓存。
+
 聚合接口的 `data` 使用模块名作为属性；没有发布版本或已经下线的模块不出现在聚合结果中：
 
 ```json
@@ -512,7 +514,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 ```json
 {
   "id": "uuid",
-  "object_key": "hero/2026/08/example.png",
+  "object_key": "hero/550e8400-e29b-41d4-a716-446655440000.png",
   "directory": "hero",
   "bucket": "ysy-myblog",
   "original_name": "example.png",

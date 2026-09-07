@@ -1,0 +1,6 @@
+.version-item { padding: 12px 14px 4px; border: 1px solid #f0f0f0; border-radius: 8px; }
+.version-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.version-summary > div:first-child { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.version-summary strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.version-summary span { color: #8c8c8c; font-size: 12px; }
+.version-description { margin: 0; color: #595959; line-height: 1.7; white-space: pre-wrap; }

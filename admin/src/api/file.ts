@@ -1,10 +1,10 @@
 import request from '@/utils/request'
 import type { FileReference, FileResource, PageResult, ResourceDirectory } from '@/types'
-import { mapFile, mapPageResult } from './adapter'
+import { mapFile, mapPageResult, type BackendFileResource, type BackendPageResult } from './adapter'
 
 export const getFileListApi = async (page = 1, pageSize = 20, directory?: ResourceDirectory): Promise<PageResult<FileResource>> => {
-  const res = await request.get('/files', { params: { page, page_size: pageSize, directory } })
-  return mapPageResult(res.data, mapFile)
+  const data = await request.get<BackendPageResult<BackendFileResource>>('/files', { params: { page, page_size: pageSize, directory } })
+  return mapPageResult(data, mapFile)
 }
 
 export const getAllFilesApi = async (directory?: ResourceDirectory): Promise<FileResource[]> => {
@@ -22,19 +22,19 @@ export const uploadFileApi = async (file: File, directory: ResourceDirectory): P
   const formData = new FormData()
   formData.append('file', file)
   formData.append('directory', directory)
-  const res = await request.post('/files/upload', formData, {
+  const data = await request.post<BackendFileResource>('/files/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
-  return mapFile(res.data)
+  return mapFile(data)
 }
 
 export const deleteFileApi = async (id: string): Promise<void> => {
-  await request.delete(`/files/${id}`)
+  await request.delete<void>(`/files/${id}`)
 }
 
 export const getFileReferencesApi = async (id: string): Promise<FileReference[]> => {
-  const res = await request.get(`/files/${id}/references`)
-  return (res.data || []).map((item: Record<string, unknown>) => ({
+  const data = await request.get<Array<Record<string, unknown>>>(`/files/${id}/references`)
+  return (data || []).map((item) => ({
     moduleKey: String(item.module_key || ''),
     versionNo: Number(item.version_no || 0),
     state: String(item.state || ''),
@@ -43,6 +43,6 @@ export const getFileReferencesApi = async (id: string): Promise<FileReference[]>
 }
 
 export const getFileAccessUrlApi = async (id: string): Promise<string> => {
-  const res = await request.get(`/files/presigned/${id}`)
-  return res.data.url
+  const data = await request.get<{ url: string }>(`/files/presigned/${id}`)
+  return data.url
 }

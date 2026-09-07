@@ -1,0 +1,3 @@
+.list-actions button { padding: 2px 5px; color: #1677ff; cursor: pointer; background: transparent; border: 0; }
+.list-actions button:disabled { color: #bfbfbf; cursor: not-allowed; }
+.list-actions button.danger { color: #ff4d4f; }

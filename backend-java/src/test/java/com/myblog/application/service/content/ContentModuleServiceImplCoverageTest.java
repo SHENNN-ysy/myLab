@@ -4,6 +4,7 @@ import com.myblog.application.model.dto.ContentDtos;
 import com.myblog.application.model.entity.ContentRelease;
 import com.myblog.application.model.entity.FileRecord;
 import com.myblog.application.model.entity.MylabTag;
+import com.myblog.application.model.event.PublishedContentChangedEvent;
 import com.myblog.application.port.ObjectStorage;
 import com.myblog.application.repository.ContentReleaseRepository;
 import com.myblog.application.repository.FileRepository;
@@ -14,6 +15,7 @@ import com.myblog.common.exception.ForbiddenException;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.exception.ValidationException;
 import com.myblog.common.security.CurrentUser;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,12 +28,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,13 +54,21 @@ class ContentModuleServiceImplCoverageTest {
     @Mock FileRepository resources;
     @Mock ObjectStorage storage;
     @Mock MylabPublicRepository mylabPublic;
+    @Mock PublicContentCacheService publicCache;
+    @Mock ApplicationEventPublisher events;
 
     private ContentModuleServiceImpl service;
     private CurrentUser admin;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic);
+        lenient().when(publicCache.readAll(any())).thenAnswer(invocation ->
+                ((Supplier<Map<String, Object>>) invocation.getArgument(0)).get());
+        lenient().when(publicCache.readMylabDetail(any(), any())).thenAnswer(invocation ->
+                ((Supplier<Map<String, Object>>) invocation.getArgument(1)).get());
+        service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic,
+                publicCache, events);
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
@@ -343,6 +355,8 @@ class ContentModuleServiceImplCoverageTest {
         service.offline(admin, "home");
 
         verify(releases).offline(argThat(r -> r.getId().equals(current.getId())), any(OffsetDateTime.class));
+        verify(events).publishEvent(argThat((Object event) -> event instanceof PublishedContentChangedEvent changed
+                && "home".equals(changed.moduleKey())));
     }
 
     // ---------- 历史版本 ----------

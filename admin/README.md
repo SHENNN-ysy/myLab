@@ -1,6 +1,6 @@
 # MyBlog Admin
 
-MyBlog 博客系统的后台管理前端，基于 Vue 3、TypeScript、Vite 与 Ant Design Vue 构建，数据通过 Java 后端持久化到 PostgreSQL。
+MyBlog 博客系统的后台管理前端，基于 React 18、TypeScript、Vite 与 Ant Design 5（antd）构建，状态管理使用 zustand，路由使用 React Router，数据通过 Java 后端持久化到 PostgreSQL。
 
 ## 内容管理
 

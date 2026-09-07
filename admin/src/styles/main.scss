@@ -1,4 +1,4 @@
-// Ant Design Vue 主题色
+// Ant Design 主题色
 :root {
   --ant-primary-color: #1677ff;
   --ant-success-color: #52c41a;
@@ -43,7 +43,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-#app {
+#root {
   width: 100%;
   height: 100%;
 }
@@ -89,7 +89,7 @@ body {
 .mb-16 { margin-bottom: 16px; }
 .mb-24 { margin-bottom: 24px; }
 
-// Ant Design Vue 局部样式覆盖
+// Ant Design 局部样式覆盖
 .ant-card {
   border-radius: 8px;
 }

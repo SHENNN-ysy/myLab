@@ -1,0 +1,25 @@
+.content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.hobby-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.hobby-card { overflow: hidden; border: 1px solid #f0f0f0; border-radius: 10px; background: #fff; }
+.hobby-card img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.hobby-card div { padding: 14px; }
+.hobby-card h3 { margin: 0 0 8px; }
+.hobby-card p { margin: 0; color: #595959; line-height: 1.65; }
+.subsection-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 28px 0 12px; }
+.subsection-head h3 { margin: 0; }
+.subsection-head p { margin: 4px 0 0; color: #8c8c8c; }
+.time-alert { margin-bottom: 12px; }
+.invalid-total { color: #ff4d4f; }
+.color-value { display: inline-flex; align-items: center; gap: 8px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.color-value i { width: 18px; height: 18px; border: 1px solid #d9d9d9; border-radius: 4px; }
+.color-editor { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; gap: 8px; }
+.color-editor input[type='color'] { width: 38px; height: 32px; padding: 2px; cursor: pointer; background: #fff; border: 1px solid #d9d9d9; border-radius: 6px; }
+.draft-image { display: block; width: 100%; max-height: 180px; margin: 0 0 12px; object-fit: cover; border-radius: 6px; }
+.crop-hint { margin-left: 10px; color: #8c8c8c; font-size: 12px; }
+/* antd 表格行/输入数字组件无 scoped 类名，用根类 + :global 保持原 :deep() scoped 语义 */
+.hobbies-manage :global(.invalid-time-row) > td { background: #fff2f0 !important; }
+.hobbies-manage :global(.ant-input-number) { width: 100%; }
+@media (max-width: 900px) {
+  .content-grid,
+  .hobby-grid { grid-template-columns: 1fr; }
+}

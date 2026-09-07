@@ -1,0 +1,13 @@
+.dino-runner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* 地平线（画布底上 14px）落在描述文字与地图面板间距的中间：约区块顶部下 227px 处 */
+  top: -59px;
+  width: 100%;
+  height: 300px;
+  opacity: 0.55;
+  pointer-events: none;
+  /* 压到背景球（z-index: -1）之下：球体可漂过条带上方 */
+  z-index: -2;
+}

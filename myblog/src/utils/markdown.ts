@@ -1,8 +1,7 @@
-export interface MarkdownHeading {
-  id: string
-  text: string
-  level: number
-}
+import type { MarkdownHeading } from '@/types'
+
+// 兼容旧 Vue 代码的类型引用（组件迁移阶段统一切换到 @/types）
+export type { MarkdownHeading } from '@/types'
 
 const escapeHtml = (value: string) => value
   .replace(/&/g, '&amp;')

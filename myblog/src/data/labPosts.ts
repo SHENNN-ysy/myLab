@@ -1,35 +1,10 @@
 /* ============ myLab 研究/折腾记录数据 ============
  * 新增记录：往数组顶部追加一条即可，页面会自动汇总标签与计数。
  */
-export interface LabPostSection {
-  /** 小节标题，同时出现在右侧 Table of Contents 中 */
-  heading: string
-  paragraphs: string[]
-}
+import type { LabPost } from '@/types'
 
-export interface LabPost {
-  id: string
-  /** 展示用日期，建议 YYYY-MM-DD */
-  date: string
-  title: string
-  tags: string[]
-  summary: string
-  /** 卡片头图；留空则显示骨架占位（加载中的临时样式） */
-  image?: string
-  /** 详情页正文章节 */
-  sections: LabPostSection[]
-  /** OSS 上的详情页头图地址 */
-  detailImage?: string
-  /** 是否同时显示在首页项目区域 */
-  showInProjects?: boolean
-  /** 项目侧边栏专属内容 */
-  projectDetailTitle?: string
-  projectDetailSummary?: string
-  projectParagraphs?: string[]
-  projectTechnologies?: string[]
-  projectImages?: string[]
-  projectShowOrder?: number
-}
+// 兼容旧 Vue 代码的类型引用（组件迁移阶段统一切换到 @/types）
+export type { LabPost, LabPostSection } from '@/types'
 
 const projectLabPosts: LabPost[] = [
   {

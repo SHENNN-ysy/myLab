@@ -33,7 +33,7 @@ class JwtServiceTest {
 
     private static final AppProperties PROPS = new AppProperties(
             "test-jwt-secret-key-that-is-long-enough-for-hmac-sha-256", 30, 7,
-            "", 0, 0, "", "", "", "", "", "", 0, "", "");
+            "", 0, 0, "", "", "", "", "", 0, "", "");
 
     @Mock
     StringRedisTemplate redis;

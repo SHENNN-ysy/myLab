@@ -1,0 +1,546 @@
+/* Footstep（我的足迹）区块样式：类名与原 Footstep.vue scoped 样式一一对应；
+   #hobbies 锚点 id 与弹层内容的全局类名（modal-photo 等）用 :global() 保持原语义 */
+
+:global(#hobbies) {
+  padding: 100px 0;
+  position: relative;
+}
+
+/* 区块背景压到背景球（z-index: -1）之下：球体浮在背景与小恐龙条带之上、内容之下 */
+:global(#hobbies)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
+  pointer-events: none;
+}
+
+.container {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 3rem;
+  /* 内容层叠在 DinoRunner 背景动画之上 */
+  position: relative;
+  z-index: 1;
+}
+
+.section-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2rem;
+  align-items: start;
+  margin-bottom: 4rem;
+}
+
+.section-num {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-muted);
+  padding-top: 0.5rem;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 1rem;
+}
+
+.section-title em {
+  font-style: italic;
+  color: #FF6B6B;
+}
+
+.section-desc {
+  font-size: 0.95rem;
+  color: var(--ink-light);
+  max-width: 760px;
+  font-weight: 300;
+  line-height: 1.8;
+  white-space: nowrap;
+}
+
+.hobbies-layout {
+  display: grid;
+  grid-template-columns: 0.6fr 1.4fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+.hobbies-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.my-location-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 107, 107, 0.15);
+  border-left: 3px solid #FF6B6B;
+  margin-bottom: 1.6rem;
+}
+
+.my-location-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0;
+}
+
+.my-location-label::before {
+  content: '';
+  width: 1.35rem;
+  height: 1px;
+  background: #FF6B6B;
+  flex-shrink: 0;
+}
+
+.my-location-value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #FF6B6B;
+  letter-spacing: 0.05em;
+}
+
+.hobbies-intro {
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.9;
+  font-style: italic;
+  margin-bottom: 1.6rem;
+}
+
+.hobby-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.hobby-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid rgba(91, 164, 230, 0.12);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.25s, transform 0.25s, background 0.25s;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.hobby-item:hover {
+  border-left-color: #FF6B6B;
+  transform: translateX(4px);
+}
+
+.hobby-item.is-active {
+  border-left-color: #FF6B6B;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.06);
+}
+
+.hobby-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.hobby-bullet {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FF6B6B;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.2);
+}
+
+.hobby-item.is-active .hobby-bullet {
+  box-shadow: 0 0 0 6px rgba(255, 107, 107, 0.2), 0 0 14px #FF6B6B;
+}
+
+.hobby-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.hobby-tag {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #FF6B6B;
+  flex-shrink: 0;
+}
+
+/* Map Panel */
+.map-panel {
+  position: relative;
+  background: linear-gradient(180deg, rgba(91, 164, 230, 0.08) 0%, rgba(232, 244, 253, 0.5) 100%);
+  border: 1px solid rgba(91, 164, 230, 0.2);
+  border-radius: 16px;
+  overflow: hidden;
+  aspect-ratio: 1029 / 823;
+  max-width: 100%;
+  box-shadow: 0 8px 32px rgba(27, 58, 75, 0.08);
+  isolation: isolate;
+}
+
+.map-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #E8F4FD;
+  background-image: url('/assets/china-map.jpeg');
+  background-size: contain;
+  background-position: center center;
+  background-repeat: no-repeat;
+  border-radius: 16px;
+}
+
+.map-markers {
+  position: absolute;
+  inset: 0;
+}
+
+.map-marker {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  cursor: pointer;
+  z-index: 3;
+  transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), z-index 0s;
+}
+
+.map-marker:hover,
+.map-marker.is-active {
+  z-index: 6;
+}
+
+.marker-pin {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(0);
+  transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+
+.map-marker:hover .marker-pin,
+.map-marker.is-active .marker-pin {
+  transform: translateY(-4px);
+}
+
+.marker-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #FF6B6B;
+  border: 2.5px solid var(--bg-card);
+  box-shadow: 0 0 0 1.5px #FF6B6B, 0 3px 12px rgba(255, 107, 107, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-marker.is-active .marker-dot {
+  width: 18px;
+  height: 18px;
+  background: #FF6B6B;
+  border-color: var(--bg-card);
+  box-shadow: 0 0 0 2px #FF6B6B, 0 0 0 7px rgba(255, 107, 107, 0.2), 0 6px 18px rgba(255, 107, 107, 0.6);
+}
+
+.map-marker.is-self .marker-dot {
+  background: transparent;
+  width: 84px;
+  height: 84px;
+  box-shadow: 0 0 0 3px #FF6B6B, 0 4px 16px rgba(255, 107, 107, 0.5);
+  overflow: hidden;
+}
+
+.map-marker.is-self .marker-dot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.map-marker.is-self.is-active .marker-dot {
+  width: 104px;
+  height: 104px;
+  box-shadow: 0 0 0 4px #FF6B6B, 0 0 0 12px rgba(255, 107, 107, 0.2), 0 8px 24px rgba(255, 107, 107, 0.55);
+}
+
+.map-marker.is-self.is-active .marker-dot {
+  width: 104px;
+  height: 104px;
+  box-shadow: 0 0 0 4px #FF6B6B, 0 0 0 12px rgba(255, 107, 107, 0.2), 0 8px 24px rgba(255, 107, 107, 0.55);
+}
+
+.marker-stem {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 1.5px;
+  height: 6px;
+  background: #FF6B6B;
+  transform: translateX(-50%);
+}
+
+.marker-pulse {
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 107, 107, 0.35);
+  transform: translate(-50%, 0);
+  animation: markerPulse 2.2s ease-out infinite;
+  pointer-events: none;
+}
+
+.map-marker.is-self .marker-pulse {
+  width: 120px;
+  height: 120px;
+  bottom: -12px;
+  background: transparent;
+  border: 3px solid rgba(255, 107, 107, 0.5);
+  animation: markerPulseAvatar 2.4s ease-out infinite;
+}
+
+@keyframes markerPulse {
+  0% { transform: translate(-50%, 0) scale(0.5); opacity: 0.9; }
+  100% { transform: translate(-50%, 0) scale(2.5); opacity: 0; }
+}
+
+@keyframes markerPulseAvatar {
+  0% { transform: translate(-50%, 0) scale(0.35); opacity: 0.85; }
+  100% { transform: translate(-50%, 0) scale(1.6); opacity: 0; }
+}
+
+.marker-tip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  min-width: 190px;
+  max-width: 240px;
+  padding: 0.7rem 0.85rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(20,18,16,0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  white-space: nowrap;
+}
+
+.marker-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--bg-card);
+}
+
+.marker-tip.is-flipped {
+  bottom: auto;
+  top: calc(100% + 12px);
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.marker-tip.is-flipped::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: var(--bg-card);
+}
+
+.map-marker:hover .marker-tip.is-flipped,
+.map-marker.is-active .marker-tip.is-flipped {
+  transform: translateX(-50%) translateY(0);
+}
+
+.map-marker:hover .marker-tip,
+.map-marker.is-active .marker-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.marker-tip-title {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+.marker-tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+}
+
+.marker-tip-row strong {
+  color: #FF6B6B;
+  font-weight: 500;
+}
+
+/* Hobbies modal body（弹层内容由 ProjectModal portal 渲染，内部全局类名走 :global） */
+.hobby-modal-body .photo-wall-wrapper h4 {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 1.6rem 0 0.8rem;
+}
+
+:global(.modal-photo) img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: inherit;
+}
+
+/* 瀑布流照片：保持原始比例完整展示，hover 提示可点击放大 */
+.hobby-modal-body :global(.modal-photo:not(.photo-skeleton)) {
+  cursor: zoom-in;
+  overflow: hidden;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.hobby-modal-body :global(.modal-photo:not(.photo-skeleton)):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+}
+
+/* 照片放大预览 lightbox（portal 到 body，类名为本模块局部类） */
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vmin;
+  background: rgba(8, 12, 18, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: zoom-out;
+  animation: lightboxFade 0.25s ease;
+}
+
+.photo-lightbox-image {
+  max-width: min(1100px, 92vw);
+  max-height: 86vh;
+  width: auto;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  animation: lightboxZoom 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.photo-lightbox-close {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.3rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 1.35rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+
+.photo-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.06);
+}
+
+.photo-lightbox-counter {
+  position: absolute;
+  bottom: 1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+@keyframes lightboxFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lightboxZoom {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-lightbox,
+  .photo-lightbox-image {
+    animation: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .section-desc {
+    max-width: 560px;
+    white-space: normal;
+  }
+
+  .hobbies-layout {
+    grid-template-columns: 1fr;
+  }
+}

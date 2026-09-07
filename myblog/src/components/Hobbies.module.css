@@ -1,0 +1,388 @@
+/* Hobbies 区块样式：迁移自 Hobbies.vue 的 <style scoped>，选择器原样保留。
+   #game 用 :global() 保持真实 id（导航锚点 getElementById('game') 依赖它）。 */
+:global(#game) {
+  padding: 50px 0 100px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 背景与我的足迹（#hobbies）下边缘同色（--bg-alt），交界处无缝，并压到背景球（z-index: -1）之下 */
+:global(#game)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--bg-alt);
+  pointer-events: none;
+}
+
+.container {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 3rem;
+}
+
+.section-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+
+.section-num {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-muted);
+  padding-top: 0.5rem;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 1rem;
+}
+
+.section-title em {
+  font-style: italic;
+  color: #FF6B6B;
+}
+
+.section-desc {
+  font-size: 0.95rem;
+  color: var(--ink-light);
+  max-width: 760px;
+  font-weight: 300;
+  line-height: 1.8;
+  white-space: nowrap;
+}
+
+/* Panels Layout — Time 面板居左为主体，右侧为游戏卡片；
+   整体向容器两侧空白区域延伸 */
+.game-panels {
+  display: flex;
+  gap: 1.5rem;
+  margin: 0 -8rem;
+  position: relative;
+  z-index: 1;
+}
+
+.time-panel-slot {
+  flex: none;
+  min-width: 0;
+  margin-left: -8rem;
+}
+
+.time-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  padding: 1.5rem;
+  background: linear-gradient(to right bottom, #fcfcfd 20%, #f2f2f3 150%);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.panel-title {
+  font-family: 'Pacifico', cursive;
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--ink);
+  margin-bottom: 0.75rem;
+}
+
+.panel-desc {
+  font-size: 0.95rem;
+  color: var(--ink-light);
+  max-width: 600px;
+  font-weight: 300;
+  line-height: 1.8;
+  margin-bottom: 1rem;
+}
+
+/* Time Chart — 固定 900x600，向左侧空白延伸、向下延伸 */
+.time-chart-svg {
+  width: 900px;
+  height: 600px;
+  max-width: 100%;
+  display: block;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  color: #334155;
+}
+
+.time-area {
+  stroke: #ffffff;
+  stroke-width: 0;
+  transition: stroke-width 0.5s ease;
+  cursor: pointer;
+}
+
+.time-area:hover,
+.time-area.is-active {
+  stroke-width: 5;
+}
+
+.time-area-label {
+  fill: #334155;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 300;
+  pointer-events: none;
+}
+
+.time-axis line {
+  stroke: currentColor;
+}
+
+.time-axis text {
+  fill: currentColor;
+  font-family: sans-serif;
+  font-size: 10px;
+  text-anchor: middle;
+}
+
+/* y 轴数值改为左对齐，从刻度线右侧起排，避免与刻度线重叠 */
+.time-axis .time-axis-y-label {
+  text-anchor: start;
+}
+
+.time-axis-title {
+  fill: #334155;
+  font-family: sans-serif;
+  font-size: 16px;
+}
+
+/* Game Cards Grid — 原有 bento 布局；
+   卡片放大，总高度与左侧 Time 面板对齐，向右侧空白延伸。
+   行高用 minmax(0, 1fr)：禁止图片固有尺寸撑开轨道（1fr 默认 minmax(auto,1fr)，
+   换图时大图会把行撑高导致卡片大小变化），卡片尺寸只由网格决定。 */
+.game-cards-grid {
+  flex: 1;
+  min-width: 0;
+  margin-right: -8rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.game-card-slot {
+  min-height: 0;
+}
+
+.game-card-slot--1 {
+  grid-column: 2 / 4;
+  grid-row: 1 / 3;
+}
+
+.game-card-slot--2 {
+  grid-column: 1 / 2;
+  grid-row: 1 / 3;
+}
+
+.game-card-slot--3 {
+  grid-column: 1 / 2;
+  grid-row: 3 / 4;
+}
+
+.game-card-slot--4 {
+  grid-column: 2 / 3;
+  grid-row: 3 / 4;
+}
+
+.game-card-slot--5 {
+  grid-column: 3 / 4;
+  grid-row: 3 / 4;
+}
+
+.game-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  height: 100%;
+  min-height: 140px;
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s ease;
+  box-shadow: 0 4px 20px rgba(27, 58, 75, 0.08);
+}
+
+.game-card:hover,
+.game-card.is-active {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 40px rgba(27, 58, 75, 0.12);
+}
+
+.game-card img {
+  /* 绝对定位脱离文档流：图片固有尺寸不参与网格行高计算，
+     防止竖版大图把卡片网格撑高、连带拉伸左侧 Time 面板 */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.game-card:hover img,
+.game-card.is-active img {
+  transform: scale(1.08);
+}
+
+.game-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(20, 18, 16, 0.95) 0%,
+    rgba(20, 18, 16, 0.6) 40%,
+    rgba(20, 18, 16, 0.1) 70%,
+    transparent 100%
+  );
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 1rem;
+  transition: background 0.4s ease;
+}
+
+.game-card:hover .game-card-overlay,
+.game-card.is-active .game-card-overlay {
+  background: linear-gradient(
+    to top,
+    rgba(20, 18, 16, 0.98) 0%,
+    rgba(20, 18, 16, 0.75) 50%,
+    rgba(20, 18, 16, 0.2) 80%,
+    transparent 100%
+  );
+}
+
+.game-card-description {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: 1rem;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  background: rgba(232, 244, 253, 0.95);
+  color: var(--ink);
+  border-left: 3px solid #FF6B6B;
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(27, 58, 75, 0.15);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  font-weight: 400;
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.2, 0.85, 0.25, 1);
+  pointer-events: none;
+}
+
+.game-card:hover .game-card-description,
+.game-card.is-active .game-card-description {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.game-card-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--bg-card);
+  line-height: 1.2;
+  margin-bottom: 0.3rem;
+}
+
+.game-card-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: rgba(244, 240, 235, 0.7);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.game-card:hover .game-card-subtitle,
+.game-card.is-active .game-card-subtitle {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 1024px) {
+  .section-desc {
+    max-width: 560px;
+    white-space: normal;
+  }
+
+  .game-panels {
+    flex-direction: column;
+    margin: 0;
+  }
+
+  .time-panel-slot {
+    margin-left: 0;
+  }
+
+  .time-chart-svg {
+    width: 100%;
+    height: 340px;
+    max-width: none;
+  }
+
+  .game-cards-grid {
+    margin-right: 0;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: none;
+  }
+
+  .game-card-slot {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .game-card-slot--1 {
+    grid-column: 1 / -1;
+  }
+
+  .game-card {
+    aspect-ratio: 4 / 3;
+    height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .game-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .game-card-slot--1 {
+    grid-column: auto;
+  }
+
+  .panel-title {
+    font-size: 1.75rem;
+  }
+
+  .time-chart-svg {
+    height: 240px;
+  }
+
+  .game-card-title {
+    font-size: 1.25rem;
+  }
+
+  .game-card-description {
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+}

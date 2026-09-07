@@ -1,6 +1,6 @@
 import type { FileResource, PageResult, ResourceDirectory, User, UserRole } from '@/types'
 
-interface BackendPageResult<T> {
+export interface BackendPageResult<T> {
   records: T[]
   total: number
   page: number
@@ -23,7 +23,7 @@ const roleFromBackend = (role?: string): UserRole => {
   return 'viewer'
 }
 
-interface BackendUser {
+export interface BackendUser {
   id: string
   username: string
   role: string
@@ -43,7 +43,7 @@ export const mapUser = (item: BackendUser): User => ({
   updatedAt: item.updated_at
 })
 
-interface BackendFileResource {
+export interface BackendFileResource {
   id: string
   object_key: string
   directory?: ResourceDirectory

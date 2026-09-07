@@ -1,0 +1,19 @@
+.account-security {
+  :global(.ant-card) {
+    height: 100%;
+  }
+}
+
+.account-tip {
+  margin-top: 18px;
+}
+
+.account-form {
+  max-width: 520px;
+}
+
+@media (max-width: 991px) {
+  .account-security :global(.ant-col:first-child) {
+    margin-bottom: 20px;
+  }
+}

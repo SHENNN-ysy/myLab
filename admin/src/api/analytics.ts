@@ -21,10 +21,8 @@ export interface AnalyticsTrend {
 }
 
 export const getAnalyticsSummaryApi = async (): Promise<SiteStatistics> => {
-  const res = await request.get('/admin/analytics/summary')
-  return res.data
+  return request.get<SiteStatistics>('/admin/analytics/summary')
 }
 export const getAnalyticsTrendsApi = async (days: 7 | 30 | 90): Promise<AnalyticsTrend> => {
-  const res = await request.get('/admin/analytics/trends', { params: { days } })
-  return res.data
+  return request.get<AnalyticsTrend>('/admin/analytics/trends', { params: { days } })
 }
