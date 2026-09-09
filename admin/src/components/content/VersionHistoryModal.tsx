@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Alert, App, Empty, Modal, Space, Spin } from 'antd'
 import { ContentVersionItem } from './ContentVersionItem'
 import {
+  archiveContentDraftApi,
   deleteContentVersionApi,
   getContentVersionsApi,
   restoreContentVersionApi,
@@ -68,6 +69,18 @@ export const VersionHistoryModal = ({
     },
   })
 
+  const archive = (item: ContentVersion) => modal.confirm({
+    title: `将当前草稿“${item.version_name}”归档？`,
+    content: '归档后该草稿进入其他版本列表，可随时恢复为草稿；线上内容不受影响。',
+    onOk: async () => {
+      await archiveContentDraftApi(moduleKey)
+      message.success('草稿已归档')
+      void load()
+      // 草稿消失会改变外层模块视图状态，通知父组件刷新
+      onRestored()
+    },
+  })
+
   const remove = (item: ContentVersion) => modal.confirm({
     title: `删除“${item.version_name}”？`,
     content: '删除后不可恢复；该版本独占引用的文件将解除引用，可在文件管理中手动删除。',
@@ -103,8 +116,20 @@ export const VersionHistoryModal = ({
         <section className={styles['version-section']}>
           <h3>当前草稿版本</h3>
           {draftVersion
-            ? <ContentVersionItem version={draftVersion} />
-            : <Empty description="当前没有草稿版本" />}
+            ? (
+              <ContentVersionItem
+                version={draftVersion}
+                archivable
+                onArchive={archive}
+              />
+            )
+            : (
+              <>
+                <Empty description="当前没有草稿版本" />
+                {/* 草稿缺省时的内容口径说明：草稿页展示的是线上版本内容 */}
+                <p className={styles['draft-fallback-tip']}>若没有草稿，则草稿页内容即为当前线上版本内容</p>
+              </>
+            )}
         </section>
         <section className={styles['version-section']}>
           <h3>其他版本</h3>

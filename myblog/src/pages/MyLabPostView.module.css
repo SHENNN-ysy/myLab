@@ -225,7 +225,7 @@
 }
 
 .markdown-body {
-  color: var(--ink-light);
+  color: var(--ink);
   font-size: 0.95rem;
   font-weight: 300;
   line-height: 1.9;
@@ -255,6 +255,9 @@
 .markdown-body :global(code) { padding: 0.12rem 0.35rem; border-radius: 5px; background: var(--bg-alt); font-family: var(--font-mono); font-size: 0.88em; }
 .markdown-body :global(pre) { overflow-x: auto; margin: 1.4rem 0; padding: 1rem 1.2rem; border-radius: 12px; background: #183142; color: #e8f1f5; }
 .markdown-body :global(pre code) { padding: 0; background: transparent; color: inherit; }
+.markdown-body :global(table) { width: 100%; margin: 1.4rem 0; border-collapse: collapse; }
+.markdown-body :global(th), .markdown-body :global(td) { padding: 0.5rem 0.9rem; border: 1px solid var(--border); text-align: left; }
+.markdown-body :global(th) { background: var(--bg-alt); font-weight: 600; }
 
 /* ============ 右侧小面板 ============ */
 .post-aside {

@@ -213,6 +213,16 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
         if (restored != 1) throw new IllegalStateException("source state changed while restoring");
     }
 
+    /** 将当前草稿转为归档版本；WHERE 中的 state = 'DRAFT' 即乐观并发控制（CAS） */
+    @Override
+    public void archiveDraft(ContentRelease draft, OffsetDateTime now) {
+        int updated = jdbc.update("""
+                UPDATE content_releases SET state = 'ARCHIVED', updated_at = ?
+                WHERE id = ? AND state = 'DRAFT' AND deleted_at IS NULL
+                """, now, draft.getId());
+        if (updated != 1) throw new IllegalStateException("draft state changed while archiving");
+    }
+
     /** 下线当前已发布版本（状态置为 OFFLINE） */
     @Override
     public void offline(ContentRelease current, OffsetDateTime now) {

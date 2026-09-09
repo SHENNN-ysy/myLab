@@ -4,8 +4,10 @@ import styles from './ContentVersionItem.module.scss'
 
 export interface ContentVersionItemProps {
   version: ContentVersion
+  archivable?: boolean
   restorable?: boolean
   deletable?: boolean
+  onArchive?: (version: ContentVersion) => void
   onRestore?: (version: ContentVersion) => void
   onRemove?: (version: ContentVersion) => void
 }
@@ -27,11 +29,13 @@ const stateColor = (state: ContentVersion['state']) => ({
 const formatTime = (value?: string) =>
   value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '暂无时间'
 
-/** 单个历史版本条目：名称/时间/状态 + 恢复、删除操作 + 可折叠的版本描述 */
+/** 单个历史版本条目：名称/时间/状态 + 归档、恢复、删除操作 + 可折叠的版本描述 */
 export const ContentVersionItem = ({
   version,
+  archivable = false,
   restorable = false,
   deletable = false,
+  onArchive,
   onRestore,
   onRemove,
 }: ContentVersionItemProps) => {
@@ -42,10 +46,13 @@ export const ContentVersionItem = ({
       <div className={styles['version-summary']}>
         <div>
           <strong>{version.version_name}</strong>
-          <span>版本 {version.version_no} · {formatTime(versionTime)}</span>
+          <span className={styles['version-meta']}>版本 {version.version_no} · {formatTime(versionTime)}</span>
         </div>
         <Space size="small">
           <Tag color={stateColor(version.state)}>{stateText(version.state)}</Tag>
+          {archivable && (
+            <Button type="link" onClick={() => onArchive?.(version)}>归档</Button>
+          )}
           {restorable && (
             <Button type="link" onClick={() => onRestore?.(version)}>恢复为草稿</Button>
           )}

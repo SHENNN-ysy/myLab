@@ -731,13 +731,25 @@ class ContentModuleServiceImplValidationTest {
     }
 
     @Test
-    void mylabPublishRequiresProjectOrder() {
+    void mylabPublishAllowsProjectWithoutShowOrder() {
+        // 不填 project_show_order 的 PROJECT 表示不在首页展示，允许发布
         stubDraft("mylab", Map.of("cards", List.of(Map.of(
                 "post_key", "project-a", "project_contents", "介绍", "enabled", false))));
+        when(releases.findVersions("mylab")).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.publish(admin, "mylab"))
-                .isInstanceOfSatisfying(ValidationException.class,
-                        e -> assertThat(e.getDetail()).contains("project_show_order"));
+        service.publish(admin, "mylab");
+
+        verify(releases).publish(any(ContentRelease.class), any(), any(UUID.class), any(OffsetDateTime.class));
+    }
+
+    @Test
+    void mylabDraftAllowsMultipleProjectsWithoutShowOrder() {
+        // 多个不展示的 PROJECT（排序均为空）不触发重复校验
+        saveMylabDraft(Map.of("cards", List.of(
+                Map.of("post_key", "project-a", "enabled", false),
+                Map.of("post_key", "project-b", "enabled", false))));
+
+        verify(releases).replaceData(any(ContentRelease.class), any());
     }
 
     @Test
