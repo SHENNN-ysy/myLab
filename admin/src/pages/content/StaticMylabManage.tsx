@@ -32,8 +32,22 @@ import {
   type MylabTag,
 } from '@/api/mylabTag'
 import type { MylabCardData, MylabContentData } from '@/types/content'
-import { renderMarkdown } from '@/utils/markdown'
+import ReactMarkdown, { type Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import styles from './StaticMylabManage.module.scss'
+
+/** Markdown 预览渲染约定（与前台详情页一致）：链接新窗口打开、图片懒加载，原始 HTML 默认转义 */
+const markdownComponents: Components = {
+  // node 是 AST 节点，不能透传到 DOM 元素
+  a: ({ node, ...props }) => {
+    void node
+    return <a {...props} target="_blank" rel="noopener noreferrer" />
+  },
+  img: ({ node, ...props }) => {
+    void node
+    return <img {...props} loading="lazy" />
+  },
+}
 
 interface AdminMylabCard {
   rowId?: string
@@ -63,6 +77,10 @@ const projectOrderOptions = Array.from({ length: 6 }, (_, index) => ({
   value: index,
   label: `第 ${index + 1} 位`,
 }))
+/** 首页项目排序下拉的「不展示」选项值（保存时映射为 null） */
+const PROJECT_HIDE_ORDER = -1
+/** 排序下拉选项：位次被占用不再禁用，重复在保存/发布时统一校验 */
+const projectOrderSelectOptions = [{ value: PROJECT_HIDE_ORDER, label: '不展示' }, ...projectOrderOptions]
 const markdownMaxCharacters = 500_000
 const markdownMaxBytes = 2_000_000
 
@@ -129,10 +147,12 @@ const StaticMylabManage = () => {
       message.error('卡片稳定标识不能为空或重复')
       return false
     }
-    const projectOrders = draftCards.filter(card => card.cardType === 'PROJECT').map(card => card.projectShowOrder)
-    if (projectOrders.some(order => order === null || order < 0 || order > 5)
-        || new Set(projectOrders).size !== projectOrders.length) {
-      message.error('项目卡片的首页排序必须选择第 1 至第 6 位，且不能重复')
+    // 仅参与首页展示（已选位次）的项目卡片需要校验排序唯一；选择「不展示」的跳过
+    const projectOrders = draftCards
+      .filter(card => card.cardType === 'PROJECT' && card.projectShowOrder !== null)
+      .map(card => card.projectShowOrder)
+    if (new Set(projectOrders).size !== projectOrders.length) {
+      message.error('首页项目排序不能重复，请调整项目的展示位次')
       return false
     }
     if (draftCards.some(card => card.markdownContent.length > markdownMaxCharacters)) {
@@ -143,8 +163,9 @@ const StaticMylabManage = () => {
       message.error('已启用卡片必须填写标题、摘要和 Markdown 正文')
       return false
     }
-    if (forPublish && draftCards.some(card => card.cardType === 'PROJECT' && !card.projectContents.trim())) {
-      message.error('项目卡片必须填写首页项目侧边栏正文')
+    if (forPublish && draftCards.some(card => card.cardType === 'PROJECT'
+        && card.projectShowOrder !== null && !card.projectContents.trim())) {
+      message.error('首页展示的项目卡片必须填写侧边栏正文')
       return false
     }
     return true
@@ -332,15 +353,6 @@ const StaticMylabManage = () => {
       return { ...card, cardType, projectShowOrder }
     }))
   }
-  /** 首页排序选项：已被其他项目卡片占用的位次禁用（当前卡片已选的保持可选） */
-  const projectOrderOptionsFor = (currentCard: AdminMylabCard) => projectOrderOptions.map(option => ({
-    ...option,
-    disabled: option.value !== currentCard.projectShowOrder && draftCards.some(card => (
-      card !== currentCard
-      && card.cardType === 'PROJECT'
-      && card.projectShowOrder === option.value
-    )),
-  }))
 
   /** 读取本地 Markdown 文件并覆盖当前卡片编辑区，不上传到 OSS。 */
   const selectMarkdownFile = (card: AdminMylabCard) => {
@@ -500,10 +512,11 @@ const StaticMylabManage = () => {
                     <span>与博客详情页渲染规则一致</span>
                   </header>
                   {card.markdownContent.trim() ? (
-                    <div
-                      className={styles['markdown-preview']}
-                      dangerouslySetInnerHTML={{ __html: renderMarkdown(card.markdownContent).html }}
-                    />
+                    <div className={styles['markdown-preview']}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                        {card.markdownContent}
+                      </ReactMarkdown>
+                    </div>
                   ) : (
                     <Empty description="输入正文后在此预览" />
                   )}
@@ -527,10 +540,11 @@ const StaticMylabManage = () => {
             <Col xs={24} md={6}>
               <Form.Item label="首页项目排序" className={styles['editor-field']}>
                 <Select
-                  value={card.projectShowOrder ?? undefined}
-                  options={projectOrderOptionsFor(card)}
-                  placeholder="选择展示位置"
-                  onChange={value => patchCard(card.postKey, { projectShowOrder: value })}
+                  value={card.projectShowOrder ?? PROJECT_HIDE_ORDER}
+                  options={projectOrderSelectOptions}
+                  onChange={value => patchCard(card.postKey, {
+                    projectShowOrder: value === PROJECT_HIDE_ORDER ? null : value,
+                  })}
                 />
               </Form.Item>
             </Col>

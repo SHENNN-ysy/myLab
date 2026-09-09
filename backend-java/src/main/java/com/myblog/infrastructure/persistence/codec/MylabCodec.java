@@ -97,8 +97,9 @@ public class MylabCodec implements ModuleCodec {
             // 未显式给出 card_type 时按 post_key 前缀推断：project- 开头视为项目卡片
             String type = Objects.requireNonNullElse(firstText(item, "card_type"),
                     key(item, "post_key", "id").startsWith("project-") ? "PROJECT" : "ARTICLE").toUpperCase();
-            Integer projectOrder = "PROJECT".equals(type)
-                    ? integer(item, "project_show_order", integer(item, "sort_order", order)) : null;
+            // project_show_order 缺省或为 null 表示不在首页项目区展示，不再回退到 sort_order
+            Integer projectOrder = "PROJECT".equals(type) && item.hasNonNull("project_show_order")
+                    ? item.path("project_show_order").asInt() : null;
             MylabCard entity = new MylabCard();
             entity.setId(id);
             entity.setReleaseId(releaseId);

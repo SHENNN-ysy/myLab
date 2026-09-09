@@ -174,6 +174,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 | GET | `/api/v1/admin/content/{moduleKey}/versions` | 查询全部未删除版本，包含当前线上和当前草稿 |
 | GET | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}` | 查询指定版本完整数据 |
 | POST | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}/restore` | 将归档或下线版本原地恢复为当前草稿 |
+| POST | `/api/v1/admin/content/{moduleKey}/draft/archive` | 将当前草稿归档为历史版本（不产生新草稿） |
 | DELETE | `/api/v1/admin/content/{moduleKey}/versions/{versionNo}` | 软删除指定历史版本并解除其资源引用 |
 | DELETE | `/api/v1/admin/content/{moduleKey}/draft` | 放弃当前草稿 |
 
@@ -525,7 +526,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 }
 ```
 
-上传时 `directory` 只允许 `footstep`、`hero`、`hobbies`、`icon`、`mylab-post`，并且只允许图片；MyLab 卡片封面固定使用 `mylab-post`。CDN 域名为空时图片使用 OSS 签名地址，配置 CDN 域名后自动改用 CDN 地址。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
+上传时 `directory` 只允许 `footstep`、`hero`、`hobbies`、`icon`、`mylab-post`、`mylab`，并且只允许图片；MyLab 卡片封面固定使用 `mylab-post`，Markdown 正文插图使用 `mylab`。CDN 域名为空时图片使用 OSS 签名地址，配置 CDN 域名后自动改用 CDN 地址。资源仍被草稿、线上或历史版本引用时删除返回 `10006`。
 
 ## 9. 系统接口
 

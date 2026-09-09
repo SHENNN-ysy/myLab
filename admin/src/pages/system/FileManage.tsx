@@ -24,7 +24,8 @@ const filterDirectoryOptions: Array<{ value: ResourceDirectory, label: string }>
   { value: 'icon', label: '图标 icon' },
   { value: 'hobbies', label: '爱好 hobbies' },
   { value: 'footstep', label: '足迹 footstep' },
-  { value: 'mylab-post', label: 'MyLab 封面' }
+  { value: 'mylab-post', label: 'MyLab 封面' },
+  { value: 'mylab', label: 'MyLab 正文资源' }
 ]
 const uploadDirectoryOptions = filterDirectoryOptions
 

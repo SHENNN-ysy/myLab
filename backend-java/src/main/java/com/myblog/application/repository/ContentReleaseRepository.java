@@ -70,6 +70,10 @@ public interface ContentReleaseRepository {
      */
     void restoreAsDraft(ContentRelease source, ContentRelease currentDraft, OffsetDateTime now);
     /**
+     * 将当前草稿转为归档版本（DRAFT → ARCHIVED），不产生新草稿。
+     */
+    void archiveDraft(ContentRelease draft, OffsetDateTime now);
+    /**
      * 将当前生效版本下线。
      */
     void offline(ContentRelease current, OffsetDateTime now);

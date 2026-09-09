@@ -127,6 +127,15 @@ public class AdminContentController {
     }
 
     /**
+     * 将指定模块的当前草稿归档为历史版本。
+     */
+    @PostMapping("/{moduleKey}/draft/archive")
+    public Result<ContentDtos.ModuleView> archiveDraft(@AuthenticationPrincipal CurrentUser actor,
+                                                       @PathVariable String moduleKey) {
+        return Result.ok(content.archiveDraft(actor, moduleKey), "草稿已归档");
+    }
+
+    /**
      * 放弃指定模块的当前草稿。
      */
     @DeleteMapping("/{moduleKey}/draft")

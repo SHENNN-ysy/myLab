@@ -1,6 +1,4 @@
-# MyBlog：个人博客系统全栈实践
-
-![封面](images/cover.png)
+# MyLab：个人博客系统全栈实践
 
 > 项目地址：<https://github.com/SHENNN-ysy/myLab>
 
@@ -20,7 +18,7 @@ myLab 是我的个人作品集 + 博客系统，包含**访客博客前台**、*
 
 ## 整体架构
 
-![整体架构](https://ysy-myblog.oss-cn-guangzhou.aliyuncs.com/mylab-post/2026/08/409d9c747df5459c9439f1efe281f83e.png?Expires=1788195478&OSSAccessKeyId=LTAI5t7JhA6sGRZKP3xDM5UC&Signature=z8TVVIYSY3nRwxLwUnnmdMByDmg%3D)
+![整体架构](https://cdn.shennn.top/mylab/7a40f445-2308-4aad-9897-cac03832538b.png)
 
 系统是典型的前后端分离三层结构：两个前端应用通过 Nginx 网关访问统一的 REST API，后端再对接 PostgreSQL、Redis 和对象存储（OSS + CDN）。
 
@@ -66,7 +64,7 @@ MyBlog/
 
 ## 后端架构：模块化单体 + 端口适配器
 
-![后端分层架构](images/backend-layers.png)
+![后端分层架构](https://cdn.shennn.top/mylab/72036d87-8320-48ca-8386-239c4d8a3402.png)
 
 后端采用**单工程、模块化单体**设计，代码收敛到五个顶层包，并保持严格的依赖方向：
 
@@ -136,6 +134,6 @@ docker compose up -d --build
 
 我这个项目的名字叫mylab，顾名思义这个项目也是我的实验室，也是我为后续更深层次的学习实践搭建的一个场景，这也是前面我说的该项目的架构和功能等可能会发生变化的原因。当然后面的所有的变化我都会写出一篇“实验记录”出来作为这个博客的文章，希望以此来激励自己继续学下去，这也是搭建这个项目的一点初心。
 
-这对我而言这不只是一个博客，还是一个介绍自己的个人网站，更是以后学习实践的载体，目前该项目从 Vue3 博客前台后台双前端、Spring Boot 后端，到 Docker 双轨部署和 Jenkins 流水线，覆盖了个人项目从开发到上线的全链路。最后特此感谢所有做出开源贡献的人，本项目最终也会开源，如果你也想搭一个属于自己的博客系统，欢迎参考或直接 Star ⭐
+这对我而言这不只是一个博客，还是一个介绍自己的个人网站，更是以后学习实践的载体，目前该项目在开发的路上从博客前台原型设计，到博客管理后台与Spring Boot 后端，再到 Docker 双轨部署和 Jenkins 流水线，这个过程覆盖了个人项目从开发到上线的全链路，后续会写一些文章出来作为学习过程的归纳总结。本项目最终也会开源，最后特此感谢所有做出开源贡献的人，如果你也想搭一个属于自己的博客系统，欢迎参考或直接 Star ⭐
 
 > 项目地址：<https://github.com/SHENNN-ysy/myLab>

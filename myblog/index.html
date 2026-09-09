@@ -8,7 +8,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/avatar.png" />
     <link rel="shortcut icon" type="image/png" href="/assets/avatar.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preload" as="image" href="/assets/hero/hero-1.webp" type="image/webp" fetchpriority="high" />
+    <!-- 提前建立 CDN 连接，缩短 API 图片的首包耗时；不加 crossorigin（<img> 为 no-cors 请求） -->
+    <link rel="preconnect" href="https://cdn.shennn.top" />
     <title>shennn · 个人空间</title>
   </head>
   <body>

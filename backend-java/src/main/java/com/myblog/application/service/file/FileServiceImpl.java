@@ -39,7 +39,7 @@ public class FileServiceImpl implements FileService {
     );
     // 可查询和上传的图片业务目录白名单
     private static final Set<String> ALLOWED_DIRECTORIES = Set.of(
-            "footstep", "hero", "hobbies", "icon", "mylab-post"
+            "footstep", "hero", "hobbies", "icon", "mylab-post", "mylab"
     );
 
     private final FileRepository files;
@@ -194,12 +194,12 @@ public class FileServiceImpl implements FileService {
     private static String normalizeRequiredDirectory(String directory) {
         if (directory == null || directory.isBlank()) {
             throw new ValidationException(ErrorCode.VALIDATION_FAILED,
-                    "资源目录不能为空，可选值：footstep、hero、hobbies、icon、mylab-post");
+                    "资源目录不能为空，可选值：footstep、hero、hobbies、icon、mylab-post、mylab");
         }
         String normalized = directory.trim().toLowerCase();
         if (!ALLOWED_DIRECTORIES.contains(normalized)) {
             throw new ValidationException(ErrorCode.VALIDATION_FAILED,
-                    "上传目录仅支持：footstep、hero、hobbies、icon、mylab-post");
+                    "上传目录仅支持：footstep、hero、hobbies、icon、mylab-post、mylab");
         }
         return normalized;
     }
@@ -212,7 +212,7 @@ public class FileServiceImpl implements FileService {
         String normalized = directory.trim().toLowerCase();
         if (!ALLOWED_DIRECTORIES.contains(normalized)) {
             throw new ValidationException(ErrorCode.VALIDATION_FAILED,
-                    "资源目录仅支持：footstep、hero、hobbies、icon、mylab-post");
+                    "资源目录仅支持：footstep、hero、hobbies、icon、mylab-post、mylab");
         }
         return normalized;
     }

@@ -14,6 +14,13 @@ interface Station {
   summary: string
 }
 
+/** 站名规则：取标题中冒号（中/英文）后的文字，如「MyLab：个人博客系统全栈」→「个人博客系统全栈」；无冒号则用完整标题 */
+const stationName = (title: string) => {
+  const parts = title.split(/[:：]/)
+  const name = (parts.length > 1 ? parts.slice(1).join(':') : title).trim()
+  return name || title
+}
+
 const ARRIVE_MS = 2600   // 列车减速进站时长，与 CSS .train.arrived transition 对齐
 const DEPART_MS = 1000   // 驶离时长，与 .train 基础 transition 对齐
 
@@ -29,7 +36,7 @@ export function MyLabStation() {
 
   const cycleTimersRef = useRef<number[]>([])
 
-  /* 后台卡片数据到达后映射为站点：按日期倒序取最新 5 个，站名为对应卡片标题（截断显示） */
+  /* 后台卡片数据到达后映射为站点：按日期倒序取最新 5 个，站名取标题冒号后的文字（截断显示） */
   const stations = useMemo<Station[]>(() => {
     if (!labPosts.length) return []
     return [...labPosts]
@@ -37,7 +44,7 @@ export function MyLabStation() {
       .slice(0, 5)
       .map(p => ({
       key: p.id || p.title,
-      name: (p.title || '未命名').slice(0, 14),
+      name: stationName(p.title || '未命名').slice(0, 14),
       date: p.date || '',
       tags: (p.tags || []).slice(0, 2),
       summary: p.summary || '',

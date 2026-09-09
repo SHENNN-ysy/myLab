@@ -293,6 +293,24 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     }
 
     /**
+     * 归档当前草稿：DRAFT 原地转为 ARCHIVED，不产生新草稿；没有草稿时抛 NotFoundException。
+     */
+    @Override
+    @Transactional
+    public ContentDtos.ModuleView archiveDraft(CurrentUser actor, String moduleKey) {
+        Authorization.requireAdmin(actor);
+        requireKey(moduleKey);
+        releases.lockModule(moduleKey);
+        ContentRelease draft = releases.findDraft(moduleKey);
+        if (draft == null) throw new NotFoundException(ErrorCode.CONTENT_VERSION_NOT_FOUND, "当前草稿");
+        releases.archiveDraft(draft, OffsetDateTime.now());
+        // 归档不影响线上内容，无需失效公开缓存
+        log.info("草稿已归档：operator={}, module={}, version={}",
+                actor.username(), moduleKey, draft.getVersionNo());
+        return view(moduleKey);
+    }
+
+    /**
      * 删除当前草稿；没有草稿时抛 NotFoundException。
      */
     @Override
@@ -593,11 +611,11 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             Integer projectOrder = card.hasNonNull("project_show_order") ? card.path("project_show_order").asInt() : null;
             String projectContents = firstText(card, "project_contents", "project_content");
             if ("PROJECT".equals(type)) {
+                // project_show_order 为空表示不在首页项目区展示；仅参与展示的 PROJECT 校验排序唯一与侧边栏正文
                 if (projectOrder != null && projectOrder < 0) throw validation("PROJECT 必须填写非负 project_show_order");
                 if (projectOrder != null && !projectOrders.add(projectOrder)) throw validation("PROJECT 的 project_show_order 不能重复");
-                if (publishing && projectOrder == null) throw validation("已发布 PROJECT 必须填写 project_show_order");
-                if (publishing && (projectContents == null || projectContents.isBlank())) {
-                    throw validation("已发布 PROJECT 必须填写 project_contents");
+                if (publishing && projectOrder != null && (projectContents == null || projectContents.isBlank())) {
+                    throw validation("首页展示的 PROJECT 必须填写 project_contents");
                 }
             } else if (projectOrder != null || projectContents != null) {
                 throw validation("ARTICLE 不能填写项目侧边栏字段");

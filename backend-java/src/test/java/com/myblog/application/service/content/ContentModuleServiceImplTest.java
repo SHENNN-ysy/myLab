@@ -227,6 +227,30 @@ class ContentModuleServiceImplTest {
         verify(releases, never()).softDeleteVersion(any(), any());
     }
 
+    @Test
+    void archivingDraftConvertsItToArchivedVersion() {
+        ContentRelease draft = release("vibe", "DRAFT");
+        // 第一次 findDraft 返回草稿供归档，第二次（view 重读）返回 null 模拟归档后状态
+        when(releases.findDraft("vibe")).thenReturn(draft, (ContentRelease) null);
+        when(releases.findVersions("vibe")).thenReturn(List.of());
+
+        service.archiveDraft(admin, "vibe");
+
+        verify(releases).archiveDraft(argThat(release -> release.getId().equals(draft.getId())),
+                any(OffsetDateTime.class));
+        // 归档不影响线上内容，不应触发缓存失效事件
+        verify(events, never()).publishEvent(any());
+    }
+
+    @Test
+    void archivingWithoutDraftIsNotFound() {
+        when(releases.findDraft("vibe")).thenReturn(null);
+
+        assertThatThrownBy(() -> service.archiveDraft(admin, "vibe"))
+                .isInstanceOf(NotFoundException.class);
+        verify(releases, never()).archiveDraft(any(), any());
+    }
+
     private ContentRelease release(String module, String state) {
         ContentRelease release = new ContentRelease();
         release.setId(UUID.randomUUID());

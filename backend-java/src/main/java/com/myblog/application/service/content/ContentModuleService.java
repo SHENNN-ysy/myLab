@@ -56,6 +56,10 @@ public interface ContentModuleService {
      */
     ContentDtos.ModuleView restore(CurrentUser actor, String moduleKey, int versionNo);
     /**
+     * 将当前草稿转为归档版本，不产生新草稿。
+     */
+    ContentDtos.ModuleView archiveDraft(CurrentUser actor, String moduleKey);
+    /**
      * 软删除指定历史版本并解除其资源引用；线上发布态版本不可删除。
      */
     void deleteVersion(CurrentUser actor, String moduleKey, int versionNo);

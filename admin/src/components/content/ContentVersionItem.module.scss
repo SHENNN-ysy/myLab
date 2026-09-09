@@ -2,5 +2,6 @@
 .version-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .version-summary > div:first-child { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
 .version-summary strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.version-summary span { color: #8c8c8c; font-size: 12px; }
+/* 只作用于版本元信息行，勿用 .version-summary span——会误伤内部 antd 按钮的文字颜色 */
+.version-meta { color: #8c8c8c; font-size: 12px; }
 .version-description { margin: 0; color: #595959; line-height: 1.7; white-space: pre-wrap; }

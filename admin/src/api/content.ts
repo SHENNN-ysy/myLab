@@ -79,6 +79,10 @@ export const restoreContentVersionApi = async <T>(key: ContentModuleKey, version
   return request.post<ContentModule<T>>(`/admin/content/${key}/versions/${version}/restore`)
 }
 
+export const archiveContentDraftApi = async <T>(key: ContentModuleKey): Promise<ContentModule<T>> => {
+  return request.post<ContentModule<T>>(`/admin/content/${key}/draft/archive`)
+}
+
 export const deleteContentDraftApi = async (key: ContentModuleKey): Promise<void> => {
   await request.delete<void>(`/admin/content/${key}/draft`)
 }

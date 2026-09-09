@@ -47,7 +47,7 @@ export const useLabPosts = () => {
           image: post.image_url || fallback?.image,
           sections: fallback?.sections || [],
           detailImage: post.image_url || fallback?.detailImage,
-          showInProjects: post.card_type === 'PROJECT',
+          showInProjects: post.card_type === 'PROJECT' && post.project_show_order != null,
           projectDetailTitle: post.card_title || post.title || fallback?.projectDetailTitle,
           projectDetailSummary: post.card_summary || post.summary || fallback?.projectDetailSummary || '',
           projectParagraphs,
