@@ -141,6 +141,8 @@
   align-items: stretch;
   padding: 1.1% 1.4%;
   gap: 1.6%;
+  /* 独立合成层：站点名文字在列车/圆点动画期间保持栅格化结果不变 */
+  transform: translateZ(0);
 }
 
 /* 牌头：L1 徽章在上，站名在下 */
@@ -233,6 +235,8 @@
   background: #fff;
   border: clamp(3px, 0.35vw, 5px) solid var(--accent-dark);
   cursor: pointer;
+  /* 常驻独立合成层：hover 缩放不再触发场景层重绘（修复缩放场景内文字抖动） */
+  will-change: transform;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -354,6 +358,8 @@
   border-radius: 8px;
   box-shadow: 6px 6px 0 rgba(27, 58, 75, 0.15);
   z-index: 6;
+  /* 独立合成层：列车动画时文字不被迫重栅格化（scale(0.85) 场景下表现为抖动） */
+  transform: translateZ(0);
 }
 
 /* 天花板连接杆 */
@@ -455,6 +461,8 @@
   overflow: hidden;
   z-index: 4;
   transform: translateX(-110%);
+  /* 常驻独立合成层：进出站动画期间不与站点文字共享图层，避免文字重栅格化抖动 */
+  will-change: transform;
   transition: transform 1s ease-in;
 }
 

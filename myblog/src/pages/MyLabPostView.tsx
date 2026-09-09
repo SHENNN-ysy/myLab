@@ -3,14 +3,38 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import ReactMarkdown, { type Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useLabPosts } from '@/hooks/useLabPosts'
 import { fetchMylabDetail } from '@/api/public'
 import { selectEngagement, useEngagementStore } from '@/stores/engagementStore'
-import { renderMarkdown, type MarkdownHeading } from '@/utils/markdown'
+import { extractHeadings, type MarkdownHeading } from '@/utils/markdown'
 import styles from './MyLabPostView.module.css'
 
 const numberFormatter = new Intl.NumberFormat('zh-CN')
 const formatNumber = (value: number) => numberFormatter.format(value)
+
+/* 标题 id 取起始行号，与 extractHeadings 的目录 id 规则一致（对 StrictMode 双渲染安全） */
+const headingId = (node?: { position?: { start: { line: number } } }) =>
+  `heading-${node?.position?.start.line ?? 0}`
+
+/** Markdown 渲染约定：标题带目录 id，链接新窗口打开，图片懒加载；原始 HTML 由 react-markdown 默认转义 */
+const markdownComponents: Components = {
+  h1: ({ node, ...props }) => <h1 id={headingId(node)} {...props} />,
+  h2: ({ node, ...props }) => <h2 id={headingId(node)} {...props} />,
+  h3: ({ node, ...props }) => <h3 id={headingId(node)} {...props} />,
+  h4: ({ node, ...props }) => <h4 id={headingId(node)} {...props} />,
+  h5: ({ node, ...props }) => <h5 id={headingId(node)} {...props} />,
+  h6: ({ node, ...props }) => <h6 id={headingId(node)} {...props} />,
+  a: ({ node, ...props }) => {
+    void node
+    return <a {...props} target="_blank" rel="noopener noreferrer" />
+  },
+  img: ({ node, ...props }) => {
+    void node
+    return <img {...props} loading="lazy" />
+  },
+}
 
 export default function MyLabPostView() {
   const { id } = useParams()
@@ -27,7 +51,7 @@ export default function MyLabPostView() {
 
   const [likePending, setLikePending] = useState(false)
   const [interactionError, setInteractionError] = useState('')
-  const [markdownHtml, setMarkdownHtml] = useState('')
+  const [markdownContent, setMarkdownContent] = useState('')
   const [markdownHeadings, setMarkdownHeadings] = useState<MarkdownHeading[]>([])
   const [markdownError, setMarkdownError] = useState('')
   /* 头图骨架：切换文章时重置加载状态 */
@@ -39,7 +63,7 @@ export default function MyLabPostView() {
     if (prevRoute.id !== id) setHeroLoaded(false)
     if (prevRoute.postKey !== postKey) {
       setInteractionError('')
-      setMarkdownHtml('')
+      setMarkdownContent('')
       setMarkdownHeadings([])
       setMarkdownError('')
     }
@@ -47,7 +71,7 @@ export default function MyLabPostView() {
   }
 
   /* 正文加载中：有 postKey 且尚无正文与错误（渲染期重置保证切文后回到加载态） */
-  const markdownLoading = Boolean(postKey) && !markdownHtml && !markdownError
+  const markdownLoading = Boolean(postKey) && !markdownContent && !markdownError
 
   /* 上报浏览（切换文章时取消上一次请求） */
   useEffect(() => {
@@ -69,9 +93,8 @@ export default function MyLabPostView() {
         const markdown = detail.markdown_content || ''
         if (!markdown.trim()) throw new Error('正文为空')
         if (controller.signal.aborted) return
-        const rendered = renderMarkdown(markdown)
-        setMarkdownHtml(rendered.html)
-        setMarkdownHeadings(rendered.headings)
+        setMarkdownContent(markdown)
+        setMarkdownHeadings(extractHeadings(markdown))
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {
           setMarkdownError('暂时无法加载这篇文章的正文。')
@@ -196,11 +219,12 @@ export default function MyLabPostView() {
               <p className={`${styles['post-content-state']} ${styles['is-error']}`}>
                 {markdownError}
               </p>
-            ) : markdownHtml ? (
-              <div
-                className={styles['markdown-body']}
-                dangerouslySetInnerHTML={{ __html: markdownHtml }}
-              />
+            ) : markdownContent ? (
+              <div className={styles['markdown-body']}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                  {markdownContent}
+                </ReactMarkdown>
+              </div>
             ) : (
               post.sections.map((section, index) => (
                 <section

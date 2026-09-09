@@ -32,8 +32,22 @@ import {
   type MylabTag,
 } from '@/api/mylabTag'
 import type { MylabCardData, MylabContentData } from '@/types/content'
-import { renderMarkdown } from '@/utils/markdown'
+import ReactMarkdown, { type Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import styles from './StaticMylabManage.module.scss'
+
+/** Markdown 预览渲染约定（与前台详情页一致）：链接新窗口打开、图片懒加载，原始 HTML 默认转义 */
+const markdownComponents: Components = {
+  // node 是 AST 节点，不能透传到 DOM 元素
+  a: ({ node, ...props }) => {
+    void node
+    return <a {...props} target="_blank" rel="noopener noreferrer" />
+  },
+  img: ({ node, ...props }) => {
+    void node
+    return <img {...props} loading="lazy" />
+  },
+}
 
 interface AdminMylabCard {
   rowId?: string
@@ -498,10 +512,11 @@ const StaticMylabManage = () => {
                     <span>与博客详情页渲染规则一致</span>
                   </header>
                   {card.markdownContent.trim() ? (
-                    <div
-                      className={styles['markdown-preview']}
-                      dangerouslySetInnerHTML={{ __html: renderMarkdown(card.markdownContent).html }}
-                    />
+                    <div className={styles['markdown-preview']}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                        {card.markdownContent}
+                      </ReactMarkdown>
+                    </div>
                   ) : (
                     <Empty description="输入正文后在此预览" />
                   )}
