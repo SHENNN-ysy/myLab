@@ -9,6 +9,6 @@ public interface MylabPublicRepository {
     /** 读取不含 Markdown 正文的卡片摘要集合。 */
     Map<String, Object> readSummary(UUID releaseId);
 
-    /** 读取单张卡片详情；不存在时返回 null。 */
+    /** 读取单张卡片详情（只含卡片本体，不含全局标签字典）；不存在时返回 null。 */
     Map<String, Object> readDetail(UUID releaseId, String postKey);
 }

@@ -24,11 +24,11 @@
 .resource-field :global(.ant-form-item-control-input-content) > div,
 .resource-field :global(.ant-form-item-control-input-content) > div > div { width: 100%; min-width: 0; }
 .markdown-editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); overflow: hidden; border: 1px solid #d9d9d9; border-radius: 8px; }
-.markdown-pane { min-width: 0; background: #fff; }
+.markdown-pane { display: flex; min-width: 0; min-height: 0; flex-direction: column; background: #fff; }
 .markdown-pane + .markdown-pane { border-left: 1px solid #e8e8e8; }
-.markdown-pane header { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 40px; padding: 0 12px; color: #595959; background: #fafafa; border-bottom: 1px solid #e8e8e8; }
+.markdown-pane header { display: flex; flex: 0 0 40px; align-items: center; justify-content: space-between; gap: 12px; height: 40px; padding: 0 12px; color: #595959; background: #fafafa; border-bottom: 1px solid #e8e8e8; }
 .markdown-pane header span { color: #8c8c8c; font-size: 12px; }
-.markdown-pane :global(textarea.ant-input) { min-height: 420px; resize: vertical; border: 0; border-radius: 0; box-shadow: none; }
+.markdown-pane :global(textarea.ant-input) { flex: 1; min-height: 420px; resize: vertical; border: 0; border-radius: 0; box-shadow: none; }
 .markdown-preview { min-height: 420px; max-height: 640px; padding: 16px 20px; overflow: auto; color: #262626; line-height: 1.75; }
 .markdown-preview :global(h1), .markdown-preview :global(h2), .markdown-preview :global(h3), .markdown-preview :global(h4) { margin: 1.2em 0 0.55em; color: #1f1f1f; line-height: 1.35; }
 .markdown-preview :global(p) { margin: 0 0 0.9em; }

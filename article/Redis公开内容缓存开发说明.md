@@ -25,7 +25,7 @@
 | `myblog:content:v1:lock:all` | String | 全量摘要重建锁的 UUID token | 5 秒 |
 | `myblog:content:v1:lock:mylab:details` | String | MyLab 详情 Hash 重建锁的 UUID token | 5 秒 |
 
-全量摘要不保存 MyLab Markdown 正文；详情 Hash 保存 Markdown 正文。缓存保存数据库原始公开数据和 OSS object key，不保存临时签名 URL。每次响应前仍执行停用项过滤、标签展开和当前有效 URL 生成，避免缓存中的签名 URL 过期。
+全量摘要不保存 MyLab Markdown 正文；详情 Hash 保存 Markdown 正文，且只缓存卡片本体，不冗余保存全局标签字典（标签展开所需的 tags 字典由全量摘要提供）。缓存保存数据库原始公开数据和 OSS object key，不保存临时签名 URL。每次响应前仍执行停用项过滤、标签展开和当前有效 URL 生成，避免缓存中的签名 URL 过期。
 
 ## 3. 读取流程
 
