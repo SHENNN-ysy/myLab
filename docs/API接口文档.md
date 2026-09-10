@@ -6,17 +6,17 @@
 
 ### 1.1 认证与权限
 
-除登录、刷新令牌、健康检查和公开内容读取外，其余接口都需要请求头：
+除登录、健康检查和公开内容读取外，其余接口都需要请求头：
 
 ```http
-Authorization: Bearer <access_token>
+Authorization: Bearer <uuid_session_token>
 ```
 
 角色等级从低到高为：`viewer`、`editor`、`admin`、`superadmin`。
 
 | 权限 | 可用角色 |
 | --- | --- |
-| 公开内容、登录、刷新令牌、健康检查 | 无需登录 |
+| 公开内容、登录、健康检查 | 无需登录 |
 | 内容、标签、文件、系统信息、用户查询和用户更新 | `admin`、`superadmin` |
 | 创建和删除管理员账号 | `superadmin` |
 
@@ -65,10 +65,8 @@ Authorization: Bearer <access_token>
 | 方法 | 路径 | 认证 | 说明 |
 | --- | --- | --- | --- |
 | POST | `/api/v1/auth/login` | 否 | 用户名密码登录 |
-| POST | `/api/v1/auth/refresh` | 否 | 使用刷新令牌获取新令牌对 |
 | GET | `/api/v1/auth/me` | 是 | 获取当前用户基本信息 |
-| POST | `/api/v1/auth/logout` | 是 | 无状态客户端退出，不在服务端吊销令牌 |
-| POST | `/api/v1/auth/logout-token` | 是 | 吊销指定 access 或 refresh token |
+| POST | `/api/v1/auth/logout` | 是 | 吊销 Authorization 中的当前会话；无请求体 |
 | PUT | `/api/v1/auth/password` | 是 | 修改当前用户密码 |
 | PUT | `/api/v1/auth/account` | 是 | 校验当前密码后修改账号名称，并可同时修改密码 |
 
@@ -86,10 +84,9 @@ Authorization: Bearer <access_token>
 ```json
 {
   "tokens": {
-    "access_token": "...",
-    "refresh_token": "...",
-    "token_type": "Bearer",
-    "expires_in": 1800
+    "access_token": "随机 UUID 原文",
+    "token_type": "bearer",
+    "expires_in": 28800
   },
   "user": {
     "id": "uuid",
@@ -99,15 +96,7 @@ Authorization: Bearer <access_token>
 }
 ```
 
-刷新、吊销和修改密码请求：
-
-```json
-{ "refresh_token": "..." }
-```
-
-```json
-{ "token": "..." }
-```
+修改密码请求：
 
 ```json
 {
@@ -117,6 +106,8 @@ Authorization: Bearer <access_token>
 ```
 
 用户名长度为 3～64，登录密码和新旧密码长度为 8～64。
+
+管理会话保存在 Redis：客户端持有 UUID 原文，服务端只保存 SHA-256 摘要。会话空闲超时默认 8 小时，每次成功认证都会续期。修改当前账号的用户名或密码，以及后台修改用户密码、角色、启用状态或删除用户时，该用户的全部会话都会失效。Redis 会话服务不可用时，登录和受保护接口返回 HTTP 503 / code `10014`；公开内容和访客互动接口不受影响。
 
 ## 3. 内容模块总览
 

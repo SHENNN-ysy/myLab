@@ -23,6 +23,7 @@ const stationName = (title: string) => {
 
 const ARRIVE_MS = 2600   // 列车减速进站时长，与 CSS .train.arrived transition 对齐
 const DEPART_MS = 1000   // 驶离时长，与 .train 基础 transition 对齐
+const MAX_STATION_NAME_LENGTH = 12 // 线路牌与站点详情统一最多展示 12 个字
 
 export function MyLabStation() {
   const { labPosts } = useLabPosts()
@@ -44,7 +45,7 @@ export function MyLabStation() {
       .slice(0, 5)
       .map(p => ({
       key: p.id || p.title,
-      name: stationName(p.title || '未命名').slice(0, 14),
+      name: Array.from(stationName(p.title || '未命名')).slice(0, MAX_STATION_NAME_LENGTH).join(''),
       date: p.date || '',
       tags: (p.tags || []).slice(0, 2),
       summary: p.summary || '',

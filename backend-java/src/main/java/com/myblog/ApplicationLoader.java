@@ -2,6 +2,7 @@ package com.myblog;
 
 import com.myblog.common.properties.AppProperties;
 import com.myblog.common.properties.ContentCacheProperties;
+import com.myblog.common.properties.SessionProperties;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -13,7 +14,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @EnableAsync
 @MapperScan("com.myblog.infrastructure.persistence.mapper")
-@EnableConfigurationProperties({AppProperties.class, ContentCacheProperties.class})
+@EnableConfigurationProperties({AppProperties.class, ContentCacheProperties.class, SessionProperties.class})
 @SpringBootApplication
 public class ApplicationLoader {
 

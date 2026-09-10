@@ -8,8 +8,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 当前用户角色层级判定（atLeast）测试。 */
 class CurrentUserTest {
 
+    /** 角色层级判定与旧 Python 实现保持一致：同级及以上为真，低级别为假。 */
     @Test
     void roleHierarchyMatchesPython() {
         assertThat(new CurrentUser(UUID.randomUUID(), "root", "superadmin").atLeast("superadmin")).isTrue();

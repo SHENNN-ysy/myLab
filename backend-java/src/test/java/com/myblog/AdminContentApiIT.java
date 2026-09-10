@@ -29,6 +29,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
     private static final String VIBE_URL = CONTENT_URL + "/vibe";
     private static final String TAGS_URL = "/api/v1/admin/mylab/tags";
 
+    /** vibe 模块草稿保存/编辑、乐观锁冲突、发布、下线与公开可见性的完整生命周期。 */
     @Test
     void draftPublishOfflineLifecycle() {
         String admin = loginAs("admin");
@@ -68,6 +69,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
 
         // 发布：DRAFT 转 PUBLISHED 并记录发布人/时间，旧线上版本（若有）归档
         UUID previousCurrent = currentVibeReleaseId();
+        // 先预热公开内容缓存，用于验证发布成功后缓存被失效
         assertStatusAndCode(rest.getForEntity("/api/v1/public/content", JsonNode.class), HttpStatus.OK, 0);
         assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isTrue();
         JsonNode published = assertStatusAndCode(
@@ -103,6 +105,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
                 HttpStatus.NOT_FOUND, 12002);
     }
 
+    /** 历史版本列表、线上版本删除保护、恢复原地转草稿、版本软删除与放弃草稿。 */
     @Test
     void versionOperations() {
         String admin = loginAs("admin");
@@ -130,6 +133,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
                 exchange(VIBE_URL + "/versions", HttpMethod.GET, admin, null), HttpStatus.OK, 0);
         assertThat(versions.path("data").toString())
                 .contains("Vibe 版本一", "Vibe 版本二", "Vibe 待恢复草稿", "version_description");
+        // 线上版本禁止直接删除，须先下线
         assertStatusAndCode(exchange(VIBE_URL + "/versions/" + v2, HttpMethod.DELETE, admin, null),
                 HttpStatus.CONFLICT, 12005);
 
@@ -174,6 +178,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
                 HttpStatus.NOT_FOUND, 12003);
     }
 
+    /** viewer 角色访问内容管理接口返回 403，匿名访问返回 401。 */
     @Test
     void viewerGets403AndAnonymousGets401() {
         String viewer = loginAs("viewer");
@@ -190,6 +195,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
                 HttpStatus.UNAUTHORIZED, 10001);
     }
 
+    /** 保存草稿的入参校验：非法 data 结构、字段越界、未知模块、缺少版本描述。 */
     @Test
     void saveDraftValidationFails() {
         String admin = loginAs("admin");
@@ -210,10 +216,12 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
                 HttpStatus.UNPROCESSABLE_ENTITY, 12004);
     }
 
+    /** 发布校验失败时事务回滚，已存在的公开内容缓存不得被失效。 */
     @Test
     void failedPublishKeepsExistingPublicCache() {
         String admin = loginAs("admin");
         exchange(VIBE_URL + "/draft", HttpMethod.DELETE, admin, null);
+        // 故意缺少 name/description：草稿可保存，但发布会因发布态校验失败而回滚
         Map<String, Object> incomplete = Map.of("tools", List.of(Map.of(
                 "tool_key", uniqueKey("apitest-invalid-publish-"),
                 "percentage", 50,
@@ -230,6 +238,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         exchange(VIBE_URL + "/draft", HttpMethod.DELETE, admin, null);
     }
 
+    /** MyLab 标签增删改查：创建落库、重复标识冲突、更新、软删除及删除边界。 */
     @Test
     void mylabTagCrud() {
         String admin = loginAs("admin");
@@ -301,6 +310,7 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         return ids.isEmpty() ? null : ids.getFirst();
     }
 
+    /** 按表与条件统计行数，用于断言落库状态。 */
     private int countRows(String from, String where) {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM " + from + " WHERE " + where, Integer.class);
         return count == null ? 0 : count;

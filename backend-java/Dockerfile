@@ -10,19 +10,23 @@ ARG JRE_IMAGE=eclipse-temurin:21-jre
 FROM ${MAVEN_IMAGE} AS builder
 WORKDIR /app
 
-# 先只复制 pom.xml 与 Maven 仓库镜像配置（docker/maven-settings.xml，走国内镜像加速），
-# 充分利用 Docker 层缓存：依赖不变时跳过重新下载
+# 先只复制 pom.xml 与 Maven 仓库镜像配置（docker/maven-settings.xml，走国内镜像加速）。
+# 依赖缓存走 BuildKit cache mount（/root/.m2/repository）：pom 不变时整层 CACHED；
+# pom 变化时也只需增量下载新增/变更的依赖，不再全量重下
 COPY pom.xml ./
 COPY docker/maven-settings.xml /root/.m2/settings.xml
-RUN mvn -B -q -s /root/.m2/settings.xml dependency:go-offline
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -B -q -s /root/.m2/settings.xml dependency:go-offline
 
 # 再复制源码与质量检查配置（checkstyle/spotbugs 规则），源码变化只重建这一层
 COPY src ./src
 COPY config ./config
 # 默认执行单元测试；本地 Compose 传入 MAVEN_TEST_SKIP=true，仅编译打包。
 # *IT 集成测试（Testcontainers）不在镜像构建期执行，由 CI 流水线负责。
+# package 与 go-offline 共用同一 cache mount，依赖不会二次下载
 ARG MAVEN_TEST_SKIP=false
-RUN mvn -B -q -s /root/.m2/settings.xml package -Dmaven.test.skip=${MAVEN_TEST_SKIP}
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -B -q -s /root/.m2/settings.xml package -Dmaven.test.skip=${MAVEN_TEST_SKIP}
 
 # ---------- 阶段 2：精简运行镜像 ----------
 FROM ${JRE_IMAGE}

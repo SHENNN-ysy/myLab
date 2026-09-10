@@ -75,7 +75,7 @@ cp deploy/.env.example deploy/.env
 
 - `BLOG_DOMAIN`、`CORS_ORIGINS`；
 - `ADMIN_ROUTE`、`JENKINS_ROUTE`，二者必须以 `/` 开头且不能冲突；
-- PostgreSQL、Redis、JWT、访客哈希和初始管理员密码；
+- PostgreSQL、Redis、管理会话空闲时间、访客哈希和初始管理员密码；
 - OSS/CDN 参数；
 - `TLS_CERT_FILE`、`TLS_KEY_FILE`；
 - `DOCKER_GID`。
@@ -313,7 +313,13 @@ curl -I https://<BLOG_DOMAIN><ADMIN_ROUTE>/
 cat /data/jenkins/deploy-state/myblog-current-release
 ```
 
-### 8.3 移除 Jenkins 临时端口
+### 8.3 Redis 会话认证版本上线
+
+JWT 双令牌切换到 Redis 会话的版本必须让 backend 与 admin 使用同一个 release tag 一起发布。上线后旧 JWT 会统一失效，管理员需要重新登录一次；这是预期行为。确认新版本稳定前保留服务器 `deploy/.env` 中的旧 `JWT_SECRET`，仅用于回滚旧镜像，新程序不会读取；超过回滚观察期后再删除。
+
+上线验收时确认后台 Network 不再请求 `/auth/refresh`，登录响应不含 `refresh_token`，Redis 中只出现 `auth:session:<sha256>` 与 `auth:user-sessions:<user_id>`。将 Redis 暂时设为不可达时，带本地 Token 的后台受保护请求应返回 503 且前端不清除登录状态；公开博客接口仍可访问。
+
+### 8.4 移除 Jenkins 临时端口
 
 确认 `https://<BLOG_DOMAIN><JENKINS_ROUTE>/` 可访问后，仅使用正式 Compose 重建 Jenkins：
 

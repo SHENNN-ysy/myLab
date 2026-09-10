@@ -24,6 +24,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+/**
+ * SystemService 单元测试：健康状态聚合、系统静态/动态信息的管理员权限校验与指标范围，
+ * 以及宿主机内存（/proc/meminfo）解析的各类降级分支。
+ */
 @ExtendWith(MockitoExtension.class)
 class SystemServiceTest {
     @Mock DatabaseDiagnostics database;
@@ -40,6 +44,7 @@ class SystemServiceTest {
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
+    /** CPU 使用率取自真实系统指标，取值必须在 0-100 百分比范围内。 */
     @Test
     void cpuUsageIsRealMetricWithinPercentRange() {
         Map<String, Object> info = service.dynamicInfo(admin);
@@ -49,6 +54,7 @@ class SystemServiceTest {
         assertThat(cpuUsage).isBetween(0.0, 100.0);
     }
 
+    /** 数据库、Redis、OSS 全部正常时整体状态为 healthy，各组件分别上报 up/configured。 */
     @Test
     void healthReportsHealthyWhenDatabaseIsUp() {
         when(database.available()).thenReturn(true);
@@ -65,6 +71,7 @@ class SystemServiceTest {
                 .containsEntry("oss", "configured");
     }
 
+    /** 依赖全部不可用时整体状态降级为 degraded，各组件如实上报 down/not_configured。 */
     @Test
     void healthDegradesWhenDatabaseIsDown() {
         when(database.available()).thenReturn(false);
@@ -81,6 +88,7 @@ class SystemServiceTest {
                 .containsEntry("oss", "not_configured");
     }
 
+    /** 非管理员查询系统静态信息被拒绝（ForbiddenException）。 */
     @Test
     void staticInfoRequiresAdmin() {
         CurrentUser viewer = new CurrentUser(UUID.randomUUID(), "guest", "viewer");
@@ -89,6 +97,7 @@ class SystemServiceTest {
                 .isInstanceOf(ForbiddenException.class);
     }
 
+    /** 静态信息包含主机名、OS、CPU、内存等字段；runMode 取激活 profile，未打包时版本号固定为 dev。 */
     @Test
     void staticInfoReportsHostOsAndActiveProfiles() throws Exception {
         when(environment.getActiveProfiles()).thenReturn(new String[] {"prod"});
@@ -108,6 +117,7 @@ class SystemServiceTest {
         assertThat(info.get("runMode")).isEqualTo("prod");
     }
 
+    /** 无激活 profile 时 runMode 回退到默认 profile。 */
     @Test
     void staticInfoFallsBackToDefaultProfiles() throws Exception {
         when(environment.getActiveProfiles()).thenReturn(new String[0]);
@@ -118,6 +128,7 @@ class SystemServiceTest {
         assertThat(info.get("runMode")).isEqualTo("default");
     }
 
+    /** 非管理员查询系统动态信息被拒绝（ForbiddenException）。 */
     @Test
     void dynamicInfoRequiresAdmin() {
         CurrentUser viewer = new CurrentUser(UUID.randomUUID(), "guest", "viewer");
@@ -126,6 +137,7 @@ class SystemServiceTest {
                 .isInstanceOf(ForbiddenException.class);
     }
 
+    /** 动态信息包含负载、内存、swap、磁盘与运行时长，各数值非负。 */
     @Test
     void dynamicInfoReportsMemorySwapDiskAndUptime() {
         Map<String, Object> info = service.dynamicInfo(admin);
@@ -143,6 +155,7 @@ class SystemServiceTest {
         assertThat(memoryAvailable).isGreaterThanOrEqualTo(0L);
     }
 
+    /** 按宿主机口径解析 meminfo：MemTotal/MemAvailable 的 kB 值换算为字节数返回。 */
     @Test
     void hostMemoryParsesMeminfoWithHostCaliber(@TempDir Path dir) throws IOException {
         Path meminfo = dir.resolve("meminfo");
@@ -157,6 +170,7 @@ class SystemServiceTest {
         assertThat(memory.availableBytes()).isEqualTo(12288000L * 1024);
     }
 
+    /** meminfo 文件不存在时回退到 JVM MXBean 口径读取内存。 */
     @Test
     void hostMemoryFallsBackToMxBeanWhenMeminfoMissing(@TempDir Path dir) {
         SystemService.HostMemory memory = service.hostMemory(dir.resolve("nonexistent"));
@@ -165,6 +179,7 @@ class SystemServiceTest {
         assertThat(memory.availableBytes()).isGreaterThanOrEqualTo(0L);
     }
 
+    /** meminfo 缺少 MemAvailable 行时同样回退到 MXBean 口径。 */
     @Test
     void hostMemoryFallsBackWhenMemAvailableAbsent(@TempDir Path dir) throws IOException {
         Path meminfo = dir.resolve("meminfo");
@@ -175,6 +190,7 @@ class SystemServiceTest {
         assertThat(memory.totalBytes()).isGreaterThan(0L);
     }
 
+    /** meminfo 数值非法（非数字）时回退到 MXBean 口径，不抛异常。 */
     @Test
     void hostMemoryFallsBackWhenMeminfoValueMalformed(@TempDir Path dir) throws IOException {
         Path meminfo = dir.resolve("meminfo");
@@ -187,6 +203,7 @@ class SystemServiceTest {
         assertThat(memory.totalBytes()).isGreaterThan(0L);
     }
 
+    /** meminfo 行缺少数值（仅有键名）时回退到 MXBean 口径。 */
     @Test
     void hostMemoryFallsBackWhenMeminfoLineHasNoValue(@TempDir Path dir) throws IOException {
         Path meminfo = dir.resolve("meminfo");

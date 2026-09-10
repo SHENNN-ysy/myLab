@@ -28,6 +28,8 @@ interface AuthState {
   login: (userToken: string, userInfo: User) => void
   /** 退出登录：先调后端吊销令牌（本地 storage 由 logoutApi 统一清理），再清空内存态 */
   logout: () => Promise<void>
+  /** 会话已被服务端撤销时，只清理本地状态，不再发送注销请求。 */
+  clearSession: () => void
   getToken: () => string | null
   updateUserInfo: (userInfo: User) => void
 }
@@ -51,6 +53,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({ token: null, currentUser: null })
     }
+  },
+
+  clearSession: () => {
+    storage.remove(STORAGE_KEYS.TOKEN)
+    storage.remove(STORAGE_KEYS.USER_INFO)
+    set({ token: null, currentUser: null })
   },
 
   getToken: () => get().token,

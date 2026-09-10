@@ -1,11 +1,10 @@
 package com.myblog.application.service.auth;
 
 import com.myblog.application.model.entity.User;
+import com.myblog.application.model.vo.AccessTokenVO;
 import com.myblog.application.model.vo.AuthResultVO;
-import com.myblog.application.model.vo.TokenPairVO;
 import com.myblog.application.model.vo.UserPublicVO;
-import com.myblog.application.port.TokenClaims;
-import com.myblog.application.port.TokenService;
+import com.myblog.application.port.SessionService;
 import com.myblog.application.repository.UserRepository;
 import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.UnauthorizedException;
@@ -27,92 +26,66 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/** AuthServiceImpl 单元测试：登录、当前用户、密码与账号修改、初始管理员创建与种子接管，仓储与会话全部 mock。 */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
     @Mock UserRepository users;
-    @Mock TokenService tokens;
+    @Mock SessionService sessions;
     @Mock AppProperties props;
 
     private AuthServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new AuthServiceImpl(users, tokens, props);
+        service = new AuthServiceImpl(users, sessions, props);
     }
 
+    /** 用户名不存在时登录按未认证拒绝。 */
     @Test
     void loginRejectsUnknownUsername() {
-        when(users.findByUsername("ghost")).thenReturn(null);
+        when(users.findByUsernameForUpdate("ghost")).thenReturn(null);
 
         assertThatThrownBy(() -> service.login("ghost", "whatever"))
                 .isInstanceOf(UnauthorizedException.class);
     }
 
+    /** 已停用账号即使密码正确也按未认证拒绝。 */
     @Test
     void loginRejectsDisabledAccount() {
         User user = activeUser("correct-password");
         user.setIsActive(false);
-        when(users.findByUsername("admin")).thenReturn(user);
+        when(users.findByUsernameForUpdate("admin")).thenReturn(user);
 
         assertThatThrownBy(() -> service.login("admin", "correct-password"))
                 .isInstanceOf(UnauthorizedException.class);
     }
 
+    /** 密码错误时登录按未认证拒绝。 */
     @Test
     void loginRejectsWrongPassword() {
-        when(users.findByUsername("admin")).thenReturn(activeUser("correct-password"));
+        when(users.findByUsernameForUpdate("admin")).thenReturn(activeUser("correct-password"));
 
         assertThatThrownBy(() -> service.login("admin", "wrong-password"))
                 .isInstanceOf(UnauthorizedException.class);
     }
 
+    /** 登录成功签发令牌、回写最后登录时间并保存用户。 */
     @Test
-    void loginUpdatesLastLoginAndIssuesTokenPair() {
+    void loginUpdatesLastLoginAndIssuesSession() {
         User user = activeUser("correct-password");
-        TokenPairVO pair = new TokenPairVO("access", "refresh", "Bearer", 3600);
-        when(users.findByUsername("admin")).thenReturn(user);
-        when(tokens.pair(user)).thenReturn(pair);
+        AccessTokenVO token = new AccessTokenVO("access", "bearer", 28800); // 28800 秒即 8 小时会话时长
+        when(users.findByUsernameForUpdate("admin")).thenReturn(user);
+        when(sessions.issue(user)).thenReturn(token);
 
         AuthResultVO result = service.login("admin", "correct-password");
 
-        assertThat(result.tokens()).isEqualTo(pair);
+        assertThat(result.tokens()).isEqualTo(token);
         assertThat(result.user()).isEqualTo(new UserPublicVO(user.getId(), "admin", "admin"));
         assertThat(user.getLastLoginAt()).isNotNull();
         verify(users).save(user);
     }
 
-    @Test
-    void refreshRejectsUnknownUser() {
-        UUID userId = UUID.randomUUID();
-        when(tokens.parse("refresh-token", "refresh")).thenReturn(new TokenClaims(userId, "admin"));
-        when(users.findById(userId)).thenReturn(null);
-
-        assertThatThrownBy(() -> service.refresh("refresh-token"))
-                .isInstanceOf(UnauthorizedException.class);
-    }
-
-    @Test
-    void refreshRejectsDisabledUser() {
-        User user = activeUser("correct-password");
-        user.setIsActive(false);
-        when(tokens.parse("refresh-token", "refresh")).thenReturn(new TokenClaims(user.getId(), "admin"));
-        when(users.findById(user.getId())).thenReturn(user);
-
-        assertThatThrownBy(() -> service.refresh("refresh-token"))
-                .isInstanceOf(UnauthorizedException.class);
-    }
-
-    @Test
-    void refreshIssuesNewPairForActiveUser() {
-        User user = activeUser("correct-password");
-        TokenPairVO pair = new TokenPairVO("new-access", "new-refresh", "Bearer", 3600);
-        when(tokens.parse("refresh-token", "refresh")).thenReturn(new TokenClaims(user.getId(), "admin"));
-        when(users.findById(user.getId())).thenReturn(user);
-        when(tokens.pair(user)).thenReturn(pair);
-
-        assertThat(service.refresh("refresh-token")).isEqualTo(pair);
-    }
-
+    /** 会话对应的用户不存在时按未认证处理。 */
     @Test
     void currentRejectsUnknownUser() {
         UUID id = UUID.randomUUID();
@@ -122,6 +95,7 @@ class AuthServiceImplTest {
                 .isInstanceOf(UnauthorizedException.class);
     }
 
+    /** 按 ID 返回已存在的用户实体。 */
     @Test
     void currentReturnsExistingUser() {
         User user = activeUser("correct-password");
@@ -130,6 +104,7 @@ class AuthServiceImplTest {
         assertThat(service.current(user.getId())).isSameAs(user);
     }
 
+    /** 公开视图仅暴露 ID、用户名与角色。 */
     @Test
     void publicUserExposesOnlyPublicFields() {
         User user = activeUser("correct-password");
@@ -141,34 +116,39 @@ class AuthServiceImplTest {
         assertThat(view.role()).isEqualTo("admin");
     }
 
+    /** 旧密码错误时拒绝修改，不落库也不吊销会话。 */
     @Test
     void changeRejectsWrongOldPassword() {
         User user = activeUser("old-password");
-        when(users.findById(user.getId())).thenReturn(user);
+        when(users.findByIdForUpdate(user.getId())).thenReturn(user);
 
         assertThatThrownBy(() -> service.change(user.getId(), "not-old-password", "new-password-1"))
                 .isInstanceOf(ValidationException.class);
         verify(users, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(sessions, never()).revokeAll(user.getId());
     }
 
+    /** 修改密码保存新哈希并吊销该用户全部会话。 */
     @Test
     void changeStoresHashOfNewPassword() {
         User user = activeUser("old-password");
         String previousHash = user.getPasswordHash();
-        when(users.findById(user.getId())).thenReturn(user);
+        when(users.findByIdForUpdate(user.getId())).thenReturn(user);
 
         service.change(user.getId(), "old-password", "new-password-1");
 
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
         verify(users).save(saved.capture());
+        verify(sessions).revokeAll(user.getId());
         assertThat(saved.getValue().getPasswordHash()).isNotEqualTo(previousHash);
         assertThat(new BCryptPasswordEncoder().matches("new-password-1", saved.getValue().getPasswordHash())).isTrue();
     }
 
+    /** 当前密码校验失败时拒绝账号修改。 */
     @Test
     void updateAccountRejectsWrongCurrentPassword() {
         User user = activeUser("old-password");
-        when(users.findById(user.getId())).thenReturn(user);
+        when(users.findByIdForUpdate(user.getId())).thenReturn(user);
 
         assertThatThrownBy(() -> service.updateAccount(
                 user.getId(), "new-admin", "wrong-password", null))
@@ -176,10 +156,11 @@ class AuthServiceImplTest {
         verify(users, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    /** 新用户名过短或新密码不合规时拒绝修改。 */
     @Test
     void updateAccountRejectsInvalidUsernameAndPassword() {
         User user = activeUser("old-password");
-        when(users.findById(user.getId())).thenReturn(user);
+        when(users.findByIdForUpdate(user.getId())).thenReturn(user);
 
         assertThatThrownBy(() -> service.updateAccount(user.getId(), "ab", "old-password", null))
                 .isInstanceOf(ValidationException.class);
@@ -187,10 +168,11 @@ class AuthServiceImplTest {
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 新用户名已被占用时抛冲突异常且不落库。 */
     @Test
     void updateAccountRejectsDuplicateUsername() {
         User user = activeUser("old-password");
-        when(users.findById(user.getId())).thenReturn(user);
+        when(users.findByIdForUpdate(user.getId())).thenReturn(user);
         when(users.usernameExists("taken-name")).thenReturn(true);
 
         assertThatThrownBy(() -> service.updateAccount(
@@ -199,10 +181,11 @@ class AuthServiceImplTest {
         verify(users, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    /** 同时修改用户名与密码：用户名去空格保存、密码重新哈希并吊销会话。 */
     @Test
     void updateAccountChangesUsernameAndPassword() {
         User user = activeUser("old-password");
-        when(users.findById(user.getId())).thenReturn(user);
+        when(users.findByIdForUpdate(user.getId())).thenReturn(user);
 
         UserPublicVO updated = service.updateAccount(
                 user.getId(), " new-admin ", "old-password", "new-password-1");
@@ -211,20 +194,24 @@ class AuthServiceImplTest {
         assertThat(user.getUpdatedAt()).isNotNull();
         assertThat(new BCryptPasswordEncoder().matches("new-password-1", user.getPasswordHash())).isTrue();
         verify(users).save(user);
+        verify(sessions).revokeAll(user.getId());
     }
 
+    /** 不传新密码时保留原密码哈希，仅更新账号并吊销会话。 */
     @Test
     void updateAccountKeepsPasswordWhenNewPasswordIsOmitted() {
         User user = activeUser("old-password");
         String previousHash = user.getPasswordHash();
-        when(users.findById(user.getId())).thenReturn(user);
+        when(users.findByIdForUpdate(user.getId())).thenReturn(user);
 
         service.updateAccount(user.getId(), "admin", "old-password", null);
 
         assertThat(user.getPasswordHash()).isEqualTo(previousHash);
         verify(users).save(user);
+        verify(sessions).revokeAll(user.getId());
     }
 
+    /** 已有用户时不创建初始管理员。 */
     @Test
     void ensureAdminDoesNothingWhenUsersExist() {
         when(users.countAll()).thenReturn(1L);
@@ -234,8 +221,10 @@ class AuthServiceImplTest {
         verify(users, never()).add(org.mockito.ArgumentMatchers.any());
     }
 
+    /** 基线种子管理员未被改动时按 INIT_ADMIN 配置接管用户名与密码。 */
     @Test
     void ensureAdminMigratesLegacySeedFromConfiguration() {
+        // V1 基线种子管理员的固定 ID，与基线用户名、密码哈希完全一致才会被配置接管
         UUID seedId = UUID.fromString("b7b1a013-fc83-579a-a1e3-bb1cc0483bac");
         User seedAdmin = new User();
         seedAdmin.setId(seedId);
@@ -255,8 +244,10 @@ class AuthServiceImplTest {
         verify(users).save(seedAdmin);
     }
 
+    /** 种子接管目标用户名已被占用时抛冲突异常。 */
     @Test
     void ensureAdminRejectsLegacyMigrationToDuplicateUsername() {
+        // V1 基线种子管理员的固定 ID，与基线用户名、密码哈希完全一致才会被配置接管
         UUID seedId = UUID.fromString("b7b1a013-fc83-579a-a1e3-bb1cc0483bac");
         User seedAdmin = new User();
         seedAdmin.setId(seedId);
@@ -271,6 +262,7 @@ class AuthServiceImplTest {
         verify(users, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    /** 无任何用户时按配置创建初始 superadmin，密码以 BCrypt 哈希保存。 */
     @Test
     void ensureAdminCreatesInitialSuperadminFromConfiguration() {
         when(users.countAll()).thenReturn(0L);
@@ -291,6 +283,7 @@ class AuthServiceImplTest {
         assertThat(new BCryptPasswordEncoder().matches("initial-password", admin.getPasswordHash())).isTrue();
     }
 
+    /** hash 产出 $2 前缀且可被 BCrypt 校验的哈希。 */
     @Test
     void hashProducesVerifiableBcryptHash() {
         String hash = service.hash("plain-password");

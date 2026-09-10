@@ -15,7 +15,11 @@ ErrorCode {
     SUCCESS(0, HttpStatus.OK, "成功"),
 
     AUTHENTICATION_FAILED(10001, HttpStatus.UNAUTHORIZED, "身份认证失败"),
+    /** @deprecated Redis 会话过期统一返回 AUTHENTICATION_FAILED。 */
+    @Deprecated
     TOKEN_EXPIRED(10002, HttpStatus.UNAUTHORIZED, "登录凭证已过期"),
+    /** @deprecated Redis 会话吊销后统一返回 AUTHENTICATION_FAILED。 */
+    @Deprecated
     TOKEN_REVOKED(10003, HttpStatus.UNAUTHORIZED, "登录凭证已失效"),
     FORBIDDEN(10004, HttpStatus.FORBIDDEN, "无权执行该操作"),
     RESOURCE_NOT_FOUND(10005, HttpStatus.NOT_FOUND, "请求的资源不存在"),
@@ -27,6 +31,7 @@ ErrorCode {
     UNSUPPORTED_MEDIA_TYPE(10011, HttpStatus.UNSUPPORTED_MEDIA_TYPE, "请求媒体类型不支持"),
     MISSING_REQUEST_PARAMETER(10012, HttpStatus.BAD_REQUEST, "缺少必填请求参数"),
     PARAMETER_TYPE_MISMATCH(10013, HttpStatus.BAD_REQUEST, "请求参数类型错误"),
+    AUTHENTICATION_UNAVAILABLE(10014, HttpStatus.SERVICE_UNAVAILABLE, "认证服务暂不可用"),
 
     INVALID_CREDENTIALS(11001, HttpStatus.UNAUTHORIZED, "用户名或密码错误"),
     ACCOUNT_DISABLED(11002, HttpStatus.UNAUTHORIZED, "账号已被停用"),

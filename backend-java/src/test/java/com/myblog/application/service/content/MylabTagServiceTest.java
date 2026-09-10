@@ -26,6 +26,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * MylabTagService 单测：覆盖 MyLab 标签增删改查的管理员权限控制、字段校验、
+ * 默认值与去空格处理，以及键名唯一性冲突检测。
+ */
 @ExtendWith(MockitoExtension.class)
 class MylabTagServiceTest {
     @Mock MylabTagRepository tags;
@@ -41,12 +45,14 @@ class MylabTagServiceTest {
         viewer = new CurrentUser(UUID.randomUUID(), "guest", "viewer");
     }
 
+    /** 非管理员查询标签列表被拒绝。 */
     @Test
     void listRequiresAdmin() {
         assertThatThrownBy(() -> service.list(viewer))
                 .isInstanceOf(ForbiddenException.class);
     }
 
+    /** 管理员查询返回全部标签，包括已禁用项。 */
     @Test
     void listReturnsAllTagsIncludingDisabled() {
         MylabTag tag = persistedTag("demo", "演示");
@@ -55,12 +61,14 @@ class MylabTagServiceTest {
         assertThat(service.list(admin)).containsExactly(tag);
     }
 
+    /** 非管理员创建标签被拒绝。 */
     @Test
     void createRequiresAdmin() {
         assertThatThrownBy(() -> service.create(viewer, new ContentDtos.TagWrite("demo", "演示", null, null)))
                 .isInstanceOf(ForbiddenException.class);
     }
 
+    /** 命令为空或必填字段为空白时报参数错误。 */
     @Test
     void createRejectsMissingCommandOrBlankFields() {
         assertThatThrownBy(() -> service.create(admin, null))
@@ -71,12 +79,14 @@ class MylabTagServiceTest {
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 排序值为负报参数错误。 */
     @Test
     void createRejectsNegativeSortOrder() {
         assertThatThrownBy(() -> service.create(admin, new ContentDtos.TagWrite("demo", "演示", null, -1)))
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 键或名称与已有标签重复时报冲突，且不入库。 */
     @Test
     void createRejectsDuplicatedKeyOrName() {
         when(tags.keyOrNameExists("demo", "演示", null)).thenReturn(true);
@@ -86,6 +96,7 @@ class MylabTagServiceTest {
         verify(tags, never()).add(any());
     }
 
+    /** 创建时去除首尾空格，并填充默认启用状态、排序值与时间戳。 */
     @Test
     void createAppliesDefaultsAndTrimsFields() {
         MylabTag result = service.create(admin, new ContentDtos.TagWrite(" demo ", " 演示 ", null, null));
@@ -103,6 +114,7 @@ class MylabTagServiceTest {
         assertThat(result).isSameAs(tag);
     }
 
+    /** 显式传入的启用状态与排序值不被默认值覆盖。 */
     @Test
     void createKeepsExplicitEnabledAndSortOrder() {
         MylabTag result = service.create(admin, new ContentDtos.TagWrite("demo", "演示", false, 5));
@@ -111,6 +123,7 @@ class MylabTagServiceTest {
         assertThat(result.getSortOrder()).isEqualTo(5);
     }
 
+    /** 非管理员更新标签被拒绝。 */
     @Test
     void updateRequiresAdmin() {
         assertThatThrownBy(() -> service.update(viewer, UUID.randomUUID(),
@@ -118,6 +131,7 @@ class MylabTagServiceTest {
                 .isInstanceOf(ForbiddenException.class);
     }
 
+    /** 更新不存在的标签报不存在。 */
     @Test
     void updateRejectsUnknownTag() {
         UUID id = UUID.randomUUID();
@@ -127,6 +141,7 @@ class MylabTagServiceTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
+    /** 更新先做字段校验；唯一性冲突检测排除标签自身。 */
     @Test
     void updateValidatesCommandAndConflictsExcludingItself() {
         MylabTag tag = persistedTag("demo", "演示");
@@ -141,6 +156,7 @@ class MylabTagServiceTest {
         verify(tags, never()).save(any());
     }
 
+    /** 未传字段保持原值，仅更新传入字段并刷新更新时间。 */
     @Test
     void updateKeepsUnsetFieldsAndRefreshesTimestamp() {
         MylabTag tag = persistedTag("demo", "演示");
@@ -160,6 +176,7 @@ class MylabTagServiceTest {
         verify(tags).save(tag);
     }
 
+    /** 显式传入的启用状态与排序值（含 false/0）生效。 */
     @Test
     void updateAppliesExplicitEnabledAndSortOrder() {
         MylabTag tag = persistedTag("demo", "演示");
@@ -171,12 +188,14 @@ class MylabTagServiceTest {
         assertThat(result.getSortOrder()).isZero();
     }
 
+    /** 非管理员删除标签被拒绝。 */
     @Test
     void deleteRequiresAdmin() {
         assertThatThrownBy(() -> service.delete(viewer, UUID.randomUUID()))
                 .isInstanceOf(ForbiddenException.class);
     }
 
+    /** 删除不存在的标签报不存在。 */
     @Test
     void deleteRejectsUnknownTag() {
         UUID id = UUID.randomUUID();
@@ -186,6 +205,7 @@ class MylabTagServiceTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
+    /** 删除已有标签时调用仓储移除。 */
     @Test
     void deleteRemovesExistingTag() {
         UUID id = UUID.randomUUID();

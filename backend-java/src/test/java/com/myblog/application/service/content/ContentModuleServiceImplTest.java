@@ -34,6 +34,10 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
+/**
+ * ContentModuleServiceImpl 单测：覆盖草稿乐观锁、发布/恢复/归档/删除版本的状态流转，
+ * 以及公开内容缓存与对象存储签名 URL 的生成策略。
+ */
 @ExtendWith(MockitoExtension.class)
 class ContentModuleServiceImplTest {
     @Mock ContentReleaseRepository releases;
@@ -50,6 +54,7 @@ class ContentModuleServiceImplTest {
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
+        // 桩：公开缓存默认直接执行回源回调，等价于无缓存场景
         lenient().when(publicCache.readAll(any())).thenAnswer(invocation ->
                 ((Supplier<Map<String, Object>>) invocation.getArgument(0)).get());
         lenient().when(publicCache.readMylabDetail(any(), any())).thenAnswer(invocation ->
@@ -59,12 +64,14 @@ class ContentModuleServiceImplTest {
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
+    /** 已下线的 projects 模块按不存在处理。 */
     @Test
     void removedProjectModuleIsRejected() {
         assertThatThrownBy(() -> service.publicModule("projects"))
                 .isInstanceOf(NotFoundException.class);
     }
 
+    /** 更新既有草稿缺少 expected_updated_at 乐观锁时间戳时报冲突。 */
     @Test
     void savingExistingDraftRequiresOptimisticLockTimestamp() {
         ContentRelease draft = release("skills", "DRAFT");
@@ -76,6 +83,7 @@ class ContentModuleServiceImplTest {
                         exception -> assertThat(exception.getDetail()).contains("expected_updated_at"));
     }
 
+    /** 发布会归档当前线上版本并发布草稿，同时发出缓存失效事件。 */
     @Test
     void publishingArchivesCurrentAndPublishesDraft() {
         ContentRelease draft = release("skills", "DRAFT");
@@ -92,6 +100,7 @@ class ContentModuleServiceImplTest {
                 && "skills".equals(changed.moduleKey())));
     }
 
+    /** 公开 MyLab 只读取已发布版本：直查 PG 摘要，不走公开缓存。 */
     @Test
     @SuppressWarnings("unchecked")
     void publicMylabUsesOnlyPublishedRelease() {
@@ -109,6 +118,7 @@ class ContentModuleServiceImplTest {
         verify(publicCache, never()).readMylabDetail(any(), any());
     }
 
+    /** 站内相对路径资源原样返回，不生成对象存储 URL。 */
     @Test
     @SuppressWarnings("unchecked")
     void siteRelativeResourceNeverUsesObjectStorageUrl() {
@@ -123,6 +133,7 @@ class ContentModuleServiceImplTest {
         verify(storage, never()).publicUrl(any());
     }
 
+    /** 缓存命中时仍为每次响应重新生成对象存储签名 URL，而非复用缓存值。 */
     @Test
     @SuppressWarnings("unchecked")
     void cachedRawContentRegeneratesObjectStorageUrlForEveryResponse() {
@@ -130,6 +141,7 @@ class ContentModuleServiceImplTest {
                 "images", List.of(Map.of("image_object_key", "hero/image.png"))));
         doReturn(cached).when(publicCache).readAll(any());
         when(storage.configured()).thenReturn(true);
+        // 桩连续返回两个不同的签名 URL，验证每次响应都重新签名
         when(storage.publicUrl("hero/image.png")).thenReturn("https://signed.example/one",
                 "https://signed.example/two");
 
@@ -145,6 +157,7 @@ class ContentModuleServiceImplTest {
         verify(releases, never()).findPublished(any());
     }
 
+    /** 从线上版本新建草稿时重新生成业务行 ID，不复用已发布的行 ID。 */
     @Test
     void creatingDraftDoesNotReusePublishedBusinessRowIds() {
         ContentRelease current = release("vibe", "PUBLISHED");
@@ -163,6 +176,7 @@ class ContentModuleServiceImplTest {
                 !String.valueOf(data).contains(publishedRowId.toString())));
     }
 
+    /** 无草稿时恢复历史版本：原记录原地转为草稿，不复制数据。 */
     @Test
     void restoringVersionSwitchesHistoricalReleaseToDraftWithoutCopyingData() {
         ContentRelease source = release("vibe", "ARCHIVED");
@@ -177,6 +191,7 @@ class ContentModuleServiceImplTest {
         verify(releases, never()).replaceData(any(), any());
     }
 
+    /** 已有草稿时恢复：原草稿转为归档，历史版本原地转为草稿。 */
     @Test
     void restoringWithExistingDraftArchivesCurrentDraftAndActivatesSource() {
         ContentRelease draft = release("vibe", "DRAFT");
@@ -194,6 +209,7 @@ class ContentModuleServiceImplTest {
         verify(releases, never()).replaceData(any(), any());
     }
 
+    /** 删除归档版本执行软删除。 */
     @Test
     void deletingArchivedVersionSoftDeletesRelease() {
         ContentRelease archived = release("vibe", "ARCHIVED");
@@ -204,6 +220,7 @@ class ContentModuleServiceImplTest {
         verify(releases).softDeleteVersion(any(ContentRelease.class), any(OffsetDateTime.class));
     }
 
+    /** 线上版本未下线，直接删除报冲突。 */
     @Test
     void deletingPublishedVersionIsRejected() {
         ContentRelease published = release("vibe", "PUBLISHED");
@@ -214,6 +231,7 @@ class ContentModuleServiceImplTest {
         verify(releases, never()).softDeleteVersion(any(), any());
     }
 
+    /** 删除不存在或仍是草稿的版本按不存在处理。 */
     @Test
     void deletingMissingOrDraftVersionIsNotFound() {
         when(releases.findVersion("vibe", 1)).thenReturn(null);
@@ -227,6 +245,7 @@ class ContentModuleServiceImplTest {
         verify(releases, never()).softDeleteVersion(any(), any());
     }
 
+    /** 草稿归档原地转为归档版本，不触发缓存失效事件。 */
     @Test
     void archivingDraftConvertsItToArchivedVersion() {
         ContentRelease draft = release("vibe", "DRAFT");
@@ -242,6 +261,7 @@ class ContentModuleServiceImplTest {
         verify(events, never()).publishEvent(any());
     }
 
+    /** 无草稿可归档时报不存在。 */
     @Test
     void archivingWithoutDraftIsNotFound() {
         when(releases.findDraft("vibe")).thenReturn(null);

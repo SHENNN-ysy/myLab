@@ -32,7 +32,11 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
     @Override
     public Map<String, Object> readDetail(UUID releaseId, String postKey) {
         List<Map<String, Object>> cards = cards(releaseId, postKey, true);
-        return cards.isEmpty() ? null : root(cards);
+        // 详情只缓存卡片本体：标签字典仅列表页解析 tag_ids 需要，避免每个 post_key 冗余一份全量标签
+        if (cards.isEmpty()) return null;
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("cards", cards);
+        return detail;
     }
 
     private Map<String, Object> root(List<Map<String, Object>> cards) {

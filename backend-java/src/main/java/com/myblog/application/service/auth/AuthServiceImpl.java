@@ -6,12 +6,10 @@ import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.UnauthorizedException;
 import com.myblog.common.exception.ValidationException;
 import com.myblog.common.enumeration.ErrorCode;
-import com.myblog.application.port.TokenClaims;
-import com.myblog.application.port.TokenService;
+import com.myblog.application.port.SessionService;
 import com.myblog.application.repository.UserRepository;
 import com.myblog.common.properties.AppProperties;
 import com.myblog.application.model.vo.AuthResultVO;
-import com.myblog.application.model.vo.TokenPairVO;
 import com.myblog.application.model.vo.UserPublicVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,7 +20,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
- * 认证服务实现：基于 BCrypt 校验密码，依赖 TokenService 签发令牌。
+ * 认证服务实现：基于 BCrypt 校验密码，依赖 SessionService 创建 Redis 会话。
  */
 @Slf4j
 @Service
@@ -39,23 +37,23 @@ public class AuthServiceImpl implements AuthService {
     private static final int MAX_PASSWORD_LENGTH = 64;
 
     private final UserRepository users;
-    private final TokenService tokens;
+    private final SessionService sessions;
     private final AppProperties props;
     private final BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder(12); // 强度 12 的 BCrypt 密码编码器
 
-    public AuthServiceImpl(UserRepository users, TokenService tokens, AppProperties props) {
+    public AuthServiceImpl(UserRepository users, SessionService sessions, AppProperties props) {
         this.users = users;
-        this.tokens = tokens;
+        this.sessions = sessions;
         this.props = props;
     }
 
     @Override
     @Transactional
     /**
-     * 登录：用户不存在、被停用或密码不匹配统一按凭证无效处理；成功后更新最后登录时间并签发令牌对。
+     * 登录：锁定用户行完成凭证校验与会话创建，和敏感账号修改串行执行。
      */
     public AuthResultVO login(String username, String password) {
-        User user = users.findByUsername(username);
+        User user = users.findByUsernameForUpdate(username);
         if (user == null
                 || !Boolean.TRUE.equals(user.getIsActive())
                 || !bcrypt.matches(password, user.getPasswordHash())) {
@@ -65,20 +63,7 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginAt(OffsetDateTime.now());
         users.save(user);
         log.info("登录成功：username={}, ip={}", username, RequestContext.getIp());
-        return new AuthResultVO(tokens.pair(user), publicUser(user));
-    }
-
-    @Override
-    /**
-     * 刷新令牌：解析 refresh 令牌并确认账号仍启用，然后换发新令牌对。
-     */
-    public TokenPairVO refresh(String token) {
-        TokenClaims claims = tokens.parse(token, "refresh");
-        User user = users.findById(claims.userId());
-        if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
-            throw new UnauthorizedException(ErrorCode.ACCOUNT_DISABLED, null);
-        }
-        return tokens.pair(user);
+        return new AuthResultVO(sessions.issue(user), publicUser(user));
     }
 
     @Override
@@ -110,12 +95,14 @@ public class AuthServiceImpl implements AuthService {
      * 修改密码：先校验旧密码，再写入新密码哈希。
      */
     public void change(UUID id, String oldPassword, String newPassword) {
-        User user = current(id);
+        User user = currentLocked(id);
         if (!bcrypt.matches(oldPassword, user.getPasswordHash())) {
             throw new ValidationException(ErrorCode.OLD_PASSWORD_INCORRECT, null);
         }
         user.setPasswordHash(bcrypt.encode(newPassword));
+        user.setUpdatedAt(OffsetDateTime.now());
         users.save(user);
+        sessions.revokeAll(id);
         log.info("密码已修改：username={}, ip={}", user.getUsername(), RequestContext.getIp());
     }
 
@@ -125,7 +112,7 @@ public class AuthServiceImpl implements AuthService {
      * 修改当前账号：校验当前密码后更新账号名称，并可同时更新密码。
      */
     public UserPublicVO updateAccount(UUID id, String username, String oldPassword, String newPassword) {
-        User user = current(id);
+        User user = currentLocked(id);
         if (!bcrypt.matches(oldPassword, user.getPasswordHash())) {
             throw new ValidationException(ErrorCode.OLD_PASSWORD_INCORRECT, null);
         }
@@ -147,6 +134,7 @@ public class AuthServiceImpl implements AuthService {
         }
         user.setUpdatedAt(OffsetDateTime.now());
         users.save(user);
+        sessions.revokeAll(id);
         log.info("账号信息已修改：username={}, passwordChanged={}, ip={}",
                 normalizedUsername, newPassword != null, RequestContext.getIp());
         return publicUser(user);
@@ -202,5 +190,14 @@ public class AuthServiceImpl implements AuthService {
      */
     public String hash(String password) {
         return bcrypt.encode(password);
+    }
+
+    /** 敏感账号写操作必须锁定用户行，避免旧凭证并发创建漏网会话。 */
+    private User currentLocked(UUID id) {
+        User user = users.findByIdForUpdate(id);
+        if (user == null) {
+            throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, null);
+        }
+        return user;
     }
 }

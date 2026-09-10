@@ -9,9 +9,11 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 全局异常处理器：业务异常与参数缺失异常到统一错误响应的映射测试。 */
 class GlobalExceptionHandlerTest {
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
+    /** 业务异常按错误码返回 HTTP 状态与文案，error 字段携带安全的细节信息。 */
     @Test
     void usesDomainCodeAndSafeDetailForBusinessException() {
         ResponseEntity<Result<Void>> response = handler.base(
@@ -24,6 +26,7 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().error()).isEqualTo("projects v99");
     }
 
+    /** 缺少必填请求参数时映射为稳定的参数校验错误码（10012），并在 error 中指明参数名。 */
     @Test
     void mapsMissingParameterToStableCode() {
         ResponseEntity<Result<Void>> response = handler.missingParameter(

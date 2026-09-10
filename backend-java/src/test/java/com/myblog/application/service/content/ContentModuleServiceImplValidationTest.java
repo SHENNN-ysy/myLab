@@ -62,6 +62,7 @@ class ContentModuleServiceImplValidationTest {
 
     // ---------- home ----------
 
+    /** 发布要求恰好六张图片：只给五张时报“六张图片”。 */
     @Test
     void homePublishRequiresExactlySixImages() {
         stubDraft("home", Map.of("images",
@@ -73,6 +74,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("六张图片"));
     }
 
+    /** 发布时图片缺少资源引用（image_resource_id）报错。 */
     @Test
     void homePublishRequiresImageResource() {
         stubDraft("home", Map.of("images", sixImagesWithoutResources()));
@@ -82,12 +84,14 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("必须选择图片资源"));
     }
 
+    /** 发布时图片必须带 alt 文本：第一张带资源但缺 alt，其余仅凑满六张数量。 */
     @Test
     void homePublishRequiresAltText() {
         UUID id = UUID.randomUUID();
         when(resources.findById(id)).thenReturn(file(id, "image/webp"));
         List<Map<String, Object>> images = new ArrayList<>();
         images.add(Map.of("image_resource_id", id.toString()));
+        // 补足剩余五张（仅 alt），隔离出 alt 缺失的校验分支
         for (int i = 1; i < 6; i++) {
             images.add(Map.of("alt", "图" + i));
         }
@@ -98,6 +102,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("alt"));
     }
 
+    /** 六张带资源且带 alt 的图片可正常发布。 */
     @Test
     void homePublishSucceedsWithSixValidImages() {
         List<Map<String, Object>> images = new ArrayList<>();
@@ -113,6 +118,7 @@ class ContentModuleServiceImplValidationTest {
         verify(releases).publish(any(), any(), any(), any());
     }
 
+    /** 草稿拒绝重复引用同一图片资源。 */
     @Test
     void homeRejectsDuplicateImageResource() {
         when(resources.findById(IMAGE_ID)).thenReturn(file(IMAGE_ID, "image/webp"));
@@ -123,6 +129,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("不能重复"));
     }
 
+    /** image_resource_id 不是合法 UUID 时报错。 */
     @Test
     void homeRejectsMalformedUuid() {
         assertThatThrownBy(() -> saveHomeDraft(Map.of("images",
@@ -131,6 +138,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("必须是 UUID"));
     }
 
+    /** 引用不存在的资源（mock 未打桩）按“资源不存在或已删除”处理。 */
     @Test
     void homeRejectsUnknownResource() {
         assertThatThrownBy(() -> saveHomeDraft(Map.of("images",
@@ -139,6 +147,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("资源不存在或已删除"));
     }
 
+    /** 已软删除的资源视同不存在。 */
     @Test
     void homeRejectsDeletedResource() {
         var deleted = file(IMAGE_ID, "image/webp");
@@ -151,6 +160,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("资源不存在或已删除"));
     }
 
+    /** 非图片媒体类型（text/plain）不能作为首页图片。 */
     @Test
     void homeRejectsNonImageResource() {
         when(resources.findById(IMAGE_ID)).thenReturn(file(IMAGE_ID, "text/plain"));
@@ -163,6 +173,7 @@ class ContentModuleServiceImplValidationTest {
 
     // ---------- about ----------
 
+    /** 草稿缺少 profile/ingredients/bubbles 结构时报错。 */
     @Test
     void aboutRequiresProfileIngredientsAndBubbles() {
         assertThatThrownBy(() -> saveAboutDraft(Map.of()))
@@ -170,6 +181,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("profile"));
     }
 
+    /** profile.bullets 不是数组时报错。 */
     @Test
     void aboutRequiresBulletsArray() {
         assertThatThrownBy(() -> saveAboutDraft(Map.of(
@@ -179,8 +191,10 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("bullets"));
     }
 
+    /** 结构合法的 about 草稿可保存。 */
     @Test
     void aboutDraftAcceptsValidStructure() {
+        // 任意图片 id 均返回合法图片资源，避免逐 id 打桩；about 其他用例的同款桩同理
         when(resources.findById(any(UUID.class))).thenAnswer(
                 invocation -> file(invocation.getArgument(0), "image/webp"));
 
@@ -190,6 +204,7 @@ class ContentModuleServiceImplValidationTest {
         verify(releases).add(any());
     }
 
+    /** 发布时缺少头像资源报错。 */
     @Test
     void aboutPublishRequiresAvatar() {
         Map<String, Object> data = validAboutData();
@@ -203,6 +218,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("头像"));
     }
 
+    /** 发布要求恰好三条 bullets，只给两条时报错。 */
     @Test
     void aboutPublishRequiresExactlyThreeBullets() {
         Map<String, Object> data = validAboutData();
@@ -218,6 +234,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("恰好三条"));
     }
 
+    /** bullets 条目为空白串时报错。 */
     @Test
     void aboutPublishRejectsBlankBullet() {
         Map<String, Object> data = validAboutData();
@@ -233,6 +250,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("条目不能为空"));
     }
 
+    /** 合法 about 数据可正常发布。 */
     @Test
     void aboutPublishSucceedsWithValidData() {
         stubDraft("about", validAboutData());
@@ -244,6 +262,7 @@ class ContentModuleServiceImplValidationTest {
         verify(releases).publish(any(), any(), any(), any());
     }
 
+    /** 气泡 size 仅允许 big 或 mid。 */
     @Test
     void aboutRejectsInvalidBubbleSize() {
         Map<String, Object> data = validAboutData();
@@ -256,6 +275,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("big 或 mid"));
     }
 
+    /** 气泡背景色必须是 #RRGGBB 格式。 */
     @Test
     void aboutRejectsInvalidBubbleColor() {
         Map<String, Object> data = validAboutData();
@@ -269,6 +289,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("#RRGGBB"));
     }
 
+    /** 发布时气泡必须包含 text。 */
     @Test
     void aboutPublishRequiresBubbleText() {
         Map<String, Object> data = validAboutData();
@@ -284,6 +305,7 @@ class ContentModuleServiceImplValidationTest {
 
     // ---------- skills ----------
 
+    /** skill_key 重复时报错。 */
     @Test
     void skillsRejectsDuplicateKey() {
         Map<String, Object> item = Map.of("skill_key", "java", "percentage", 80, "enabled", false);
@@ -293,6 +315,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("不能重复"));
     }
 
+    /** 缺少 skill_key 时报错。 */
     @Test
     void skillsRejectsMissingKey() {
         assertThatThrownBy(() -> saveSkillsDraft(Map.of("items",
@@ -301,6 +324,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("必填"));
     }
 
+    /** percentage 超出 0 到 100 时报错。 */
     @Test
     void skillsRejectsPercentageOutOfRange() {
         assertThatThrownBy(() -> saveSkillsDraft(Map.of("items",
@@ -309,6 +333,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("0 到 100"));
     }
 
+    /** level_code 不在允许范围内时报错。 */
     @Test
     void skillsRejectsInvalidLevelCode() {
         assertThatThrownBy(() -> saveSkillsDraft(Map.of("items",
@@ -317,6 +342,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("level_code 不合法"));
     }
 
+    /** 启用的技能发布时必须填 name。 */
     @Test
     void skillsPublishRequiresNameForEnabledItem() {
         stubDraft("skills", Map.of("items",
@@ -327,6 +353,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("name"));
     }
 
+    /** level_code 与 level_text 必须成对填写。 */
     @Test
     void skillsPublishRequiresLevelFields() {
         stubDraft("skills", Map.of("items", List.of(Map.of(
@@ -338,6 +365,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("level_code 和 level_text"));
     }
 
+    /** 启用的技能发布时必须选择图标资源。 */
     @Test
     void skillsPublishRequiresIcon() {
         stubDraft("skills", Map.of("items", List.of(Map.of(
@@ -349,10 +377,12 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("图标资源"));
     }
 
+    /** 发布时启用技能最多八项，九项报错。 */
     @Test
     void skillsPublishLimitsEightEnabledItems() {
         when(resources.findById(IMAGE_ID)).thenReturn(file(IMAGE_ID, "image/webp"));
         List<Map<String, Object>> items = new ArrayList<>();
+        // 造 9 条启用技能，超出八项上限
         for (int i = 0; i < 9; i++) {
             items.add(Map.of(
                     "skill_key", "skill-" + i, "percentage", 80, "enabled", true,
@@ -366,6 +396,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("八张"));
     }
 
+    /** 合法技能数据可正常发布。 */
     @Test
     void skillsPublishSucceedsWithValidData() {
         when(resources.findById(IMAGE_ID)).thenReturn(file(IMAGE_ID, "image/webp"));
@@ -381,6 +412,7 @@ class ContentModuleServiceImplValidationTest {
 
     // ---------- footprints ----------
 
+    /** details 必须是数组。 */
     @Test
     void footprintsRequiresDetailsArray() {
         assertThatThrownBy(() -> saveFootprintsDraft(Map.of("details", "not-an-array")))
@@ -388,6 +420,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("details 必须是数组"));
     }
 
+    /** city_key 重复时报错。 */
     @Test
     void footprintsRejectsDuplicateCityKey() {
         Map<String, Object> item = Map.of("city_key", "beijing", "enabled", false);
@@ -397,6 +430,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("不能重复"));
     }
 
+    /** 同一城市的 resource_ids 不允许重复。 */
     @Test
     void footprintsRejectsDuplicateResourceIds() {
         when(resources.findById(IMAGE_ID)).thenReturn(file(IMAGE_ID, "image/webp"));
@@ -408,6 +442,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("resource_ids 不能重复"));
     }
 
+    /** 启用的足迹发布时必须填 title。 */
     @Test
     void footprintsPublishRequiresTitle() {
         stubDraft("footprints", Map.of("details",
@@ -418,6 +453,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("title"));
     }
 
+    /** 启用的足迹发布时必须填 contents。 */
     @Test
     void footprintsPublishRequiresContents() {
         stubDraft("footprints", Map.of("details", List.of(Map.of(
@@ -428,8 +464,10 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("contents"));
     }
 
+    /** 发布时启用足迹最多六条，七条报错。 */
     @Test
     void footprintsPublishLimitsSixEnabledItems() {
+        // 造 7 条启用足迹，超出六条上限
         List<Map<String, Object>> items = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
             items.add(Map.of("city_key", "city-" + i, "enabled", true,
@@ -442,6 +480,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("六条足迹"));
     }
 
+    /** 合法足迹数据可正常发布。 */
     @Test
     void footprintsPublishSucceedsWithValidData() {
         when(resources.findById(IMAGE_ID)).thenReturn(file(IMAGE_ID, "image/webp"));
@@ -456,6 +495,7 @@ class ContentModuleServiceImplValidationTest {
 
     // ---------- hobbies ----------
 
+    /** 缺少 cards 数组时报错。 */
     @Test
     void hobbiesRequiresCardsArray() {
         assertThatThrownBy(() -> saveHobbiesDraft(Map.of()))
@@ -463,6 +503,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("cards 必须是数组"));
     }
 
+    /** hobby_key 重复时报错。 */
     @Test
     void hobbiesRejectsDuplicateHobbyKey() {
         Map<String, Object> card = Map.of("hobby_key", "reading", "enabled", false);
@@ -472,6 +513,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("不能重复"));
     }
 
+    /** 启用的爱好卡片发布时必须填 title。 */
     @Test
     void hobbiesPublishRequiresTitle() {
         stubDraft("hobbies", hobbiesData(
@@ -482,6 +524,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("title"));
     }
 
+    /** 启用的爱好卡片发布时必须选择图片资源。 */
     @Test
     void hobbiesPublishRequiresImageResource() {
         stubDraft("hobbies", hobbiesData(List.of(Map.of(
@@ -493,9 +536,11 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("必须选择图片资源"));
     }
 
+    /** 发布时启用爱好卡片最多五张，六张报错。 */
     @Test
     void hobbiesPublishLimitsFiveCards() {
         when(resources.findById(IMAGE_ID)).thenReturn(file(IMAGE_ID, "image/webp"));
+        // 造 6 张启用卡片，超出五张上限
         List<Map<String, Object>> cards = new ArrayList<>();
         for (int i = 0; i < 6; i++) {
             cards.add(Map.of("hobby_key", "hobby-" + i, "enabled", true,
@@ -509,6 +554,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("五张爱好卡片"));
     }
 
+    /** 时间标签 data_key 不在允许范围内时报错。 */
     @Test
     void hobbiesRejectsInvalidTimeTagKey() {
         assertThatThrownBy(() -> saveHobbiesDraft(hobbiesData(List.of(),
@@ -518,6 +564,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("data_key 不合法"));
     }
 
+    /** 时间标签 data_key 重复时报错。 */
     @Test
     void hobbiesRejectsDuplicateTimeTagKey() {
         Map<String, Object> timeTag = Map.of(
@@ -528,6 +575,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("不能重复"));
     }
 
+    /** 标签坐标 label_x 超出允许范围时报错。 */
     @Test
     void hobbiesRejectsOutOfRangeLabelPosition() {
         assertThatThrownBy(() -> saveHobbiesDraft(hobbiesData(List.of(),
@@ -537,6 +585,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("超出允许范围"));
     }
 
+    /** 启用的时间标签必须填 color。 */
     @Test
     void hobbiesRequiresColorForEnabledTimeTag() {
         assertThatThrownBy(() -> saveHobbiesDraft(hobbiesData(List.of(),
@@ -547,6 +596,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("color"));
     }
 
+    /** 启用的时间标签发布时必须填 name。 */
     @Test
     void hobbiesPublishRequiresTimeTagName() {
         stubDraft("hobbies", hobbiesData(List.of(),
@@ -559,6 +609,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("name"));
     }
 
+    /** 年龄数据点只允许 -1 到 27，28 报错。 */
     @Test
     void hobbiesRejectsAgeOutOfRange() {
         assertThatThrownBy(() -> saveHobbiesDraft(hobbiesData(List.of(), List.of(),
@@ -567,6 +618,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("-1 到 27"));
     }
 
+    /** 年龄数据点不允许重复。 */
     @Test
     void hobbiesRejectsDuplicateAge() {
         Map<String, Object> point = Map.of("age", 0, "values", fullTimeValues(2.0));
@@ -576,6 +628,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("不能重复"));
     }
 
+    /** values 必须是对象。 */
     @Test
     void hobbiesRequiresValuesObject() {
         assertThatThrownBy(() -> saveHobbiesDraft(hobbiesData(List.of(), List.of(),
@@ -584,6 +637,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("values 必须是对象"));
     }
 
+    /** values 必须包含五项 0 到 10 的数值。 */
     @Test
     void hobbiesRequiresFiveNumericValues() {
         assertThatThrownBy(() -> saveHobbiesDraft(hobbiesData(List.of(), List.of(),
@@ -592,6 +646,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("五项 0 到 10"));
     }
 
+    /** 单行 values 合计必须为 10（5×1.0=5 触发报错）。 */
     @Test
     void hobbiesRequiresRowTotalOfTen() {
         assertThatThrownBy(() -> saveHobbiesDraft(hobbiesData(List.of(), List.of(),
@@ -600,6 +655,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("合计必须为 10"));
     }
 
+    /** 发布要求年龄完整覆盖 -1 到 27。 */
     @Test
     void hobbiesPublishRequiresFullAgeCoverage() {
         stubDraft("hobbies", hobbiesData(List.of(), List.of(),
@@ -610,6 +666,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("完整覆盖 -1 到 27"));
     }
 
+    /** 合法爱好数据可正常发布。 */
     @Test
     void hobbiesPublishSucceedsWithValidData() {
         when(resources.findById(IMAGE_ID)).thenReturn(file(IMAGE_ID, "image/webp"));
@@ -622,6 +679,7 @@ class ContentModuleServiceImplValidationTest {
 
     // ---------- vibe ----------
 
+    /** tool_key 重复时报错。 */
     @Test
     void vibeRejectsDuplicateToolKey() {
         Map<String, Object> tool = Map.of("tool_key", "cursor", "percentage", 80, "enabled", false);
@@ -631,6 +689,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("不能重复"));
     }
 
+    /** 缺少 percentage 时报错。 */
     @Test
     void vibeRejectsMissingPercentage() {
         assertThatThrownBy(() -> saveVibeDraft(Map.of("tools", List.of(Map.of("tool_key", "cursor")))))
@@ -638,6 +697,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("0 到 100"));
     }
 
+    /** 启用的工具发布时必须填 name。 */
     @Test
     void vibePublishRequiresName() {
         stubDraft("vibe", Map.of("tools",
@@ -648,6 +708,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("name"));
     }
 
+    /** 启用的工具发布时必须填 description。 */
     @Test
     void vibePublishRequiresDescription() {
         stubDraft("vibe", Map.of("tools", List.of(Map.of(
@@ -658,8 +719,10 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("description"));
     }
 
+    /** 发布时启用工具最多六个，七个报错。 */
     @Test
     void vibePublishLimitsSixEnabledTools() {
+        // 造 7 个启用工具，超出六个上限
         List<Map<String, Object>> tools = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
             tools.add(Map.of("tool_key", "tool-" + i, "percentage", 80, "enabled", true,
@@ -672,6 +735,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("六个"));
     }
 
+    /** 合法工具数据可正常发布。 */
     @Test
     void vibePublishSucceedsWithValidData() {
         stubDraft("vibe", Map.of("tools", List.of(Map.of(
@@ -685,6 +749,7 @@ class ContentModuleServiceImplValidationTest {
 
     // ---------- mylab ----------
 
+    /** 缺少 cards 数组时报错。 */
     @Test
     void mylabRequiresCardsArray() {
         assertThatThrownBy(() -> saveMylabDraft(Map.of()))
@@ -692,6 +757,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("cards 必须是数组"));
     }
 
+    /** post_key 重复时报错。 */
     @Test
     void mylabRejectsDuplicatePostKey() {
         Map<String, Object> card = Map.of("post_key", "article-a", "enabled", false);
@@ -701,6 +767,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("不能重复"));
     }
 
+    /** card_type 仅允许 PROJECT 或 ARTICLE。 */
     @Test
     void mylabRejectsInvalidCardType() {
         assertThatThrownBy(() -> saveMylabDraft(Map.of("cards",
@@ -709,6 +776,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("PROJECT 或 ARTICLE"));
     }
 
+    /** project_show_order 不允许负数。 */
     @Test
     void mylabRejectsNegativeProjectOrder() {
         assertThatThrownBy(() -> saveMylabDraft(Map.of("cards",
@@ -718,6 +786,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("非负"));
     }
 
+    /** 参与展示的 PROJECT 位次不允许重复。 */
     @Test
     void mylabRejectsDuplicateProjectOrder() {
         Map<String, Object> card = Map.of("post_key", "project-a", "project_show_order", 1,
@@ -752,6 +821,7 @@ class ContentModuleServiceImplValidationTest {
         verify(releases).replaceData(any(ContentRelease.class), any());
     }
 
+    /** 填了展示位次的 PROJECT 发布时必须填侧边栏正文。 */
     @Test
     void mylabPublishRequiresProjectContents() {
         stubDraft("mylab", Map.of("cards", List.of(Map.of(
@@ -762,6 +832,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("project_contents"));
     }
 
+    /** ARTICLE 卡片不允许填写项目侧边栏字段。 */
     @Test
     void mylabRejectsArticleWithProjectFields() {
         assertThatThrownBy(() -> saveMylabDraft(Map.of("cards",
@@ -770,6 +841,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("ARTICLE 不能填写项目侧边栏字段"));
     }
 
+    /** tag_ids 不允许重复。 */
     @Test
     void mylabRejectsDuplicateTagIds() {
         assertThatThrownBy(() -> saveMylabDraft(Map.of("cards", List.of(Map.of(
@@ -779,6 +851,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("tag_ids 不能重复"));
     }
 
+    /** tag_ids 必须是合法 UUID。 */
     @Test
     void mylabRejectsMalformedTagId() {
         assertThatThrownBy(() -> saveMylabDraft(Map.of("cards", List.of(Map.of(
@@ -787,6 +860,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("tag_ids 必须包含 UUID"));
     }
 
+    /** 引用的标签必须启用且未删除（mock 返回空表示无有效标签）。 */
     @Test
     void mylabRejectsInactiveTagReference() {
         when(tags.findActiveByIds(any())).thenReturn(List.of());
@@ -798,6 +872,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("启用且未删除的标签"));
     }
 
+    /** Markdown 正文超过最大长度限制时报错。 */
     @Test
     void mylabRejectsOversizedMarkdown() {
         assertThatThrownBy(() -> saveMylabDraft(Map.of("cards", List.of(Map.of(
@@ -807,6 +882,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("500000"));
     }
 
+    /** 启用的卡片发布时必须填标题和摘要。 */
     @Test
     void mylabPublishRequiresTitleAndSummary() {
         stubDraft("mylab", Map.of("cards",
@@ -817,6 +893,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("标题和摘要"));
     }
 
+    /** 启用的卡片发布时必须填 Markdown 正文。 */
     @Test
     void mylabPublishRequiresMarkdownContent() {
         stubDraft("mylab", Map.of("cards", List.of(Map.of(
@@ -828,6 +905,7 @@ class ContentModuleServiceImplValidationTest {
                         e -> assertThat(e.getDetail()).contains("Markdown 正文"));
     }
 
+    /** 字段完整的 PROJECT 卡片可正常发布。 */
     @Test
     void mylabPublishSucceedsWithValidData() {
         when(tags.findActiveByIds(any())).thenReturn(List.of(tag(TAG_ID, "Java")));
@@ -891,6 +969,7 @@ class ContentModuleServiceImplValidationTest {
         service.saveDraft(admin, "mylab", new ContentDtos.SaveDraft(null, "测试版本", "测试版本描述", data));
     }
 
+    /** 六张只有 alt、没有资源引用的图片，用于触发“必须选择图片资源”。 */
     private static List<Map<String, Object>> sixImagesWithoutResources() {
         List<Map<String, Object>> images = new ArrayList<>();
         for (int i = 0; i < 6; i++) {
@@ -899,6 +978,7 @@ class ContentModuleServiceImplValidationTest {
         return images;
     }
 
+    /** 组装 hobbies 草稿数据：cards、time_tags、time_points 三段。 */
     private static Map<String, Object> hobbiesData(
             List<Map<String, Object>> cards,
             List<Map<String, Object>> timeTags,
@@ -910,6 +990,7 @@ class ContentModuleServiceImplValidationTest {
         return root;
     }
 
+    /** 生成五项爱好取值相同的 values；发布要求五项合计为 10，故 2.0 合法、1.0 非法。 */
     private static Map<String, Object> fullTimeValues(double value) {
         Map<String, Object> values = new LinkedHashMap<>();
         for (String key : List.of("爱好1", "爱好2", "爱好3", "爱好4", "爱好5")) {

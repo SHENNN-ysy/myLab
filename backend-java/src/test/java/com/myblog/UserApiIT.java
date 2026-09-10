@@ -24,6 +24,7 @@ class UserApiIT extends AbstractApiIntegrationTest {
 
     private static final String USERS_URL = "/api/v1/users";
 
+    /** superadmin 创建用户：响应不泄露密码哈希，落库角色正确且新用户可登录。 */
     @Test
     void superadminCreatesUserAndItCanLogin() {
         String superadmin = loginAs("superadmin");
@@ -48,6 +49,7 @@ class UserApiIT extends AbstractApiIntegrationTest {
         assertStatusAndCode(loginRaw(username, password), HttpStatus.OK, 0);
     }
 
+    /** admin 可分页查询与更新用户；角色变更后被改用户的会话全部吊销。 */
     @Test
     void adminCanListAndUpdateUsers() {
         String admin = loginAs("admin");
@@ -61,7 +63,10 @@ class UserApiIT extends AbstractApiIntegrationTest {
         assertThat(page.path("data").path("page_size").asInt()).isEqualTo(5);
 
         // 更新：角色变更落库
-        UUID targetId = ensureUser(uniqueKey("apitest-target-"), "It-passw0rd!", "viewer");
+        String targetUsername = uniqueKey("apitest-target-");
+        String targetPassword = "It-passw0rd!";
+        UUID targetId = ensureUser(targetUsername, targetPassword, "viewer");
+        String targetToken = login(targetUsername, targetPassword);
         JsonNode updated = assertStatusAndCode(
                 exchange(USERS_URL + "/" + targetId, HttpMethod.PUT, admin,
                         Map.of("role", "editor")),
@@ -69,8 +74,13 @@ class UserApiIT extends AbstractApiIntegrationTest {
         assertThat(updated.path("data").path("role").asText()).isEqualTo("editor");
         assertThat(jdbc.queryForObject("SELECT role FROM users WHERE id = ?",
                 String.class, targetId)).isEqualTo("editor");
+        // 角色变更后目标用户的会话应被吊销
+        assertStatusAndCode(rest.exchange("/api/v1/auth/me", HttpMethod.GET,
+                        new HttpEntity<>(authHeaders(targetToken)), JsonNode.class),
+                HttpStatus.UNAUTHORIZED, 10001);
     }
 
+    /** viewer 越权一律 403；创建/删除仅 superadmin，未认证访问返回 401。 */
     @Test
     void viewerAndNonSuperadminForbidden() {
         String viewer = loginAs("viewer");
@@ -91,6 +101,7 @@ class UserApiIT extends AbstractApiIntegrationTest {
                 HttpStatus.UNAUTHORIZED, 10001);
     }
 
+    /** 创建参数校验：短密码/缺字段/非法角色返回 422，重名返回 409。 */
     @Test
     void createUserValidationFails() {
         String superadmin = loginAs("superadmin");
@@ -118,6 +129,7 @@ class UserApiIT extends AbstractApiIntegrationTest {
                 HttpStatus.CONFLICT, 11005);
     }
 
+    /** 更新/删除边界：不存在用户 404，非法角色更新被拒，删除为软删除且吊销会话。 */
     @Test
     void updateDeleteEdgeCases() {
         String superadmin = loginAs("superadmin");
@@ -133,6 +145,7 @@ class UserApiIT extends AbstractApiIntegrationTest {
         String username = uniqueKey("apitest-user-");
         String password = "It-passw0rd!";
         UUID userId = ensureUser(username, password, "viewer");
+        String userToken = login(username, password);
 
         // 更新为非法角色：服务层校验拦截（10007），角色保持原值
         assertStatusAndCode(exchange(USERS_URL + "/" + userId, HttpMethod.PUT, superadmin,
@@ -146,6 +159,9 @@ class UserApiIT extends AbstractApiIntegrationTest {
         Timestamp deletedAt = jdbc.queryForObject(
                 "SELECT deleted_at FROM users WHERE id = ?", Timestamp.class, userId);
         assertThat(deletedAt).as("删除应为软删除").isNotNull();
+        assertStatusAndCode(rest.exchange("/api/v1/auth/me", HttpMethod.GET,
+                        new HttpEntity<>(authHeaders(userToken)), JsonNode.class),
+                HttpStatus.UNAUTHORIZED, 10001);
         assertStatusAndCode(loginRaw(username, password), HttpStatus.UNAUTHORIZED, 11001);
     }
 

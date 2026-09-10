@@ -26,6 +26,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * EngagementService 单测：覆盖浏览/点赞/访问计数读写、Redis 故障时降级读取 PG 快照、
+ * 趋势统计的时区处理与当日实时值合并，以及批量查询参数校验。
+ */
 @ExtendWith(MockitoExtension.class)
 class EngagementServiceTest {
     @Mock EngagementStore store;
@@ -40,6 +44,7 @@ class EngagementServiceTest {
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
+    /** Redis 不可用时站点统计降级为 PG 快照。 */
     @Test
     void summaryFallsBackToPostgresSnapshotWhenRedisIsUnavailable() {
         EngagementDtos.SiteStatisticsView snapshot =
@@ -50,6 +55,7 @@ class EngagementServiceTest {
         assertThat(service.siteStatistics()).isEqualTo(snapshot);
     }
 
+    /** 批量降级按请求顺序返回，快照缺失的键计数补零。 */
     @Test
     void batchFallbackPreservesRequestedOrderAndFillsMissingCounters() {
         when(store.engagement(any())).thenThrow(new EngagementUnavailableException());
@@ -64,6 +70,7 @@ class EngagementServiceTest {
         assertThat(result.get(1).likeCount()).isEqualTo(2);
     }
 
+    /** 趋势补齐区间内每一天，当日数据取 Redis 实时值。 */
     @Test
     void trendAlwaysContainsEveryDateAndUsesRealtimeValueForToday() {
         LocalDate today = LocalDate.now(EngagementService.BUSINESS_ZONE);
@@ -80,12 +87,14 @@ class EngagementServiceTest {
         assertThat(result.timezone()).isEqualTo("Asia/Shanghai");
     }
 
+    /** 不支持的趋势天数范围报参数错误。 */
     @Test
     void unsupportedTrendRangeIsRejected() {
         assertThatThrownBy(() -> service.trends(admin, 14))
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 未发布或未启用的文章不允许互动，且不触达 Redis。 */
     @Test
     void interactionRejectsPostThatIsNotPublishedAndEnabled() {
         when(repository.publishedPostExists("draft-post")).thenReturn(false);
@@ -95,6 +104,7 @@ class EngagementServiceTest {
         verify(store, never()).like(eq("visitor"), eq("draft-post"), any());
     }
 
+    /** 批量查询前对重复的 postKey 去重。 */
     @Test
     void duplicatePostKeysAreMergedBeforeBatchRead() {
         when(store.engagement(List.of("post-a"))).thenReturn(
@@ -104,22 +114,27 @@ class EngagementServiceTest {
         verify(store).engagement(List.of("post-a"));
     }
 
+    /** 空键列表报参数错误。 */
     @Test
     void batchRejectsEmptyKeyList() {
         assertThatThrownBy(() -> service.engagement(List.of()))
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 含 null 或非法字符的键报参数错误。 */
     @Test
     void batchRejectsNullOrMalformedKey() {
+        // List.of 不允许 null，这里用 Arrays.asList 构造含 null 的入参
         assertThatThrownBy(() -> service.engagement(java.util.Arrays.asList("post-a", null)))
                 .isInstanceOf(ValidationException.class);
         assertThatThrownBy(() -> service.engagement(List.of("bad key!")))
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 单次批量键数超过 100 时报参数错误。 */
     @Test
     void batchRejectsMoreThanHundredKeys() {
+        // 构造 101 个键，超出单次批量上限 100
         List<String> keys = java.util.stream.IntStream.range(0, 101)
                 .mapToObj(index -> "post-" + index)
                 .toList();
@@ -128,6 +143,7 @@ class EngagementServiceTest {
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 已发布文章的浏览登记委托给 Redis 存储。 */
     @Test
     void registerViewDelegatesToStoreForPublishedPost() {
         EngagementDtos.EngagementView view = view("post-a", 5, 1, false);
@@ -137,6 +153,7 @@ class EngagementServiceTest {
         assertThat(service.registerView("visitor", "post-a")).isEqualTo(view);
     }
 
+    /** 未发布文章登记浏览报不存在，且不触达 Redis。 */
     @Test
     void registerViewRejectsUnpublishedPost() {
         when(repository.publishedPostExists("draft-post")).thenReturn(false);
@@ -146,6 +163,7 @@ class EngagementServiceTest {
         verify(store, never()).registerView(eq("visitor"), eq("draft-post"), any());
     }
 
+    /** 已发布文章的点赞委托给 Redis 存储。 */
     @Test
     void likeDelegatesToStoreForPublishedPost() {
         EngagementDtos.EngagementView view = view("post-a", 5, 2, true);
@@ -155,12 +173,14 @@ class EngagementServiceTest {
         assertThat(service.like("visitor", "post-a")).isEqualTo(view);
     }
 
+    /** 非法 postKey 点赞报参数错误。 */
     @Test
     void likeRejectsMalformedPostKey() {
         assertThatThrownBy(() -> service.like("visitor", "bad key!"))
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 取消点赞委托给 Redis 存储。 */
     @Test
     void unlikeDelegatesToStoreForPublishedPost() {
         EngagementDtos.EngagementView view = view("post-a", 5, 1, false);
@@ -170,6 +190,7 @@ class EngagementServiceTest {
         assertThat(service.unlike("visitor", "post-a")).isEqualTo(view);
     }
 
+    /** 站点访问登记直接委托给 Redis 存储。 */
     @Test
     void registerVisitDelegatesToStore() {
         EngagementDtos.SiteStatisticsView statistics =
@@ -179,6 +200,7 @@ class EngagementServiceTest {
         assertThat(service.registerVisit("visitor")).isEqualTo(statistics);
     }
 
+    /** Redis 可用时站点统计取实时值，不查 PG 快照。 */
     @Test
     void siteStatisticsPrefersRedisRealtimeValue() {
         EngagementDtos.SiteStatisticsView realtime =
@@ -189,6 +211,7 @@ class EngagementServiceTest {
         verify(repository, never()).findSiteStatistics();
     }
 
+    /** 非管理员查看后台统计摘要被拒绝。 */
     @Test
     void adminSummaryRequiresAdmin() {
         CurrentUser viewer = new CurrentUser(UUID.randomUUID(), "guest", "viewer");
@@ -197,6 +220,7 @@ class EngagementServiceTest {
                 .isInstanceOf(com.myblog.common.exception.ForbiddenException.class);
     }
 
+    /** 管理员统计摘要返回站点实时统计。 */
     @Test
     void adminSummaryReturnsSiteStatistics() {
         EngagementDtos.SiteStatisticsView realtime =
@@ -206,6 +230,7 @@ class EngagementServiceTest {
         assertThat(service.adminSummary(admin)).isEqualTo(realtime);
     }
 
+    /** Redis 不可用时当日趋势沿用 PG 快照。 */
     @Test
     void trendKeepsDatabaseSnapshotForTodayWhenRedisIsUnavailable() {
         LocalDate today = LocalDate.now(EngagementService.BUSINESS_ZONE);

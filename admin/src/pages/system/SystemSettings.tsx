@@ -3,6 +3,7 @@
  * 等价迁移自旧 views/system/SystemSettings.vue。
  */
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Alert, App, Button, Card, Col, Descriptions, Form, Input, Row } from 'antd'
 import type { Rule } from 'antd/es/form'
 import { updateAccountApi } from '@/api/auth'
@@ -26,7 +27,8 @@ const roles: Record<UserRole, string> = {
 
 const SystemSettings = () => {
   const currentUser = useAuthStore(s => s.currentUser)
-  const updateUserInfo = useAuthStore(s => s.updateUserInfo)
+  const clearSession = useAuthStore(s => s.clearSession)
+  const navigate = useNavigate()
   const { message } = App.useApp()
   const [form] = Form.useForm<AccountFormValues>()
   const [submitting, setSubmitting] = useState(false)
@@ -49,10 +51,9 @@ const SystemSettings = () => {
     setSubmitting(true)
     try {
       const user = await updateAccountApi(values.username.trim(), values.oldPassword, values.newPassword || undefined)
-      updateUserInfo(user)
-      message.success('账号信息已更新')
-      // 回填用户名并清空密码项；setFieldsValue 不触发校验，无需额外的 clearValidate
-      form.setFieldsValue({ username: user.username, oldPassword: '', newPassword: '', confirmPassword: '' })
+      clearSession()
+      message.success(`账号 ${user.username} 已更新，请重新登录`)
+      navigate('/login', { replace: true })
     } catch {
       // 错误提示已由 request 响应拦截器统一弹出
     } finally {

@@ -19,7 +19,19 @@ public interface UserMapper extends BaseMapper<User>, UserRepository {
     @Override default User findByUsername(String username) {
         return selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
     }
+    /** 登录使用行锁，与密码、角色、启用状态等敏感更新串行。 */
+    @Override default User findByUsernameForUpdate(String username) {
+        return selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, username)
+                .last("FOR UPDATE"));
+    }
     @Override default User findById(UUID id) { return selectById(id); }
+    /** 敏感账号写操作使用行锁，防止旧凭证并发创建会话。 */
+    @Override default User findByIdForUpdate(UUID id) {
+        return selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getId, id)
+                .last("FOR UPDATE"));
+    }
     /** 按创建时间倒序分页查询用户 */
     @Override default PageResult<User> findPage(long page, long size) {
         Page<User> result = selectPage(new Page<>(page, size),
