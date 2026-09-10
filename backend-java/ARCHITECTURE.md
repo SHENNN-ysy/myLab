@@ -15,7 +15,7 @@ starter ────────> application / common / infrastructure
 - `application`：业务模型、命令、应用服务、仓储接口与外部能力端口。
 - `common`：各层都可复用的稳定类型，不包含具体业务用例。
 - `controller`：REST接口与全局异常处理，只负责协议转换和调用应用服务。
-- `infrastructure`：MyBatis、PostgreSQL、Redis、JWT、OSS等端口实现。
+- `infrastructure`：MyBatis、PostgreSQL、Redis 会话、OSS等端口实现。
 - `starter`：Spring Security、过滤器、Bean配置和启动初始化，不放Controller。
 - `ApplicationLoader`：唯一 Spring Boot 启动入口。
 
@@ -28,7 +28,7 @@ application/
 │   ├── dto/            # 输入数据
 │   ├── entity/         # 当前业务/持久化模型
 │   └── vo/             # 输出视图
-├── port/               # OSS、JWT、Redis计数、系统诊断等外部能力端口
+├── port/               # OSS、Redis会话/计数、系统诊断等外部能力端口
 ├── repository/         # 持久化端口，按实体名称直接查找
 └── service/            # 用例实现
     ├── auth/
@@ -43,7 +43,7 @@ application/
 
 | 目录 | 职责 |
 | --- | --- |
-| `auth` | 登录、刷新令牌、退出和修改密码 |
+| `auth` | 登录、Redis 会话认证、退出和修改密码 |
 | `user` | 后台用户管理 |
 | `content` | 七类内容模块的草稿、发布、下线、历史与回滚 |
 | `file` | 文件元数据、OSS上传和CDN地址 |

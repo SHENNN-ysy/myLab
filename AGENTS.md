@@ -16,7 +16,7 @@ MyBlog/
 │   └── src/main/java/com/myblog/
 │       ├── controller/      # REST 接口 + 全局异常处理（只做协议转换）
 │       ├── application/     # 业务层：service / model / port / repository 接口
-│       ├── infrastructure/  # 适配层：Persistence、Redis、JWT、OSS 实现
+│       ├── infrastructure/  # 适配层：Persistence、Redis 会话、OSS 实现
 │       ├── starter/         # 装配层：Security、过滤器、Bean 配置、启动初始化
 │       └── common/          # Result、ErrorCode、常量、属性、上下文
 │   └── src/main/resources/
@@ -83,7 +83,7 @@ starter ────────> application / common / infrastructure
 ### 业务模块（application/service/）
 | 模块 | 职责 |
 |------|------|
-| `auth` | 登录、刷新令牌、退出、修改密码 |
+| `auth` | 登录、Redis 会话认证、退出、修改密码 |
 | `user` | 后台用户管理（创建/删除限 superadmin） |
 | `content` | 七个内容模块（home/about/skills/footprints/hobbies/vibe/mylab）的草稿、发布、下线、历史版本与恢复 |
 | `file` | 文件元数据、OSS 上传、预签名 URL |
@@ -103,7 +103,9 @@ starter ────────> application / common / infrastructure
 - 前台 `/public/content` 与 MyLab 单篇详情使用 Redis Cache-Aside；公开单模块和后台管理接口直查 PG；发布/下线提交后失效缓存
 
 ### 认证与安全
-- JWT 双令牌（access + refresh），退出登录把 jti 写入 Redis 黑名单吊销
+- 管理后台使用随机 UUID Bearer Token；Redis 仅保存 SHA-256 摘要和会话 Hash，并以用户 ZSet 反向索引全部会话；空闲 8 小时滑动过期
+- 登录与敏感账号写操作使用 PostgreSQL 用户行锁；修改用户名、密码、角色、启用状态或删除用户时批量吊销该用户全部会话
+- Redis 会话服务不可用时登录和受保护接口返回 503，公开接口与访客 HMAC 不依赖管理会话
 - 密码 BCrypt（强度 12）；初始管理员仅在系统无用户时创建一次（`INIT_ADMIN_*`，未配置时本地兜底 admin/admin123，生产 compose 强制必填）
 - 种子接管：`V1__baseline.sql` 内置固定 ID/用户名的种子管理员，启动时仅当该行用户名与密码哈希**均与基线完全一致**才按 `INIT_ADMIN_*` 接管；一旦某次启动（如 `.env` 缺失密码被置空）已覆写该行，之后补回配置不会再生效，需把该行重置回基线种子值后重启才能重新接管
 - 限流走 Redis：登录接口独立（更严）阈值 + 全局限流；Redis 故障 fail-open

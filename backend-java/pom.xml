@@ -20,7 +20,6 @@
     <properties>
         <java.version>21</java.version>
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
-        <jjwt.version>0.12.6</jjwt.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <archunit.version>1.4.1</archunit.version>
         <aliyun-oss.version>3.18.3</aliyun-oss.version>
@@ -80,23 +79,6 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>${jjwt.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.aliyun.oss</groupId>
@@ -161,7 +143,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <!-- 限制单测 fork JVM 堆上限（CI 服务器内存有限）；@{argLine} 保留 JaCoCo agent 注入 -->
-                    <argLine>@{argLine} -Xmx512m</argLine>
+                    <!-- JVM 启动时即指定临时目录；java.nio 会在启动早期缓存该路径 -->
+                    <argLine>@{argLine} -Xmx512m -Djava.io.tmpdir=${project.build.directory}</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -169,7 +152,7 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
                     <!-- 集成测试 fork JVM 同样限堆；@{argLine} 保留 JaCoCo agent 注入 -->
-                    <argLine>@{argLine} -Xmx512m</argLine>
+                    <argLine>@{argLine} -Xmx512m -Djava.io.tmpdir=${project.build.directory}</argLine>
                 </configuration>
                 <!-- *IT.java 集成测试（Testcontainers 起真实 PG/Redis）在 integration-test/verify 阶段执行，
                      与 surefire 的单元测试互不干扰 -->

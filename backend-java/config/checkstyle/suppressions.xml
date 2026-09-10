@@ -37,8 +37,6 @@
     <suppress files="JdbcEngagementStatsRepository.java" message=".*'3'.*"/>
     <suppress files="JdbcEngagementStatsRepository.java" message=".*'4'.*"/>
     <suppress files="JsonSnapshots.java" message=".*'2'.*"/>
-    <suppress files="JwtFilter.java" message=".*'7'.*"/>
-    <suppress files="JwtService.java" message=".*'60'.*"/>
     <suppress files="OpenApiConfig.java" message=".*'10001'.*"/>
     <suppress files="OpenApiConfig.java" message=".*'10004'.*"/>
     <suppress files="OpenApiConfig.java" message=".*'10005'.*"/>

@@ -7,9 +7,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
-        String jwtSecret, // JWT 签名密钥
-        long accessExpireMinutes, // 访问令牌有效期（分钟）
-        long refreshExpireDays, // 刷新令牌有效期（天）
         String corsOrigins, // 允许的跨域来源，逗号分隔
         int rateLimitPerMinute, // 全局限流阈值（次/分钟）
         int loginRateLimitPerMinute, // 登录接口限流阈值（次/分钟）

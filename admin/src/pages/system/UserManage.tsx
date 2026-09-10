@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { App, Button, Card, Form, Input, Modal, Select, Space, Switch, Table, Tag, Tooltip } from 'antd'
 import type { TablePaginationConfig, TableProps } from 'antd'
 import type { User, UserRole } from '@/types'
@@ -24,6 +25,8 @@ const initialForm: UserFormState = { username: '', role: 'viewer', isActive: tru
 const UserManage = () => {
   const { message, modal } = App.useApp()
   const currentUser = useAuthStore(state => state.currentUser)
+  const clearSession = useAuthStore(state => state.clearSession)
+  const navigate = useNavigate()
 
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
@@ -102,6 +105,12 @@ const UserManage = () => {
           isActive: form.isActive,
           password: form.password || undefined
         })
+        if (editingId === currentUser?.id) {
+          clearSession()
+          message.success('当前账号已更新，请重新登录')
+          navigate('/login', { replace: true })
+          return
+        }
       } else {
         await createUserApi({ username, role: form.role, password: form.password })
       }
@@ -115,6 +124,11 @@ const UserManage = () => {
 
   const toggle = async (user: User) => {
     await updateUserApi(user.id, { isActive: !user.isActive })
+    if (user.id === currentUser?.id) {
+      clearSession()
+      navigate('/login', { replace: true })
+      return
+    }
     await load()
   }
 

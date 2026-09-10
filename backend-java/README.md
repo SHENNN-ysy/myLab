@@ -1,6 +1,8 @@
 # MyBlog Java 后端
 
-Java 21 / Spring Boot 单体服务，使用 PostgreSQL、Redis、MyBatis-Plus、JWT 与 OSS。
+Java 21 / Spring Boot 单体服务，使用 PostgreSQL、Redis、MyBatis-Plus、Redis 会话与 OSS。
+
+管理后台认证使用随机 UUID Bearer Token。Redis 只保存令牌 SHA-256 摘要，会话空闲超时默认 8 小时且在有效请求时滑动续期；账号敏感信息变更会通过用户会话反向索引吊销全部登录。公开博客接口不访问管理会话，因此认证 Redis 故障不会影响访客读取与互动。
 
 ## 构建与运行
 

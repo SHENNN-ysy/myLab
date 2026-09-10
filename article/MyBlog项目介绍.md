@@ -49,7 +49,7 @@ MyBlog 是一个完整的个人博客系统，由三部分组成：
 
 - **controller**：只做 HTTP 协议转换，禁止业务逻辑，禁止直接碰 Mapper/Redis/OSS；
 - **application**：业务核心，只依赖 `repository`/`port` 接口，不感知基础设施实现；业务模块按域划分：`auth`（认证）、`user`（用户管理）、`content`（内容）、`file`（文件）、`engagement`（互动计数）、`system`（系统信息）；
-- **infrastructure**：适配层，实现持久化、Redis、JWT、OSS 等接口；
+- **infrastructure**：适配层，实现持久化、Redis 会话、OSS 等接口；
 - **common**：`Result` 统一响应、`ErrorCode` 错误码枚举等公共契约，不反向依赖任何层；
 - **starter**：装配层，负责 Security、过滤器、Bean 配置与启动初始化。
 
@@ -69,7 +69,9 @@ MyBlog 是一个完整的个人博客系统，由三部分组成：
 
 ### 2. 认证与安全
 
-- JWT **双令牌**（access + refresh），退出登录把 jti 写入 Redis 黑名单吊销；
+- 管理后台使用随机 UUID Bearer Token，Redis 仅保存 SHA-256 摘要和会话 Hash，空闲 8 小时滑动过期；
+- 用户会话通过 ZSet 反向索引，修改用户名、密码、角色、启用状态或删除用户时会踢出该用户全部会话；登录与敏感写操作使用 PostgreSQL 行锁规避并发竞态；
+- Redis 会话服务不可用时登录和后台受保护接口返回 503，公开博客与访客 HMAC 互动不受影响；
 - 密码 BCrypt 加密（强度 12），初始管理员仅在系统无用户时创建一次；
 - 登录接口独立更严的限流阈值 + 全局限流，均基于 Redis，故障时 fail-open；
 - 访客标识经 HMAC 哈希，互动明细只存 Redis（72h TTL）不落库，保护访客隐私。
@@ -105,7 +107,7 @@ MyBlog/
 │   └── src/main/java/com/myblog/
 │       ├── controller/      # REST 接口 + 全局异常处理
 │       ├── application/     # 业务层（service / model / port）
-│       ├── infrastructure/  # 适配层（Persistence / Redis / JWT / OSS）
+│       ├── infrastructure/  # 适配层（Persistence / Redis 会话 / OSS）
 │       ├── starter/         # 装配层（Security / 配置 / 初始化）
 │       └── common/          # Result / ErrorCode / 常量
 ├── nginx/                   # 本地 HTTP 网关配置

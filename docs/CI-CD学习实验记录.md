@@ -438,7 +438,7 @@ Registry 只绑定 `127.0.0.1:5000`；PostgreSQL、Redis 和后端调试端口�
 
 ### 10.2 配置与代码分离
 
-生产配置来自 `deploy/.env`，该文件不提交 Git。仓库只保存 [`deploy/.env.example`](../deploy/.env.example) 作为变量契约。数据库密码、Redis 密码、JWT 密钥、OSS 凭据和初始管理员密码都在服务器侧填写。
+生产配置来自 `deploy/.env`，该文件不提交 Git。仓库只保存 [`deploy/.env.example`](../deploy/.env.example) 作为变量契约。数据库密码、Redis 密码、会话空闲时间、访客哈希密钥、OSS 凭据和初始管理员密码都在服务器侧填写；旧 `JWT_SECRET` 只在回滚观察期保留，新版本不读取。
 
 这解决了敏感信息入库问题，但也意味着 `deploy/.env` 需要独立备份和权限控制；Git 并不会替我们管理生产密钥。
 

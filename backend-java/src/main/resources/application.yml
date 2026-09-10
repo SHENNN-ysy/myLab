@@ -50,14 +50,13 @@ mybatis-plus:
     map-underscore-to-camel-case: true
   global-config.banner: false
 app:
+  session:
+    idle-timeout: ${SESSION_IDLE_TIMEOUT:8h}
   content-cache:
     enabled: ${CONTENT_CACHE_ENABLED:true}
     ttl: ${CONTENT_CACHE_TTL:6h}
     lock-ttl: ${CONTENT_CACHE_LOCK_TTL:5s}
     wait-timeout: ${CONTENT_CACHE_WAIT_TIMEOUT:1s}
-  jwt-secret: ${JWT_SECRET}
-  access-expire-minutes: ${JWT_ACCESS_EXPIRE_MINUTES:30}
-  refresh-expire-days: ${JWT_REFRESH_EXPIRE_DAYS:14}
   cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174}
   rate-limit-per-minute: ${RATE_LIMIT_PER_MINUTE:60}
   login-rate-limit-per-minute: ${LOGIN_RATE_LIMIT_PER_MINUTE:5}
@@ -69,7 +68,7 @@ app:
   oss-max-file-size-mb: ${OSS_MAX_FILE_SIZE_MB:10}
   initial-admin-username: ${INIT_ADMIN_USERNAME:admin}
   initial-admin-password: ${INIT_ADMIN_PASSWORD:admin123} # 未配置时兜底 admin123，仅用于首次建号/种子接管，生产务必显式配置强口令
-  engagement-hash-secret: ${ENGAGEMENT_HASH_SECRET:${JWT_SECRET}}
+  engagement-hash-secret: ${ENGAGEMENT_HASH_SECRET}
   # 生产默认强制 Secure（仅 HTTPS 发送）；本地纯 HTTP 调试由 application-dev.yml 覆盖为 false
   visitor-cookie-secure: true
 server.tomcat.threads:

@@ -25,6 +25,7 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
     @Autowired
     private DistributedLock distributedLock;
 
+    /** 全量公开内容包含已发布 mylab 卡片，列表不携带 Markdown 正文。 */
     @Test
     void publicContentIncludesPublishedMylabModule() {
         String postKey = uniqueKey("apitest-pub-");
@@ -39,6 +40,7 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         assertThat(card.has("markdown_content")).as("公开列表不应携带大正文").isFalse();
     }
 
+    /** 全量内容在缓存被删除前一直命中 Redis；删除后回源数据库重建。 */
     @Test
     void publicContentUsesAllCacheUntilItIsEvicted() {
         String postKey = uniqueKey("apitest-cache-");
@@ -49,6 +51,7 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         assertThat(findCard(first.path("data").path("mylab").path("cards"), postKey)
                 .path("title").asText()).isEqualTo("缓存前标题");
         assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isTrue();
+        // 21_600 秒 = 缓存 TTL 上限 6 小时
         assertThat(redis.getExpire(RedisPublicContentCache.ALL_KEY)).isBetween(1L, 21_600L);
 
         jdbc.update("UPDATE mylab_cards SET card_title = ? WHERE post_key = ?", "数据库新标题", postKey);
@@ -64,6 +67,7 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
                 .path("title").asText()).isEqualTo("数据库新标题");
     }
 
+    /** 单模块公开列表过滤停用卡片。 */
     @Test
     void publicModuleFiltersDisabledCards() {
         String visibleKey = uniqueKey("apitest-visible-");
@@ -79,10 +83,12 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         assertThat(findCard(cards, hiddenKey)).as("停用卡片不应出现在公开输出").isNull();
     }
 
+    /** 单模块接口直查数据库，不受全量缓存内容影响。 */
     @Test
     void publicModuleReadsDatabaseInsteadOfAllCache() {
         String postKey = uniqueKey("apitest-module-");
         ensurePublishedMylabCard(postKey, "单模块直查数据库", true);
+        // 预置一个不含该卡片的全量缓存作为干扰，验证单模块接口不读它
         redis.opsForValue().set(RedisPublicContentCache.ALL_KEY,
                 "{\"mylab\":{\"tags\":[],\"cards\":[]}}", Duration.ofHours(6));
 
@@ -92,6 +98,7 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         assertThat(findCard(body.path("data").path("cards"), postKey)).isNotNull();
     }
 
+    /** 单篇详情返回 Markdown 正文并写入详情缓存。 */
     @Test
     void mylabDetailReturnsPublishedCard() {
         String postKey = uniqueKey("apitest-detail-");
@@ -105,13 +112,16 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         assertThat(body.path("data").path("markdown_content").asText()).contains("API 集成测试正文");
         Object cached = redis.opsForHash().get(RedisPublicContentCache.MYLAB_DETAILS_KEY, postKey);
         assertThat(String.valueOf(cached)).contains("markdown_content", "API 集成测试正文");
+        // 21_600 秒 = 详情缓存 TTL 上限 6 小时
         assertThat(redis.getExpire(RedisPublicContentCache.MYLAB_DETAILS_KEY)).isBetween(1L, 21_600L);
     }
 
+    /** 损坏的全量缓存被识别删除并回源数据库重建。 */
     @Test
     void corruptedAllCacheIsDeletedAndRebuilt() {
         String postKey = uniqueKey("apitest-corrupt-");
         ensurePublishedMylabCard(postKey, "损坏缓存回源", true);
+        // 预置一段非法 JSON 作为损坏缓存
         redis.opsForValue().set(RedisPublicContentCache.ALL_KEY, "{broken-json", Duration.ofHours(6));
 
         JsonNode body = assertStatusAndCode(
@@ -122,6 +132,7 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         assertThat(redis.opsForValue().get(RedisPublicContentCache.ALL_KEY)).doesNotContain("broken-json");
     }
 
+    /** 分布式锁只能由持有者本人释放，他人释放不生效。 */
     @Test
     void distributedLockCanOnlyBeReleasedByItsOwner() {
         String lockName = uniqueKey("apitest-lock-");
@@ -134,17 +145,20 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         assertThat(redis.hasKey(RedisDistributedLock.LOCK_PREFIX + lockName)).isFalse();
     }
 
+    /** 锁租约到期后自动释放，其他持有者可立即获取。 */
     @Test
     void distributedLockExpiresAfterLease() throws Exception {
         String lockName = uniqueKey("apitest-expiring-lock-");
         assertThat(distributedLock.tryAcquire(lockName, "owner-a", Duration.ofMillis(100))).isTrue();
 
+        // 越过 100ms 租约，等待锁自动过期
         Thread.sleep(200);
 
         assertThat(distributedLock.tryAcquire(lockName, "owner-b", Duration.ofSeconds(5))).isTrue();
         distributedLock.release(lockName, "owner-b");
     }
 
+    /** 未知 post_key 返回 404（模块已发布，排除"模块未发布"的干扰）。 */
     @Test
     void mylabDetailUnknownPostKeyReturns404() {
         // 保证 mylab 存在已发布版本，使 404 来自"文章不存在"而非"模块未发布"
@@ -155,6 +169,7 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
                 HttpStatus.NOT_FOUND, 10005);
     }
 
+    /** 白名单外的模块 key 按"模块不存在"返回 404。 */
     @Test
     void unknownModuleKeyReturns404() {
         // 模块 key 不在白名单内按"模块不存在"处理，而非通用参数错误

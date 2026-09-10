@@ -8,7 +8,7 @@ MyBlog 是一个前后端分离的个人博客系统，包含访客博客、管�
 |---|---|
 | 博客前台 | React 18、TypeScript、Vite、React Router、Zustand、GSAP、Tailwind CSS 4 |
 | 管理后台 | React 18、TypeScript、Vite、React Router、Zustand、Ant Design 5、ECharts 5 |
-| 后端 | Spring Boot 3.5.16、Java 21、MyBatis-Plus、JWT、OSS |
+| 后端 | Spring Boot 3.5.16、Java 21、MyBatis-Plus、Redis 会话、OSS |
 | 数据与缓存 | PostgreSQL 16、Redis 7、Flyway、Redis Cache-Aside |
 | 测试与质量 | JUnit、Testcontainers、ArchUnit、Checkstyle、SpotBugs、JaCoCo |
 | 部署 | Docker、Docker Compose、Nginx、Jenkins |
@@ -30,7 +30,7 @@ MyBlog 是一个前后端分离的个人博客系统，包含访客博客、管�
 cp .env.example .env
 ```
 
-修改 `.env` 中的数据库密码、Redis 密码、JWT 密钥、初始管理员和 OSS 配置。后台路径由 `ADMIN_ROUTE` 控制，默认 `/admin`；前端 API 默认使用同源的 `/api/v1`。
+修改 `.env` 中的数据库密码、Redis 密码、访客哈希密钥、初始管理员和 OSS 配置。管理会话默认采用 8 小时滑动过期，可通过 `SESSION_IDLE_TIMEOUT` 调整。后台路径由 `ADMIN_ROUTE` 控制，默认 `/admin`；前端 API 默认使用同源的 `/api/v1`。
 
 ### 2. 构建并启动
 

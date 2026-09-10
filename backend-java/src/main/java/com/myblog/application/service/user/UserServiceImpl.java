@@ -9,6 +9,7 @@ import com.myblog.common.exception.ValidationException;
 import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.application.model.command.user.UserCommands;
 import com.myblog.application.repository.UserRepository;
+import com.myblog.application.port.SessionService;
 import com.myblog.common.result.PageResult;
 import com.myblog.common.security.CurrentUser;
 import com.myblog.common.security.Authorization;
@@ -37,10 +38,12 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository users;
     private final AuthService auth;
+    private final SessionService sessions;
 
-    public UserServiceImpl(UserRepository users, AuthService auth) {
+    public UserServiceImpl(UserRepository users, AuthService auth, SessionService sessions) {
         this.users = users;
         this.auth = auth;
+        this.sessions = sessions;
     }
 
     @Override
@@ -95,7 +98,7 @@ public class UserServiceImpl implements UserService {
      */
     public UserOutVO update(CurrentUser actor, UUID id, UserCommands.Update command) {
         Authorization.requireAdmin(actor);
-        User user = users.findById(id);
+        User user = users.findByIdForUpdate(id);
         if (user == null) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
@@ -116,6 +119,9 @@ public class UserServiceImpl implements UserService {
         }
         user.setUpdatedAt(OffsetDateTime.now());
         users.save(user);
+        if (!changed.isEmpty()) {
+            sessions.revokeAll(id);
+        }
         log.info("用户已更新：operator={}, target={}, fields={}", actor.username(), user.getUsername(), changed);
         return toOut(user);
     }
@@ -127,7 +133,7 @@ public class UserServiceImpl implements UserService {
      */
     public void delete(CurrentUser actor, UUID id) {
         Authorization.requireSuperadmin(actor);
-        User user = users.findById(id);
+        User user = users.findByIdForUpdate(id);
         if (user == null) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
@@ -135,6 +141,7 @@ public class UserServiceImpl implements UserService {
         if (!users.remove(id)) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND, null);
         }
+        sessions.revokeAll(id);
         log.info("用户已删除：operator={}, targetId={}", actor.username(), id);
     }
 

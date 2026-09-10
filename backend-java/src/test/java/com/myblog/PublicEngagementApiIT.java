@@ -25,6 +25,7 @@ class PublicEngagementApiIT extends AbstractApiIntegrationTest {
     private static final String SUMMARY_URL = "/api/v1/public/analytics/summary";
     private static final String SITE_METRICS_KEY = "blog:site:metrics";
 
+    /** 浏览/点赞/取消点赞全流程：Redis 实时计数与统计接口读回一致。 */
     @Test
     void viewLikeUnlikeFullFlow() {
         String postKey = uniqueKey("apitest-eng-");
@@ -75,6 +76,7 @@ class PublicEngagementApiIT extends AbstractApiIntegrationTest {
         assertThat(engagementSummary(postKey).path("like_count").asLong()).isZero();
     }
 
+    /** 同一会话窗口内重复登记访问只续期不重复计数。 */
     @Test
     void registerVisitDedupesWithinSession() {
         // 首次访问签发访客并计数 1；同一会话窗口内重复访问只续期不计数
@@ -93,6 +95,7 @@ class PublicEngagementApiIT extends AbstractApiIntegrationTest {
         assertThat(summary.path("data").path("visit_count").asLong()).isEqualTo(1);
     }
 
+    /** 未产生互动的合法 post_key 批量查询按 0 兜底。 */
     @Test
     void engagementSummaryDefaultsToZeroForUnknownKey() {
         String postKey = uniqueKey("apitest-zero-");
@@ -104,6 +107,7 @@ class PublicEngagementApiIT extends AbstractApiIntegrationTest {
         assertThat(item.path("like_count").asLong()).isZero();
     }
 
+    /** 不存在的文章浏览与点赞均返回 404。 */
     @Test
     void engagementOnUnknownPostReturns404() {
         String postKey = uniqueKey("apitest-missing-");
@@ -114,6 +118,7 @@ class PublicEngagementApiIT extends AbstractApiIntegrationTest {
                 HttpStatus.NOT_FOUND, 10005);
     }
 
+    /** 已发布但停用的卡片不允许互动，浏览返回 404。 */
     @Test
     void engagementOnDisabledPostReturns404() {
         String postKey = uniqueKey("apitest-off-");
@@ -124,6 +129,7 @@ class PublicEngagementApiIT extends AbstractApiIntegrationTest {
                 HttpStatus.NOT_FOUND, 10005);
     }
 
+    /** 非法 post_key 走业务校验返回 422；缺少 post_keys 参数返回 400。 */
     @Test
     void invalidPostKeyReturns422AndMissingParamReturns400() {
         // post_key 格式非法走业务校验（10007）；缺少 post_keys 参数走 Spring 缺参处理（10012）
@@ -171,6 +177,7 @@ class PublicEngagementApiIT extends AbstractApiIntegrationTest {
         return pair.substring((VisitorIdentityService.COOKIE_NAME + "=").length());
     }
 
+    /** 直读 Redis Hash 字段，未命中返回 null */
     private String redisHash(String key, String field) {
         Object value = redis.opsForHash().get(key, field);
         return value == null ? null : value.toString();

@@ -34,6 +34,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/** FileServiceImpl 单元测试：覆盖文件列表、上传、预签名、引用查询与删除的目录规则、入参校验及 OSS 交互边界。 */
 @ExtendWith(MockitoExtension.class)
 class FileServiceImplTest {
     @Mock FileRepository files;
@@ -49,6 +50,7 @@ class FileServiceImplTest {
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
+    /** 站内资源（相对路径 key）在列表中原样返回 URL，不调用 OSS 生成地址。 */
     @Test
     void listingSiteImageDoesNotRequireOss() {
         FileRecord image = resource("/assets/avatar.png", "image/png");
@@ -60,6 +62,7 @@ class FileServiceImplTest {
         verify(storage, never()).publicUrl(anyString());
     }
 
+    /** 站内资源的预签名直接返回相对路径，不走 OSS 签名 URL。 */
     @Test
     void presigningSiteResourceReturnsItsRelativeUrl() throws Exception {
         FileRecord markdown = resource("/documents/readme.md", "text/markdown");
@@ -71,6 +74,7 @@ class FileServiceImplTest {
         verify(storage, never()).signedUrl(anyString(), org.mockito.ArgumentMatchers.anyLong());
     }
 
+    /** 按目录过滤时逻辑目录名（HERO）归一化为小写带斜杠前缀（hero/）再查库。 */
     @Test
     void listingByDirectoryUsesLogicalDirectoryPrefix() {
         when(files.findPage(1, 20, "hero/")).thenReturn(PageResult.of(List.of(), 1, 20, 0));
@@ -80,6 +84,7 @@ class FileServiceImplTest {
         verify(files).findPage(1, 20, "hero/");
     }
 
+    /** 上传成功：object key 为 目录/UUID.扩展名，落在所选目录下。 */
     @Test
     void uploadStoresImageUnderSelectedDirectory() {
         when(props.ossMaxFileSizeMb()).thenReturn(10);
@@ -96,6 +101,7 @@ class FileServiceImplTest {
                 .matches("icon/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.png");
     }
 
+    /** 引用查询返回使用该文件的内容版本列表。 */
     @Test
     void referencesReturnsContentVersionsUsingTheFile() {
         FileRecord image = resource("hobbies/2026/08/x.png", "image/png");
@@ -108,6 +114,7 @@ class FileServiceImplTest {
         assertThat(result).containsExactly(reference);
     }
 
+    /** 查询不存在文件的引用抛 NotFoundException。 */
     @Test
     void referencesOfMissingFileIsNotFound() {
         UUID id = UUID.randomUUID();
@@ -115,12 +122,14 @@ class FileServiceImplTest {
                 .isInstanceOf(com.myblog.common.exception.NotFoundException.class);
     }
 
+    /** 列表过滤传未知目录名时抛 ValidationException。 */
     @Test
     void listRejectsInvalidDirectory() {
         assertThatThrownBy(() -> service.list(admin, 1, 20, "unknown"))
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 目录参数为空白串时视为不过滤。 */
     @Test
     void listTreatsBlankDirectoryAsNoFilter() {
         when(files.findPage(1, 20, null)).thenReturn(PageResult.of(List.of(), 1, 20, 0));
@@ -130,8 +139,10 @@ class FileServiceImplTest {
         verify(files).findPage(1, 20, null);
     }
 
+    /** 非图片、无 key 或无目录段 key 的记录，url 与 directory 字段返回 null。 */
     @Test
     void listReturnsNullUrlAndDirectoryForNonImageOrUnknownKey() {
+        // 覆盖三种异常形态：非图片文档、无 object key、key 中无目录段
         FileRecord document = resource("documents/2026/08/a.pdf", "application/pdf");
         FileRecord keyless = resource(null, "image/png");
         keyless.setMimeType(null);
@@ -148,6 +159,7 @@ class FileServiceImplTest {
         assertThat(result.records().get(2).directory()).isNull();
     }
 
+    /** 兼容带历史统一前缀（blog/）的旧 key，仍能解析出目录并生成公网 URL。 */
     @Test
     void listRecognizesDirectoryInLegacyPrefixedKey() {
         FileRecord image = resource("blog/hero/2026/08/banner.png", "image/png");
@@ -160,6 +172,7 @@ class FileServiceImplTest {
         assertThat(result.records().getFirst().url()).isEqualTo("https://cdn.example.com/banner.png");
     }
 
+    /** 上传目录为空白串时抛 ValidationException。 */
     @Test
     void uploadRejectsBlankDirectory() {
         UploadFile upload = new UploadFile("  ", "a.png", "image/png", 3,
@@ -169,6 +182,7 @@ class FileServiceImplTest {
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 空文件（大小为 0）上传被拒绝。 */
     @Test
     void uploadRejectsEmptyFile() {
         UploadFile upload = new UploadFile("icon", "a.png", "image/png", 0,
@@ -178,6 +192,7 @@ class FileServiceImplTest {
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 不支持的媒体类型（zip）上传被拒绝。 */
     @Test
     void uploadRejectsUnsupportedMediaType() {
         UploadFile upload = new UploadFile("icon", "a.zip", "application/zip", 3,
@@ -187,6 +202,7 @@ class FileServiceImplTest {
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 缺少 Content-Type 时上传被拒绝。 */
     @Test
     void uploadRejectsMissingContentType() {
         UploadFile upload = new UploadFile("icon", "a.png", null, 3,
@@ -196,6 +212,7 @@ class FileServiceImplTest {
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** documents 目录不接受图片上传（目录与文件类型不匹配）。 */
     @Test
     void uploadRejectsInvalidDirectory() {
         UploadFile upload = new UploadFile("documents", "a.png", "image/png", 3,
@@ -205,6 +222,7 @@ class FileServiceImplTest {
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 图片目录（hero）不接受 Markdown 文档上传。 */
     @Test
     void imageDirectoryRejectsDocuments() {
         UploadFile upload = new UploadFile("hero", "a.md", "text/markdown", 3,
@@ -214,9 +232,11 @@ class FileServiceImplTest {
                 .isInstanceOf(ValidationException.class);
     }
 
+    /** 超过大小上限的文件上传被拒绝，且不调用 OSS。 */
     @Test
     void uploadRejectsFileExceedingSizeLimit() {
         when(props.ossMaxFileSizeMb()).thenReturn(1);
+        // 上限设为 1MB，声明 2MB 的文件以触发超限
         UploadFile upload = new UploadFile("icon", "big.png", "image/png", 2L * 1024 * 1024,
                 new ByteArrayInputStream(new byte[] {1}));
 
@@ -226,6 +246,7 @@ class FileServiceImplTest {
                 org.mockito.ArgumentMatchers.anyLong(), anyString());
     }
 
+    /** 无引用的文档允许删除：软删记录并异步清理 OSS 对象。 */
     @Test
     void deleteAllowsUnreferencedDocument() {
         FileRecord document = resource("documents/archive.md", "text/markdown");
@@ -238,6 +259,7 @@ class FileServiceImplTest {
         verify(storage).deleteAsync("documents/archive.md");
     }
 
+    /** object key 不含统一前缀或日期子目录，目录只有一层。 */
     @Test
     void uploadDoesNotCreatePrefixOrDateSubdirectories() {
         when(props.ossMaxFileSizeMb()).thenReturn(10);
@@ -251,6 +273,7 @@ class FileServiceImplTest {
         assertThat(result.directory()).isEqualTo("icon");
     }
 
+    /** 扩展名由媒体类型映射推导（jpeg→.jpg 等），不取原文件名后缀。 */
     @Test
     void uploadDerivesExtensionFromMediaType() {
         when(props.ossMaxFileSizeMb()).thenReturn(10);
@@ -269,6 +292,7 @@ class FileServiceImplTest {
 
     }
 
+    /** 不存在或已软删的文件预签名均抛 NotFoundException。 */
     @Test
     void presignRejectsMissingOrSoftDeletedFile() {
         UUID missing = UUID.randomUUID();
@@ -282,6 +306,7 @@ class FileServiceImplTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
+    /** 公开图片的预签名直接返回公网 URL，不生成签名 URL。 */
     @Test
     void presignReturnsPublicUrlForPublicImages() throws Exception {
         FileRecord image = resource("hero/2026/08/x.png", "image/png");
@@ -294,10 +319,12 @@ class FileServiceImplTest {
         verify(storage, never()).signedUrl(anyString(), org.mockito.ArgumentMatchers.anyLong());
     }
 
+    /** 非公开资源（PDF）预签名返回带有效期的签名 URL。 */
     @Test
     void presignSignsNonPublicResources() throws Exception {
         FileRecord document = resource("documents/2026/08/a.pdf", "application/pdf");
         when(files.findById(document.getId())).thenReturn(document);
+        // 非公开资源走签名 URL，有效期 3600 秒
         when(storage.signedUrl("documents/2026/08/a.pdf", 3600)).thenReturn("https://oss.example.com/signed");
 
         Map<String, String> result = service.presign(admin, document.getId());
@@ -305,6 +332,7 @@ class FileServiceImplTest {
         assertThat(result.get("url")).isEqualTo("https://oss.example.com/signed");
     }
 
+    /** 删除不存在或已软删的文件均抛 NotFoundException。 */
     @Test
     void deleteRejectsMissingOrSoftDeletedFile() {
         UUID missing = UUID.randomUUID();
@@ -318,6 +346,7 @@ class FileServiceImplTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
+    /** 仍被内容引用的文件禁止删除（ConflictException），且不清理 OSS 对象。 */
     @Test
     void deleteRejectsFileStillReferencedByContent() {
         FileRecord image = resource("hero/2026/08/x.png", "image/png");
@@ -329,6 +358,7 @@ class FileServiceImplTest {
         verify(storage, never()).deleteAsync(anyString());
     }
 
+    /** 删除为软删：deletedAt/updatedAt 被打上时间戳，同时异步删除 OSS 对象。 */
     @Test
     void deleteSoftDeletesRecordAndPurgesStoredObject() {
         FileRecord image = resource("hero/2026/08/x.png", "image/png");
@@ -344,6 +374,7 @@ class FileServiceImplTest {
         verify(storage).deleteAsync("hero/2026/08/x.png");
     }
 
+    // 测试文件记录工厂：bucket 固定为 local，originalName 取 key 最后一段
     private FileRecord resource(String objectKey, String mimeType) {
         FileRecord record = new FileRecord();
         record.setId(UUID.randomUUID());

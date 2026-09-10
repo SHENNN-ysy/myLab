@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * OpenAPI/Swagger 配置：声明 API 元信息、JWT Bearer 安全方案与各前台模块内容 Schema，
+ * OpenAPI/Swagger 配置：声明 API 元信息、Redis 会话 Bearer 安全方案与各前台模块内容 Schema，
  * 并通过全局 OperationCustomizer 为所有接口补充标准错误响应文档。
  */
 @Configuration
@@ -52,11 +52,11 @@ import java.util.Map;
         name = OpenApiConfig.BEARER_AUTH,
         type = SecuritySchemeType.HTTP,
         scheme = "bearer",
-        bearerFormat = "JWT",
+        bearerFormat = "Opaque UUID",
         description = "登录后填写 access_token"
 )
 public class OpenApiConfig {
-    /** Swagger 中 JWT 认证方案的名称，接口通过 @SecurityRequirement 引用 */
+    /** Swagger 中 Bearer 会话认证方案的名称，接口通过 @SecurityRequirement 引用 */
     public static final String BEARER_AUTH = "bearerAuth";
     /** 统一错误响应在 components/schemas 中的名称 */
     private static final String ERROR_SCHEMA = "ApiErrorResponse";

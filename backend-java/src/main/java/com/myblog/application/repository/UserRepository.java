@@ -13,10 +13,14 @@ public interface UserRepository {
      * 按用户名查询用户，不存在时返回 null。
      */
     User findByUsername(String username);
+    /** 按用户名查询并锁定用户行，用于登录与敏感账号写操作串行化。 */
+    User findByUsernameForUpdate(String username);
     /**
      * 按 ID 查询用户，不存在时返回 null。
      */
     User findById(UUID id);
+    /** 按 ID 查询并锁定用户行。 */
+    User findByIdForUpdate(UUID id);
     /**
      * 分页查询用户列表。
      */

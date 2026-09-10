@@ -2,25 +2,19 @@ package com.myblog.application.service.auth;
 
 import com.myblog.application.model.entity.User;
 import com.myblog.application.model.vo.AuthResultVO;
-import com.myblog.application.model.vo.TokenPairVO;
 import com.myblog.application.model.vo.UserPublicVO;
 
 import java.util.UUID;
 
 /**
- * 认证用例接口：登录、令牌刷新、当前用户查询与密码管理。
+ * 认证用例接口：登录、当前用户查询与密码管理。
  */
 public interface AuthService {
 
     /**
-     * 校验用户名密码并签发访问令牌与刷新令牌。
+     * 校验用户名密码并创建 Redis 会话令牌。
      */
     AuthResultVO login(String username, String password);
-
-    /**
-     * 用刷新令牌换发一对新的访问/刷新令牌。
-     */
-    TokenPairVO refresh(String token);
 
     /**
      * 按用户 ID 取当前登录用户，不存在时抛未认证异常。

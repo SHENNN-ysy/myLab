@@ -36,6 +36,8 @@ export const storage = {
 // 存储 Keys
 export const STORAGE_KEYS = {
   TOKEN: 'token',
-  REFRESH_TOKEN: 'refresh_token',
   USER_INFO: 'user_info'
 } as const
+
+// JWT 双令牌版本遗留数据只需清理一次，后续不再读取或写入 refresh token
+storage.remove('refresh_token')

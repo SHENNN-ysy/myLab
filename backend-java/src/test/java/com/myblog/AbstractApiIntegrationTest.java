@@ -31,14 +31,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * API 集成测试基类：Testcontainers 启动真实 PostgreSQL（Flyway 完整迁移）与 Redis，
  * 通过 {@link TestRestTemplate} 走完整 HTTP 链路，让 API 测试同时充当集成测试。
  *
- * <p>镜像版本与生产 docker-compose 对齐；jwt-secret / 初始管理员密码等无默认值的环境变量
+ * <p>镜像版本与生产 docker-compose 对齐；访客哈希 / 初始管理员密码等无默认值的环境变量
  * 在此固定为测试专用值，限流阈值调大避免误伤测试请求。</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "app.jwt-secret=api-it-jwt-secret-0123456789abcdef0123456789abcdef",
+        "app.session.idle-timeout=8h",
         "app.initial-admin-username=api-it-initial-admin",
         "app.initial-admin-password=api-it-initial-admin-password",
-        // yml 中该值默认引用环境变量 ${JWT_SECRET}，属性覆盖 app.jwt-secret 对它不生效，需单独固定
         "app.engagement-hash-secret=api-it-engagement-hash-secret",
         "app.rate-limit-per-minute=100000",
         "app.login-rate-limit-per-minute=100000",
@@ -52,6 +51,7 @@ public abstract class AbstractApiIntegrationTest {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgres:16-alpine"));
 
+    // Redis 无 @ServiceConnection 自动装配，改用 GenericContainer + @DynamicPropertySource 显式注册连接坐标，密码置空串
     static final GenericContainer<?> REDIS = new GenericContainer<>(
             DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
 
@@ -79,7 +79,7 @@ public abstract class AbstractApiIntegrationTest {
     @Autowired
     protected StringRedisTemplate redis;
 
-    /** 每条用例前清空 Redis：限流计数与令牌黑名单不带入下一条用例 */
+    /** 每条用例前清空 Redis：限流计数与管理会话不带入下一条用例。 */
     @BeforeEach
     void flushRedis() {
         try (RedisConnection connection = redis.getRequiredConnectionFactory().getConnection()) {
@@ -111,6 +111,7 @@ public abstract class AbstractApiIntegrationTest {
      */
     protected void ensurePublishedMylabCard(String postKey, String title, boolean enabled) {
         UUID releaseId = publishedMylabReleaseId();
+        // sort_order 取大值 9000：测试卡片排在基线数据之后，不干扰既有排序
         jdbc.update("INSERT INTO mylab_cards (id, release_id, post_key, card_title, card_summary,"
                         + " post_date, enabled, sort_order, card_type, markdown_content)"
                         + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ARTICLE', ?)",

@@ -8,8 +8,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 用户出参 VO 的序列化安全测试：对外 JSON 绝不泄露密码哈希。 */
 class UserOutVOTest {
 
+    /** 序列化结果包含公开字段，但不得出现 password/password_hash 字段。 */
     @Test
     void serializationNeverContainsPasswordHash() throws Exception {
         OffsetDateTime now = OffsetDateTime.now();

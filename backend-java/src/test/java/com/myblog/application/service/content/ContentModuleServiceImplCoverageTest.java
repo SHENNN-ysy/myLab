@@ -63,6 +63,7 @@ class ContentModuleServiceImplCoverageTest {
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
+        // 缓存桩直接透传回源 supplier，让用例聚焦服务层逻辑而非缓存
         lenient().when(publicCache.readAll(any())).thenAnswer(invocation ->
                 ((Supplier<Map<String, Object>>) invocation.getArgument(0)).get());
         lenient().when(publicCache.readMylabDetail(any(), any())).thenAnswer(invocation ->
@@ -74,9 +75,11 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- 公开读取路径 ----------
 
+    /** 聚合接口只汇总已发布模块；mylab 卡片过滤禁用项并将 tag_ids 映射为标签名。 */
     @Test
     @SuppressWarnings("unchecked")
     void publicContentAggregatesOnlyPublishedModules() {
+        // 兜底桩：未单独桩的模块一律视为无已发布版本
         when(releases.findPublished(any())).thenReturn(null);
         ContentRelease home = release("home", "PUBLISHED");
         when(releases.findPublished("home")).thenReturn(home);
@@ -102,12 +105,14 @@ class ContentModuleServiceImplCoverageTest {
         assertThat((List<String>) cards.getFirst().get("tags")).containsExactly("Java");
     }
 
+    /** 模块无已发布版本时按未上线处理，抛 NotFoundException。 */
     @Test
     void publicModuleWithoutPublishedReleaseIsOffline() {
         assertThatThrownBy(() -> service.publicModule("about"))
                 .isInstanceOf(NotFoundException.class);
     }
 
+    /** 按 post_key 返回已发布 mylab 卡片的公开详情。 */
     @Test
     @SuppressWarnings("unchecked")
     void publicMylabDetailReturnsMatchingCard() {
@@ -122,6 +127,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(card.get("card_title")).isEqualTo("标题");
     }
 
+    /** post_key 不存在时抛 NotFoundException。 */
     @Test
     void publicMylabDetailRejectsUnknownPostKey() {
         ContentRelease published = release("mylab", "PUBLISHED");
@@ -132,6 +138,7 @@ class ContentModuleServiceImplCoverageTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
+    /** 公开 hobbies 数据过滤 enabled=false 的卡片和时间标签。 */
     @Test
     @SuppressWarnings("unchecked")
     void publicHobbiesFiltersDisabledCardsAndTimeTags() {
@@ -154,6 +161,7 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- 管理视图 ----------
 
+    /** skills/footprints/vibe 的公开数据均过滤禁用条目。 */
     @Test
     @SuppressWarnings("unchecked")
     void publicSkillsFootprintsAndVibeFilterDisabledEntries() {
@@ -182,6 +190,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat((List<?>) vibeData.get("tools")).hasSize(1);
     }
 
+    /** 管理列表固定返回七个模块，无任何版本时状态均为 draft。 */
     @Test
     void listReturnsAllSevenModules() {
         List<ContentDtos.ModuleView> views = service.list(admin);
@@ -192,6 +201,7 @@ class ContentModuleServiceImplCoverageTest {
                 .containsExactly("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab");
     }
 
+    /** 模块无任何版本记录时返回空草稿视图。 */
     @Test
     @SuppressWarnings("unchecked")
     void getWithoutAnyReleaseReturnsEmptyDraftView() {
@@ -203,6 +213,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat((List<Object>) ((Map<String, Object>) view.draftData()).get("items")).isEmpty();
     }
 
+    /** 无草稿时草稿视图回退为线上已发布数据，并加工出 image_url。 */
     @Test
     @SuppressWarnings("unchecked")
     void getFallsBackToPublishedDataWhenNoDraft() {
@@ -221,6 +232,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(images.getFirst().get("image_url")).isEqualTo("/assets/a.webp");
     }
 
+    /** 当前版本为 OFFLINE 时管理视图状态显示 offline。 */
     @Test
     void getReflectsOfflineStateOfCurrentRelease() {
         ContentRelease current = release("vibe", "OFFLINE");
@@ -232,6 +244,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(view.status()).isEqualTo("offline");
     }
 
+    /** 非 admin 角色调用全部管理接口均被拒绝（ForbiddenException）。 */
     @Test
     void managementEndpointsRequireAdmin() {
         CurrentUser viewer = new CurrentUser(UUID.randomUUID(), "bob", "viewer");
@@ -253,6 +266,7 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- 草稿保存 ----------
 
+    /** 首次保存创建 DRAFT 版本，并关联当前线上版本作为来源。 */
     @Test
     void saveDraftCreatesDraftLinkedToCurrentVersion() {
         ContentRelease current = release("skills", "PUBLISHED");
@@ -269,6 +283,7 @@ class ContentModuleServiceImplCoverageTest {
         verify(releases).replaceData(any(ContentRelease.class), any());
     }
 
+    /** 无线上版本时新建草稿不关联来源版本。 */
     @Test
     void saveDraftCreatesDraftWithoutSourceWhenNothingPublished() {
         service.saveDraft(admin, "vibe", new ContentDtos.SaveDraft(
@@ -277,6 +292,7 @@ class ContentModuleServiceImplCoverageTest {
         verify(releases).add(argThat(draft -> draft.getSourceReleaseId() == null));
     }
 
+    /** 期望时间戳匹配时原地更新已有草稿（乐观锁成功），不新建版本。 */
     @Test
     void saveDraftUpdatesExistingDraftWhenTimestampMatches() {
         ContentRelease draft = release("skills", "DRAFT");
@@ -292,6 +308,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(view.draftReleaseId()).isEqualTo(draft.getId());
     }
 
+    /** 乐观锁更新失败（草稿被并发修改）时抛 ConflictException 并提示刷新重试。 */
     @Test
     void saveDraftFailsWhenDraftModifiedConcurrently() {
         ContentRelease draft = release("skills", "DRAFT");
@@ -304,6 +321,7 @@ class ContentModuleServiceImplCoverageTest {
                         e -> assertThat(e.getDetail()).contains("刷新后重试"));
     }
 
+    /** data 缺失或非 JSON 对象时抛 ValidationException。 */
     @Test
     void saveDraftRejectsMissingOrNonObjectData() {
         assertThatThrownBy(() -> service.saveDraft(admin, "home", null))
@@ -317,6 +335,7 @@ class ContentModuleServiceImplCoverageTest {
                         e -> assertThat(e.getDetail()).contains("JSON 对象"));
     }
 
+    /** 版本名或版本描述为空白时分别抛 ValidationException。 */
     @Test
     void saveDraftRequiresVersionNameAndDescription() {
         Object data = Map.of("images", List.of());
@@ -332,6 +351,7 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- 发布 / 下线 ----------
 
+    /** 没有可发布草稿时发布抛 ConflictException。 */
     @Test
     void publishWithoutDraftConflicts() {
         assertThatThrownBy(() -> service.publish(admin, "home"))
@@ -339,6 +359,7 @@ class ContentModuleServiceImplCoverageTest {
                         e -> assertThat(e.getDetail()).contains("没有可发布草稿"));
     }
 
+    /** 没有已发布版本时下线抛 ConflictException，且不触发下线操作。 */
     @Test
     void offlineWithoutPublishedReleaseConflicts() {
         assertThatThrownBy(() -> service.offline(admin, "home"))
@@ -347,6 +368,7 @@ class ContentModuleServiceImplCoverageTest {
         verify(releases, never()).offline(any(), any());
     }
 
+    /** 下线将当前已发布版本置为 OFFLINE，并发布内容变更事件。 */
     @Test
     void offlineMarksCurrentReleaseOffline() {
         ContentRelease current = release("home", "PUBLISHED");
@@ -361,6 +383,7 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- 历史版本 ----------
 
+    /** 历史列表返回全部版本视图，保留版本号与状态。 */
     @Test
     void versionsReturnsAllVersionViews() {
         ContentRelease v1 = release("vibe", "ARCHIVED");
@@ -377,6 +400,7 @@ class ContentModuleServiceImplCoverageTest {
                 .containsExactly("ARCHIVED", "PUBLISHED");
     }
 
+    /** 按版本号读取历史归档版本。 */
     @Test
     void versionReturnsHistoricalRelease() {
         ContentRelease archived = release("vibe", "ARCHIVED");
@@ -389,6 +413,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(view.versionNo()).isEqualTo(1);
     }
 
+    /** 版本号不存在抛 NotFoundException；草稿版本也可按版本号查看。 */
     @Test
     void versionRejectsMissingAndReturnsDraftRelease() {
         assertThatThrownBy(() -> service.version(admin, "vibe", 1))
@@ -399,6 +424,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(service.version(admin, "vibe", 2).state()).isEqualTo("DRAFT");
     }
 
+    /** 恢复来源不存在、为草稿或为已发布版本时分别拒绝，且不创建新版本。 */
     @Test
     void restoreRejectsMissingDraftOrPublishedSource() {
         assertThatThrownBy(() -> service.restore(admin, "vibe", 1))
@@ -412,6 +438,7 @@ class ContentModuleServiceImplCoverageTest {
         verify(releases, never()).add(any());
     }
 
+    /** 删除已存在的草稿。 */
     @Test
     void deleteDraftRemovesExistingDraft() {
         ContentRelease draft = release("home", "DRAFT");
@@ -422,6 +449,7 @@ class ContentModuleServiceImplCoverageTest {
         verify(releases).deleteDraft(argThat(r -> r.getId().equals(draft.getId())));
     }
 
+    /** 无草稿时删除抛 NotFoundException，且不执行删除。 */
     @Test
     void deleteDraftWithoutDraftIsNotFound() {
         assertThatThrownBy(() -> service.deleteDraft(admin, "home"))
@@ -431,6 +459,7 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- URL 加工 ----------
 
+    /** 配置对象存储时 object key 被展开为完整公开 URL。 */
     @Test
     @SuppressWarnings("unchecked")
     void objectStorageKeyIsExpandedToPublicUrl() {
@@ -447,6 +476,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(images.getFirst().get("image_url")).isEqualTo("https://cdn.example.com/home/hero.webp");
     }
 
+    /** 未配置对象存储时 object key 原样返回。 */
     @Test
     @SuppressWarnings("unchecked")
     void objectKeyIsReturnedAsIsWhenStorageNotConfigured() {
@@ -462,6 +492,7 @@ class ContentModuleServiceImplCoverageTest {
         verify(storage, never()).publicUrl(any());
     }
 
+    /** 已是 http(s) 绝对地址的 key 保持原样，不再加工。 */
     @Test
     @SuppressWarnings("unchecked")
     void absoluteHttpUrlIsKeptAsIs() {
@@ -477,6 +508,7 @@ class ContentModuleServiceImplCoverageTest {
         verify(storage, never()).publicUrl(any());
     }
 
+    /** about 管理视图将 avatar_object_key 映射为 avatar_url。 */
     @Test
     @SuppressWarnings("unchecked")
     void aboutAdminDataMapsAvatarUrl() {
@@ -493,6 +525,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(profile.get("avatar_url")).isEqualTo("/assets/avatar.webp");
     }
 
+    /** skills 管理视图将 icon_object_key 映射为 icon_url。 */
     @Test
     @SuppressWarnings("unchecked")
     void skillsAdminDataMapsIconUrl() {
@@ -508,6 +541,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(items.getFirst().get("icon_url")).isEqualTo("/assets/java.webp");
     }
 
+    /** footprints 管理视图从 resources 派生 resource_ids 与 images 列表。 */
     @Test
     @SuppressWarnings("unchecked")
     void footprintsAdminDataDerivesResourceIdsAndImages() {
@@ -526,6 +560,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat((List<Object>) details.getFirst().get("images")).containsExactly("/assets/bj.webp");
     }
 
+    /** hobbies 管理视图同时输出 image_url 与 image 别名。 */
     @Test
     @SuppressWarnings("unchecked")
     void hobbiesAdminDataCopiesImageAlias() {
@@ -543,6 +578,7 @@ class ContentModuleServiceImplCoverageTest {
         assertThat(cards.getFirst().get("image")).isEqualTo("/assets/book.webp");
     }
 
+    /** mylab 管理视图保留卡片 Markdown 正文。 */
     @Test
     @SuppressWarnings("unchecked")
     void mylabAdminDataKeepsMarkdownContent() {
@@ -560,6 +596,7 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- 测试辅助 ----------
 
+    // 构造指定模块与状态的版本实体，版本号固定为 1
     private ContentRelease release(String module, String state) {
         ContentRelease release = new ContentRelease();
         release.setId(UUID.randomUUID());
@@ -626,6 +663,7 @@ class ContentModuleServiceImplCoverageTest {
         timeTag.put("name", "阅读");
         timeTag.put("enabled", true);
         List<Map<String, Object>> points = new ArrayList<>();
+        // 魔法值：构造 -1~27 岁共 29 个时间点，5 个爱好取值均为 2.0
         for (int age = -1; age <= 27; age++) {
             Map<String, Object> values = new LinkedHashMap<>();
             for (String key : List.of("爱好1", "爱好2", "爱好3", "爱好4", "爱好5")) {

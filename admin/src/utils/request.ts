@@ -1,13 +1,9 @@
 /**
  * Axios 请求封装：统一解包 Result 信封，泛型方法直接返回 data 载荷。
  */
-import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { storage, STORAGE_KEYS } from './storage'
 import type { ApiResponse } from '@/types'
-
-interface RetryableRequestConfig extends InternalAxiosRequestConfig {
-  _retry?: boolean
-}
 
 export class ApiRequestError extends Error {
   constructor(
@@ -33,11 +29,11 @@ const instance = axios.create({
   timeout: 15000
 })
 
-// 请求拦截器：注入 Bearer（登录/刷新接口除外）
+// 请求拦截器：除登录接口外统一注入 Redis 会话 Bearer Token
 instance.interceptors.request.use(
   (config) => {
     const token = storage.get<string>(STORAGE_KEYS.TOKEN)
-    const isPublicAuthEntry = config.url?.includes('/auth/login') || config.url?.includes('/auth/refresh')
+    const isPublicAuthEntry = config.url?.includes('/auth/login')
     if (token && !isPublicAuthEntry) {
       config.headers.Authorization = `Bearer ${token}`
     } else if (isPublicAuthEntry) {
@@ -48,29 +44,17 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// 响应拦截器：解包 Result，401 时刷新令牌并发控制
-let isRefreshing = false
-let failedQueue: Array<{ resolve: (value: unknown) => void; reject: (reason?: unknown) => void }> = []
-
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error)
-    } else {
-      prom.resolve(token)
-    }
-  })
-  failedQueue = []
-}
+// 多个并发请求同时返回 401 时只执行一次跳转
+let redirectingToLogin = false
 
 const clearSessionAndRedirect = () => {
   storage.remove(STORAGE_KEYS.TOKEN)
-  storage.remove(STORAGE_KEYS.REFRESH_TOKEN)
   storage.remove(STORAGE_KEYS.USER_INFO)
 
   // 不依赖 router 实例，直接硬跳转（basename 即管理后台路由前缀）
   const loginPath = `${import.meta.env.BASE_URL}login`
-  if (window.location.pathname !== loginPath) {
+  if (!redirectingToLogin && window.location.pathname !== loginPath) {
+    redirectingToLogin = true
     const redirect = window.location.pathname.replace(import.meta.env.BASE_URL, '/')
     window.location.href = `${loginPath}?redirect=${encodeURIComponent(redirect)}`
   }
@@ -89,38 +73,13 @@ instance.interceptors.response.use(
     // 统一解包 Result，直接返回 data 载荷
     return res.data
   }) as (value: AxiosResponse) => AxiosResponse,
-  async (error: AxiosError<ApiResponse<unknown>>) => {
-    const originalRequest = error.config as RetryableRequestConfig | undefined
-    const refreshToken = storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN)
-    const isAuthEntry = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/refresh')
-
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthEntry && refreshToken) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject })
-        }).then(() => instance(originalRequest))
-      }
-
-      originalRequest._retry = true
-      isRefreshing = true
-
-      try {
-        const res = await axios.post(`${instance.defaults.baseURL}/auth/refresh`, {
-          refresh_token: refreshToken
-        })
-        const tokens = res.data?.data || res.data
-        storage.set(STORAGE_KEYS.TOKEN, tokens.access_token)
-        storage.set(STORAGE_KEYS.REFRESH_TOKEN, tokens.refresh_token)
-        originalRequest.headers.Authorization = `Bearer ${tokens.access_token}`
-        processQueue(null, tokens.access_token)
-        return instance(originalRequest)
-      } catch (refreshError) {
-        processQueue(refreshError, null)
-        clearSessionAndRedirect()
-        return Promise.reject(refreshError)
-      } finally {
-        isRefreshing = false
-      }
+  (error: AxiosError<ApiResponse<unknown>>) => {
+    const isLoginRequest = error.config?.url?.includes('/auth/login')
+    if (error.response?.status === 401 && !isLoginRequest) {
+      clearSessionAndRedirect()
+      const body = error.response.data
+      const text = body?.error || body?.message || '登录状态已失效'
+      return Promise.reject(new ApiRequestError(text, body?.code, error.response.status, body?.error))
     }
 
     const body = error.response?.data
