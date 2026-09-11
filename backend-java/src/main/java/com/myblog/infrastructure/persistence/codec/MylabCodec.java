@@ -24,7 +24,6 @@ import java.util.UUID;
 import static com.myblog.infrastructure.persistence.codec.JsonSnapshots.array;
 import static com.myblog.infrastructure.persistence.codec.JsonSnapshots.bool;
 import static com.myblog.infrastructure.persistence.codec.JsonSnapshots.firstText;
-import static com.myblog.infrastructure.persistence.codec.JsonSnapshots.integer;
 import static com.myblog.infrastructure.persistence.codec.JsonSnapshots.iterable;
 import static com.myblog.infrastructure.persistence.codec.JsonSnapshots.key;
 import static com.myblog.infrastructure.persistence.codec.JsonSnapshots.localDate;
@@ -91,7 +90,6 @@ public class MylabCodec implements ModuleCodec {
      * 时间戳走数据库默认值。
      */
     private void writeMylabCards(UUID releaseId, JsonNode items) {
-        int order = 0;
         for (JsonNode item : iterable(items)) {
             UUID id = uuid(item, "row_id");
             // 未显式给出 card_type 时按 post_key 前缀推断：project- 开头视为项目卡片
@@ -108,7 +106,6 @@ public class MylabCodec implements ModuleCodec {
             entity.setCardSummary(firstText(item, "card_summary", "summary"));
             entity.setPostDate(localDate(item, "post_date", "date"));
             entity.setEnabled(bool(item, "enabled", true));
-            entity.setSortOrder(integer(item, "sort_order", order++));
             entity.setCardType(type);
             entity.setProjectShowOrder(projectOrder);
             entity.setProjectContents(firstText(item, "project_contents", "project_content"));
@@ -143,8 +140,8 @@ public class MylabCodec implements ModuleCodec {
         List<MylabCard> rows = mylabCardMapper.selectList(
                 Wrappers.<MylabCard>lambdaQuery()
                         .eq(MylabCard::getReleaseId, releaseId)
-                        .orderByAsc(MylabCard::getSortOrder)
-                        .orderByAsc(MylabCard::getPostKey));
+                        // 固定 SQL 片段用于 PostgreSQL NULLS LAST；不再读取历史 sort_order。
+                        .last("ORDER BY post_date DESC NULLS LAST, post_key ASC"));
         List<UUID> cardIds = rows.stream().map(MylabCard::getId).toList();
 
         // 标签关联：按 card_id、sort_order 全局排序后分组，保持每张卡片内的标签顺序
@@ -184,7 +181,7 @@ public class MylabCodec implements ModuleCodec {
                     "date", row.getPostDate(), "post_date", row.getPostDate(),
                     "tag_ids", tagIdsByCard.getOrDefault(row.getId(), List.of()),
                     "enabled", row.getEnabled(),
-                    "sort_order", row.getSortOrder(), "card_type", row.getCardType(),
+                    "card_type", row.getCardType(),
                     "project_show_order", row.getProjectShowOrder(),
                     "project_contents", row.getProjectContents(),
                     "markdown_content", row.getMarkdownContent(),

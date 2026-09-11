@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { LabPost } from '@/types'
-import { useLabPosts } from '@/hooks/useLabPosts'
+import { useProjectPosts } from '@/hooks/useLabPosts'
 import { LabCard } from './LabCard'
 import { RevealOnScroll } from './ui/RevealOnScroll'
 import { ProjectModal } from './ui/ProjectModal'
@@ -16,7 +16,7 @@ const section = {
 
 export function Projects() {
   const navigate = useNavigate()
-  const { labPosts } = useLabPosts()
+  const { projectPosts } = useProjectPosts()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalHeroLoaded, setModalHeroLoaded] = useState(false)
@@ -25,11 +25,11 @@ export function Projects() {
   // 仅展示标记 showInProjects 的卡片，按 projectShowOrder 升序，最多 6 个
   const projectItems = useMemo(
     () =>
-      labPosts
+      projectPosts
         .filter(post => post.showInProjects)
         .sort((left, right) => (left.projectShowOrder ?? 999) - (right.projectShowOrder ?? 999))
         .slice(0, 6),
-    [labPosts],
+    [projectPosts],
   )
 
   const selectedProjectHero = selectedProject?.detailImage ?? selectedProject?.image

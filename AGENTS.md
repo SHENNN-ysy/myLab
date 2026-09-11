@@ -98,7 +98,9 @@ starter ────────> application / common / infrastructure
 - 历史列表包含当前线上、当前草稿和其他未删除版本；仪表盘历史数量不得包含软删除版本
 - MyLab Markdown 正文保存在 `mylab_cards.markdown_content` 并参与版本复制；公开列表不返回正文，单篇详情接口按 `post_key` 返回正文
 - MyLab 全局标签不再支持人工排序和后台启停；`mylab_tags.sort_order` 仅为历史兼容保留且应用不读写，前台按当前公开卡片引用次数降序展示，后台标签管理按当前草稿卡片引用次数降序展示；标签新增、显式保存名称和删除使用独立接口，MyLab 草稿保存只提交卡片
+- `mylab_cards.sort_order` 仅为历史兼容保留，程序不再读写；MyLab 管理视图与公开列表按 `post_date DESC`、`post_key ASC` 排序
 - MyLab PROJECT 卡片的 `project_show_order`为 null 表示不在首页项目区展示（卡片仍在 MyLab 列出）；仅参与展示的卡片校验位次（0-5）唯一且发布时必填侧边栏正文
+- 首页 `/public/content` 使用 `myproject` 返回不含标签的展示项目摘要；`/public/content/mylab` 直查 PG 返回全部公开 MyLab 卡片摘要与标签
 - `mylab_resources` 只保存卡片封面图片引用；Markdown 文件可在后台本地读取到编辑区，但不上传 OSS
 - 新上传 OSS 图片的 object key 固定为 `业务目录/UUID.扩展名`；不配置统一前缀和日期目录，历史 key 继续兼容读取
 - 前台 `/public/content` 与 MyLab 单篇详情使用 Redis Cache-Aside；公开单模块和后台管理接口直查 PG；发布/下线提交后失效缓存

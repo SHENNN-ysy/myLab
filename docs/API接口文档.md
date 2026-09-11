@@ -129,11 +129,12 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/v1/public/content` | 聚合全部存在 `PUBLISHED` 版本的模块 |
-| GET | `/api/v1/public/content/{moduleKey}` | 获取指定模块当前发布内容 |
+| GET | `/api/v1/public/content` | 聚合首页内容；MyLab 只返回 `myproject` 项目摘要 |
+| GET | `/api/v1/public/content/mylab` | 获取 MyLab 全部公开卡片摘要与标签 |
+| GET | `/api/v1/public/content/{moduleKey}` | 获取其他指定模块当前发布内容 |
 | GET | `/api/v1/public/mylab/{postKey}` | 获取当前发布版本中的指定 MyLab 卡片详情 |
 
-`/api/v1/public/content` 和 MyLab 单篇详情使用 Redis Cache-Aside 缓存；Redis 未命中或不可用时回源 PostgreSQL。`/api/v1/public/content/{moduleKey}` 不使用缓存，始终直接查询当前发布版本。发布或下线事务提交后会清理受影响的公开缓存。
+`/api/v1/public/content` 和 MyLab 单篇详情使用 Redis Cache-Aside 缓存；Redis 未命中或不可用时回源 PostgreSQL。`/api/v1/public/content/mylab` 与其他公开单模块接口不使用缓存，始终直接查询当前发布版本。发布或下线事务提交后会清理受影响的公开缓存。
 
 聚合接口的 `data` 使用模块名作为属性；没有发布版本或已经下线的模块不出现在聚合结果中：
 
@@ -145,13 +146,15 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
   "footprints": {},
   "hobbies": {},
   "vibe": {},
-  "mylab": {}
+  "myproject": {
+    "cards": []
+  }
 }
 ```
 
 公开响应只返回已启用内容，并把资源 ID 转换为可访问 URL。单模块没有发布版本或已经下线时返回 `12002`；MyLab 卡片不存在时返回 `10005`。
 
-首页项目不使用独立模块。前台从 `mylab.cards` 筛选 `card_type = PROJECT`，再按 `project_show_order ASC` 排序。
+首页的 `myproject.cards` 只包含 `card_type = PROJECT` 且 `project_show_order` 非空的项目，不包含全局 `tags`、卡片 `tag_ids`/`tags` 或 Markdown 正文；项目区仍按 `project_show_order ASC` 展示。
 
 ## 5. 后台内容管理
 
@@ -208,7 +211,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 }
 ```
 
-`version_name` 和 `version_description` 必填，长度分别不超过 120 和 2000 个字符。当前不存在草稿时 `expected_updated_at` 可以为 `null`；已存在草稿时必须传上次读取到的 `updated_at`。时间戳不匹配返回 HTTP 409、错误码 `12005`。保存采用完整替换语义，数组顺序决定 `sort_order`。发布接口只发布数据库中已经保存的当前草稿，不会隐式保存管理页面里的未提交修改。
+`version_name` 和 `version_description` 必填，长度分别不超过 120 和 2000 个字符。当前不存在草稿时 `expected_updated_at` 可以为 `null`；已存在草稿时必须传上次读取到的 `updated_at`。时间戳不匹配返回 HTTP 409、错误码 `12005`。保存采用完整替换语义；除 MyLab 卡片外，有排序字段的模块由数组顺序决定 `sort_order`。发布接口只发布数据库中已经保存的当前草稿，不会隐式保存管理页面里的未提交修改。
 
 ### 5.1 通用集合约定
 
@@ -406,8 +409,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
       "image_resource_id": "图片资源 UUID",
       "image_url": "https://img.example.com/cover.webp",
       "markdown_content": "# 数据库重设计\n\n正文内容……",
-      "enabled": true,
-      "sort_order": 0
+      "enabled": true
     }
   ]
 }
@@ -419,9 +421,10 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 - `tag_ids` 按数组顺序保存，不允许重复，只能引用启用且未删除的全局标签。
 - 发布已启用卡片时标题、摘要和 `markdown_content` 必填；正文最长 500000 字符。
 - `image_resource_id` 只能引用图片；Markdown 正文直接随卡片版本保存在数据库中。
+- `mylab_cards.sort_order` 仅为兼容历史数据保留，程序不再读写；管理端与公开 MyLab 列表均按 `post_date DESC`、`post_key ASC` 排序。
 - 后台编辑器可读取本地 `.md`、`.markdown` UTF-8 文件并覆盖编辑区，文件内容仍通过草稿接口保存，不上传 OSS。
 - 公开接口在 `tags` 中返回有效标签对象，并在卡片中同时返回解析后的标签名称数组。
-- `/api/v1/public/content` 和 `/api/v1/public/content/mylab` 仅返回卡片摘要，不包含 `markdown_content`；`/api/v1/public/mylab/{postKey}` 返回单篇完整正文。
+- `/api/v1/public/content` 只返回首页项目摘要；`/api/v1/public/content/mylab` 返回全部 MyLab 卡片摘要与标签，两者均不包含 `markdown_content`；`/api/v1/public/mylab/{postKey}` 返回单篇完整正文。
 
 ## 6. MyLab 全局标签
 

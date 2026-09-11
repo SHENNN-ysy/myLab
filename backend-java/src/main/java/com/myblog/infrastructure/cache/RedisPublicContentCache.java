@@ -18,7 +18,8 @@ import java.util.Optional;
 @Slf4j
 @Repository
 public class RedisPublicContentCache implements PublicContentCache {
-    public static final String ALL_KEY = "myblog:content:v1:all";
+    // 聚合契约 v2 将 mylab 拆为无标签的 myproject，换 key 避免命中旧结构。
+    public static final String ALL_KEY = "myblog:content:v2:all";
     public static final String MYLAB_DETAILS_KEY = "myblog:content:v1:mylab:details";
     private static final ObjectMapper OBJECT_MAPPER = JacksonObjectMapper.get();
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() { };

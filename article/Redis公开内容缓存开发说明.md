@@ -2,16 +2,17 @@
 
 ## 1. 改造目标与范围
 
-本次改造仅优化博客前台高频读取接口，降低 PostgreSQL 的重复查询压力，同时保持公开 API 响应格式不变。
+本次改造仅优化博客前台高频读取接口，降低 PostgreSQL 的重复查询压力。当前首页聚合契约已升级为 v2：MyLab 只投影为 `myproject` 项目摘要。
 
 缓存接口：
 
-- `GET /api/v1/public/content`：博客前台全部模块公开摘要。
+- `GET /api/v1/public/content`：博客首页公开摘要，其中 `myproject` 不含标签和非项目卡片。
 - `GET /api/v1/public/mylab/{postKey}`：MyLab 单篇 Markdown 详情。
 
 不使用缓存的接口：
 
 - `GET /api/v1/public/content/{moduleKey}`：公开单模块接口仍直接查询 PostgreSQL。
+- `GET /api/v1/public/content/mylab`：MyLab 全部公开卡片摘要与标签，直接查询 PostgreSQL。
 - `/api/v1/admin/content/**`：博客后台内容管理接口仍直接查询 PostgreSQL。
 
 本次改造不修改数据库结构，不新增 Domain 层，不改变前端调用方式。
@@ -20,12 +21,12 @@
 
 | Redis Key | 类型 | 内容 | TTL |
 |---|---|---|---|
-| `myblog:content:v1:all` | String | 全部模块的原始公开摘要 JSON | 6 小时 |
+| `myblog:content:v2:all` | String | 首页模块的原始公开摘要 JSON | 6 小时 |
 | `myblog:content:v1:mylab:details` | Hash | field 为 `postKey`，value 为原始 MyLab 详情 JSON | 6 小时 |
 | `myblog:content:v1:lock:all` | String | 全量摘要重建锁的 UUID token | 5 秒 |
 | `myblog:content:v1:lock:mylab:details` | String | MyLab 详情 Hash 重建锁的 UUID token | 5 秒 |
 
-全量摘要不保存 MyLab Markdown 正文；详情 Hash 保存 Markdown 正文，且只缓存卡片本体，不冗余保存全局标签字典（标签展开所需的 tags 字典由全量摘要提供）。缓存保存数据库原始公开数据和 OSS object key，不保存临时签名 URL。每次响应前仍执行停用项过滤、标签展开和当前有效 URL 生成，避免缓存中的签名 URL 过期。
+首页摘要仅缓存 MyLab 中需展示的 PROJECT 卡片，不查询或保存标签与 Markdown 正文；详情 Hash 保存 Markdown 正文。缓存保存数据库原始公开数据和 OSS object key，不保存临时签名 URL。每次响应前仍执行停用项过滤和当前有效 URL 生成，避免缓存中的签名 URL 过期。
 
 ## 3. 读取流程
 
@@ -56,7 +57,7 @@ Redis 故障不会阻断博客访问，但在故障期间数据库读取压力�
 
 内容发布或下线成功后，由应用服务发布 `PublishedContentChangedEvent`。监听器使用 `AFTER_COMMIT` 事务阶段执行缓存失效：
 
-- 任意模块发布或下线：删除 `myblog:content:v1:all`。
+- 任意模块发布或下线：删除 `myblog:content:v2:all`。
 - MyLab 发布或下线：额外删除 `myblog:content:v1:mylab:details`。
 
 缓存失效与缓存重建使用相同的分布式锁，避免旧事务读取的数据在失效完成后重新写回。事务回滚不会触发失效。Redis 清理失败不回滚已提交的内容，陈旧缓存最迟由 6 小时 TTL 淘汰。
@@ -99,7 +100,7 @@ Redis 故障不会阻断博客访问，但在故障期间数据库读取压力�
 #### `backend-java/src/main/java/com/myblog/application/service/content/ContentModuleServiceImpl.java`
 
 - `publicContent()`：改为调用 `publicCache.readAll(this::loadPublicContent)`；缓存只返回原始摘要，随后仍逐模块执行 `publicData()`。
-- `loadPublicContent()`：作为冷缓存数据库加载器，读取七个模块的当前发布版本；MyLab 只调用 `readSummary()`，不把 Markdown 正文放入全量缓存。
+- `loadPublicContent()`：作为冷缓存数据库加载器，读取首页模块当前发布版本；MyLab 调用 `readProjects()` 生成无标签的 `myproject`。
 - `publicModule(moduleKey)`：保持原有 PostgreSQL 直读，不调用 `PublicContentCacheService`。
 - `publicMylabDetail(postKey)`：改为调用 `readMylabDetail()`；命中后仍调用 `publicData()` 展开标签、过滤停用项并生成当前有效图片 URL。
 - `loadPublicMylabDetail(postKey)`：作为详情冷缓存加载器，仅从当前已发布 MyLab 版本读取指定文章。
@@ -210,8 +211,8 @@ mvn verify
 
 实际结果：
 
-- 单元测试：271 个，全部通过。
-- Testcontainers 集成测试：33 个，全部通过。
+- 单元测试：269 个，全部通过。
+- Testcontainers 集成测试：36 个，全部通过。
 - Checkstyle：通过。
 - SpotBugs：0 个问题。
 - JaCoCo 报告：生成成功。
@@ -222,8 +223,8 @@ mvn verify
 部署后可在 Redis 容器中检查缓存：
 
 ```bash
-docker compose exec redis redis-cli GET myblog:content:v1:all
-docker compose exec redis redis-cli TTL myblog:content:v1:all
+docker compose exec redis redis-cli GET myblog:content:v2:all
+docker compose exec redis redis-cli TTL myblog:content:v2:all
 docker compose exec redis redis-cli HKEYS myblog:content:v1:mylab:details
 docker compose exec redis redis-cli HGET myblog:content:v1:mylab:details <postKey>
 docker compose exec redis redis-cli TTL myblog:content:v1:mylab:details

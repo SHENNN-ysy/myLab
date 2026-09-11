@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   Col,
-  Collapse,
   Empty,
   Form,
   Input,
@@ -85,6 +84,11 @@ const markdownMaxBytes = 2_000_000
 /** 为尚未持久化的卡片生成不可变编辑器身份。 */
 const createEditorId = () => crypto.randomUUID()
 
+/** MyLab 卡片按发布日期倒序；同日期用不可编辑的本地 id 稳定顺序。 */
+const sortCardsByDate = (cards: AdminMylabCard[]) => [...cards].sort((left, right) =>
+  right.date.localeCompare(left.date) || left.editorId.localeCompare(right.editorId),
+)
+
 /** 后端卡片数据 → 编辑视图模型（camelCase） */
 const toCard = (card: MylabCardData): AdminMylabCard => ({
   editorId: card.row_id || createEditorId(),
@@ -110,6 +114,8 @@ const StaticMylabManage = () => {
   const [currentCards, setCurrentCards] = useState<AdminMylabCard[]>([])
   const [currentTags, setCurrentTags] = useState<MylabTag[]>([])
   const [draftCards, setDraftCards] = useState<AdminMylabCard[]>([])
+  // 草稿编辑器当前选中卡片的 editorId；选择失效（删除/重载）时自动回退到列表第一张
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [editableTags, setEditableTags] = useState<EditableTag[]>([])
   const [newTagModalOpen, setNewTagModalOpen] = useState(false)
   const [newTagName, setNewTagName] = useState('')
@@ -200,7 +206,7 @@ const StaticMylabManage = () => {
       setDraftCards((module.draft_data?.cards || []).map(toCard))
     },
     payload: () => ({
-      cards: draftCards.map((card, index) => ({
+      cards: draftCards.map(card => ({
         row_id: card.rowId,
         post_key: card.postKey.trim(),
         card_title: card.title.trim(),
@@ -208,7 +214,6 @@ const StaticMylabManage = () => {
         post_date: card.date,
         tag_ids: [...card.tagIds],
         enabled: card.enabled,
-        sort_order: index,
         card_type: card.cardType,
         project_show_order: card.cardType === 'PROJECT' ? card.projectShowOrder : null,
         project_contents: card.cardType === 'PROJECT' ? card.projectContents.trim() : null,
@@ -297,6 +302,15 @@ const StaticMylabManage = () => {
     if (usageDiff !== 0) return usageDiff
     return left.id.localeCompare(right.id)
   }), [editableTags, tagUsageById])
+  const sortedCurrentCards = useMemo(() => sortCardsByDate(currentCards), [currentCards])
+  const sortedDraftCards = useMemo(() => sortCardsByDate(draftCards), [draftCards])
+  /** 当前编辑的草稿卡片：优先保留用户选择，选择失效时回退到第一张，避免删除/重载后选中态悬空。 */
+  const selectedCard = sortedDraftCards.find(card => card.editorId === selectedCardId) ?? sortedDraftCards[0] ?? null
+  /** 卡片选择下拉选项：与列表一致的日期倒序，未命名卡片给可读占位。 */
+  const cardSelectorOptions = sortedDraftCards.map(card => ({
+    value: card.editorId,
+    label: `${card.date}｜${card.title || '未命名卡片'}`,
+  }))
   const tagUsage = (id: string) => tagUsageById.get(id) ?? 0
   /** 点击保存后更新标签名称；接口失败时保留输入内容供用户修正或重试。 */
   const saveTag = async (tag: EditableTag) => {
@@ -348,23 +362,18 @@ const StaticMylabManage = () => {
     },
   })
 
-  const addCard = () => setDraftCards(prev => [{
-    editorId: createEditorId(),
-    postKey: `post-${Date.now()}`,
-    // 用本地时区取日期，避免 toISOString() 的 UTC 日期在凌晨 0~8 点差一天
-    date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
-    title: '', tagIds: [], summary: '', image: '', imageResource: null, markdownContent: '',
-    cardType: 'ARTICLE', projectShowOrder: null, projectContents: '', enabled: true,
-  }, ...prev])
-  const moveCard = (index: number, delta: number) => {
-    setDraftCards(prev => {
-      const target = index + delta
-      if (target < 0 || target >= prev.length) return prev
-      const next = [...prev]
-      const [card] = next.splice(index, 1)
-      next.splice(target, 0, card)
-      return next
-    })
+  /** 新增草稿卡片并立即选中，便于直接开始编辑。 */
+  const addCard = () => {
+    const newCard: AdminMylabCard = {
+      editorId: createEditorId(),
+      postKey: `post-${Date.now()}`,
+      // 用本地时区取日期，避免 toISOString() 的 UTC 日期在凌晨 0~8 点差一天
+      date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
+      title: '', tagIds: [], summary: '', image: '', imageResource: null, markdownContent: '',
+      cardType: 'ARTICLE', projectShowOrder: null, projectContents: '', enabled: true,
+    }
+    setDraftCards(prev => [newCard, ...prev])
+    setSelectedCardId(newCard.editorId)
   }
   const removeCard = (editorId: string) => modal.confirm({
     title: '确认删除这张 MyLab 卡片？',
@@ -657,7 +666,7 @@ const StaticMylabManage = () => {
                       ))}
                     </div>
                     <div className={styles['card-grid']}>
-                      {currentCards.map(card => (
+                      {sortedCurrentCards.map(card => (
                         <article key={card.editorId} className={styles['lab-card']}>
                           {card.image && <img src={card.image} alt={card.title} />}
                           <div className={styles['lab-card-body']}>
@@ -691,7 +700,7 @@ const StaticMylabManage = () => {
                         type="info"
                         showIcon
                         message="MyLab 卡片为版本数据"
-                        description="保存草稿只提交卡片内容；标签请在独立的“标签管理”页签中维护。"
+                        description="保存草稿只提交卡片内容；卡片按发布日期自动倒序，标签请在独立页签中维护。"
                       />
                       <Space>
                         <Button loading={saving} onClick={() => void handleSaveDraft()}>
@@ -712,33 +721,28 @@ const StaticMylabManage = () => {
                       title={`MyLab 卡片（${draftCards.length} 张）`}
                       onAdd={addCard}
                     />
-                    <Collapse
-                      accordion
-                      items={draftCards.map((card, index) => ({
-                        key: card.editorId,
-                        label: card.title || `卡片 ${index + 1}`,
-                        extra: (
-                          <span className={styles['row-actions']}>
-                            <button
-                              type="button"
-                              disabled={index === 0}
-                              onClick={event => { event.stopPropagation(); moveCard(index, -1) }}
-                            >上移</button>
-                            <button
-                              type="button"
-                              disabled={index === draftCards.length - 1}
-                              onClick={event => { event.stopPropagation(); moveCard(index, 1) }}
-                            >下移</button>
-                            <button
-                              type="button"
-                              className={styles.danger}
-                              onClick={event => { event.stopPropagation(); removeCard(card.editorId) }}
-                            >删除</button>
-                          </span>
-                        ),
-                        children: renderCardEditor(card),
-                      }))}
-                    />
+                    {draftCards.length === 0 ? (
+                      <Empty description="暂无草稿卡片，点击右上角新增" />
+                    ) : (
+                      <>
+                        <div className={styles['card-selector']}>
+                          <Select
+                            value={selectedCard?.editorId}
+                            options={cardSelectorOptions}
+                            showSearch
+                            optionFilterProp="label"
+                            placeholder="选择要编辑的卡片"
+                            onChange={setSelectedCardId}
+                          />
+                          {selectedCard && (
+                            <Button danger onClick={() => removeCard(selectedCard.editorId)}>
+                              删除当前卡片
+                            </Button>
+                          )}
+                        </div>
+                        {selectedCard && renderCardEditor(selectedCard)}
+                      </>
+                    )}
                   </>
                 ),
               },

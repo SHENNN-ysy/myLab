@@ -25,13 +25,20 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
     }
 
     @Override
+    public Map<String, Object> readProjects(UUID releaseId) {
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("cards", cards(releaseId, null, false, true, false));
+        return root;
+    }
+
+    @Override
     public Map<String, Object> readSummary(UUID releaseId) {
-        return root(cards(releaseId, null, false));
+        return root(cards(releaseId, null, false, false, true));
     }
 
     @Override
     public Map<String, Object> readDetail(UUID releaseId, String postKey) {
-        List<Map<String, Object>> cards = cards(releaseId, postKey, true);
+        List<Map<String, Object>> cards = cards(releaseId, postKey, true, false, true);
         // 详情只缓存卡片本体：标签字典仅列表页解析 tag_ids 需要，避免每个 post_key 冗余一份全量标签
         if (cards.isEmpty()) return null;
         Map<String, Object> detail = new LinkedHashMap<>();
@@ -46,22 +53,28 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
         return root;
     }
 
-    private List<Map<String, Object>> cards(UUID releaseId, String postKey, boolean includeMarkdown) {
+    private List<Map<String, Object>> cards(UUID releaseId, String postKey, boolean includeMarkdown,
+                                             boolean projectsOnly, boolean includeTagIds) {
         String markdownColumn = includeMarkdown ? ", mc.markdown_content\n" : "\n";
         String postFilter = postKey == null ? "" : " AND mc.post_key = ?";
+        String projectFilter = projectsOnly
+                ? " AND mc.card_type = 'PROJECT' AND mc.project_show_order IS NOT NULL" : "";
+        String orderBy = projectsOnly
+                ? " ORDER BY mc.project_show_order, mc.post_date DESC NULLS LAST, mc.post_key"
+                : " ORDER BY mc.post_date DESC NULLS LAST, mc.post_key";
         List<Object> arguments = postKey == null ? List.of(releaseId) : List.of(releaseId, postKey);
         List<Map<String, Object>> cards = jdbc.query("""
                 SELECT mc.id, mc.post_key, mc.card_title, mc.card_summary, mc.post_date,
-                       mc.enabled, mc.sort_order, mc.card_type, mc.project_show_order,
+                       mc.enabled, mc.card_type, mc.project_show_order,
                        mc.project_contents, mr.image_resource_id, image.object_key AS image_object_key
                 """ + markdownColumn + """
                 FROM mylab_cards mc
                 LEFT JOIN mylab_resources mr ON mr.card_id = mc.id AND mr.deleted_at IS NULL
                 LEFT JOIN resources image ON image.id = mr.image_resource_id AND image.deleted_at IS NULL
                 WHERE mc.release_id = ? AND mc.deleted_at IS NULL
-                """ + postFilter + " ORDER BY mc.sort_order, mc.post_key",
+                """ + postFilter + projectFilter + orderBy,
                 (rs, rowNum) -> card(rs, includeMarkdown), arguments.toArray());
-        attachTagIds(cards);
+        if (includeTagIds) attachTagIds(cards);
         return cards;
     }
 
@@ -108,7 +121,6 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
         card.put("date", rs.getObject("post_date"));
         card.put("post_date", rs.getObject("post_date"));
         card.put("enabled", rs.getBoolean("enabled"));
-        card.put("sort_order", rs.getInt("sort_order"));
         card.put("card_type", rs.getString("card_type"));
         card.put("project_show_order", rs.getObject("project_show_order"));
         card.put("project_contents", rs.getString("project_contents"));

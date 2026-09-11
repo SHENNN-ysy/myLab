@@ -37,6 +37,15 @@ PublicContentController {
     }
 
     /**
+     * 获取 MyLab 当前已发布的全部卡片摘要与标签字典。
+     */
+    @GetMapping("/content/mylab")
+    @Operation(summary = "获取 MyLab 公开列表")
+    public Result<Object> mylab() {
+        return Result.ok(content.publicModule("mylab"));
+    }
+
+    /**
      * 按模块标识获取该模块的已发布内容。
      *
      * @param moduleKey 模块标识

@@ -5,7 +5,7 @@ import { useLabPosts } from '@/hooks/useLabPosts'
 import styles from './MyLabView.module.css'
 
 export default function MyLabView() {
-  const { content, labPosts } = useLabPosts()
+  const { mylab, labPosts } = useLabPosts()
 
   /* ============ 筛选状态 ============ */
   const [keyword, setKeyword] = useState('')
@@ -20,8 +20,8 @@ export default function MyLabView() {
         counts.set(tag, (counts.get(tag) ?? 0) + 1)
       }
     }
-    const managedTags = content.mylab?.tags
-    if (Array.isArray(managedTags) && managedTags.length > 0 && (content.mylab?.cards?.length ?? 0) > 0) {
+    const managedTags = mylab.tags
+    if (Array.isArray(managedTags) && managedTags.length > 0 && (mylab.cards?.length ?? 0) > 0) {
       return managedTags
         .filter(tag => tag.enabled !== false && Boolean(tag.name))
         .map(tag => ({ tag: tag.name as string, count: counts.get(tag.name as string) ?? 0 }))
@@ -30,7 +30,7 @@ export default function MyLabView() {
     return [...counts.entries()]
       .map(([tag, count]) => ({ tag, count }))
       .sort((left, right) => right.count - left.count || left.tag.localeCompare(right.tag, 'zh-CN'))
-  }, [content, labPosts])
+  }, [mylab, labPosts])
 
   /* 搜索（标题/摘要/标签）+ 标签筛选 */
   const filteredPosts = useMemo(() => {

@@ -75,7 +75,7 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- 公开读取路径 ----------
 
-    /** 聚合接口只汇总已发布模块；mylab 卡片过滤禁用项并将 tag_ids 映射为标签名。 */
+    /** 聚合接口将 MyLab 投影为项目摘要，不暴露全量卡片和标签。 */
     @Test
     @SuppressWarnings("unchecked")
     void publicContentAggregatesOnlyPublishedModules() {
@@ -89,20 +89,19 @@ class ContentModuleServiceImplCoverageTest {
         when(releases.readData(about)).thenReturn(Map.of("profile", Map.of()));
         ContentRelease mylab = release("mylab", "PUBLISHED");
         when(releases.findPublished("mylab")).thenReturn(mylab);
-        when(mylabPublic.readSummary(mylab.getId())).thenReturn(Map.of(
-                "tags", List.of(Map.of("id", TAG_ID.toString(), "name", "Java")),
+        when(mylabPublic.readProjects(mylab.getId())).thenReturn(Map.of(
                 "cards", List.of(
-                        Map.of("post_key", "article-a", "enabled", true,
+                        Map.of("post_key", "project-a", "enabled", true,
                                 "tag_ids", List.of(TAG_ID.toString())),
-                        Map.of("post_key", "article-b", "enabled", false))));
+                        Map.of("post_key", "project-b", "enabled", false))));
 
         Map<String, Object> result = service.publicContent();
 
-        assertThat(result).containsOnlyKeys("home", "about", "mylab");
-        Map<String, Object> mylabData = (Map<String, Object>) result.get("mylab");
-        List<Map<String, Object>> cards = (List<Map<String, Object>>) mylabData.get("cards");
+        assertThat(result).containsOnlyKeys("home", "about", "myproject");
+        Map<String, Object> projectData = (Map<String, Object>) result.get("myproject");
+        List<Map<String, Object>> cards = (List<Map<String, Object>>) projectData.get("cards");
         assertThat(cards).hasSize(1);
-        assertThat((List<String>) cards.getFirst().get("tags")).containsExactly("Java");
+        assertThat(cards.getFirst()).doesNotContainKeys("tag_ids", "tags", "markdown_content");
     }
 
     /** 模块无已发布版本时按未上线处理，抛 NotFoundException。 */

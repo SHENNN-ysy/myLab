@@ -46,6 +46,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     static final int MAX_VERSION_NAME_CHARACTERS = 120;
     static final int MAX_VERSION_DESCRIPTION_CHARACTERS = 2_000;
     private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab"); // 支持的内容模块清单
+    private static final List<String> PUBLIC_KEYS = List.of(
+            "home", "about", "skills", "footprints", "hobbies", "vibe", "myproject");
     private static final Set<String> TIME_KEYS = Set.of("爱好1", "爱好2", "爱好3", "爱好4", "爱好5"); // hobbies 时间分布图的五个维度
     private static final ObjectMapper OM = JacksonObjectMapper.get();
 
@@ -78,20 +80,23 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         // 缓存仅保存数据库原始摘要；URL 与启用状态仍在每次响应时动态处理。
         Map<String, Object> rawContent = publicCache.readAll(this::loadPublicContent);
         Map<String, Object> result = new LinkedHashMap<>();
-        for (String key : KEYS) {
+        for (String key : PUBLIC_KEYS) {
             if (rawContent.containsKey(key)) result.put(key, publicData(key, rawContent.get(key)));
         }
         return result;
     }
 
-    /** 缓存未命中时从 PostgreSQL 汇总原始摘要，MyLab 此处不加载 Markdown 正文。 */
+    /** 缓存未命中时从 PostgreSQL 汇总首页摘要，MyLab 只投影为不含标签的 myproject。 */
     private Map<String, Object> loadPublicContent() {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String key : KEYS) {
             ContentRelease release = releases.findPublished(key);
             if (release == null) continue;
-            Object data = "mylab".equals(key) ? mylabPublic.readSummary(release.getId()) : releases.readData(release);
-            result.put(key, data);
+            if ("mylab".equals(key)) {
+                result.put("myproject", mylabPublic.readProjects(release.getId()));
+            } else {
+                result.put(key, releases.readData(release));
+            }
         }
         return result;
     }
@@ -642,7 +647,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     }
 
     /**
-     * 公开化数据：在管理视图数据基础上过滤 enabled=false 的条目，mylab 卡片额外把 tag_ids 展开为标签名。
+     * 公开化数据：过滤 enabled=false 的条目，mylab 额外把 tag_ids 展开为标签名；
+     * 首页 myproject 只保留项目摘要，防御性移除标签字段。
      */
     @SuppressWarnings("unchecked")
     private Object publicData(String moduleKey, Object raw) {
@@ -654,6 +660,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             case "hobbies" -> "cards";
             case "vibe" -> "tools";
             case "mylab" -> "cards";
+            case "myproject" -> "cards";
             default -> null;
         };
         if (field == null) return root;
@@ -670,6 +677,10 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             if ("mylab".equals(moduleKey)) {
                 List<?> ids = (List<?>) result.getOrDefault("tag_ids", List.of());
                 result.put("tags", ids.stream().map(String::valueOf).map(tagNames::get).filter(Objects::nonNull).toList());
+            } else if ("myproject".equals(moduleKey)) {
+                result.remove("tag_ids");
+                result.remove("tags");
+                result.remove("markdown_content");
             }
             visible.add(result);
         }
@@ -709,7 +720,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
                         putUrl(item, "image_object_key", "image_url");
                         if (item.get("image_url") != null) item.put("image", item.get("image_url"));
                     });
-            case "mylab" -> ((List<Map<String, Object>>) root.getOrDefault("cards", List.of()))
+            case "mylab", "myproject" -> ((List<Map<String, Object>>) root.getOrDefault("cards", List.of()))
                     .forEach(item -> {
                         putUrl(item, "image_object_key", "image_url");
                     });
