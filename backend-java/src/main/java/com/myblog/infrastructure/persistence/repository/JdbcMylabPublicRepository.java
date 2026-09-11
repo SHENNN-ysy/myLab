@@ -81,17 +81,16 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
 
     private List<Map<String, Object>> activeTags() {
         return jdbc.query("""
-                SELECT id, tag_key, name, enabled, sort_order
+                SELECT id, tag_key, name, enabled
                 FROM mylab_tags
                 WHERE enabled = TRUE AND deleted_at IS NULL
-                ORDER BY sort_order, tag_key
+                ORDER BY name, tag_key
                 """, (rs, rowNum) -> {
             Map<String, Object> tag = new LinkedHashMap<>();
             tag.put("id", rs.getObject("id", UUID.class));
             tag.put("tag_key", rs.getString("tag_key"));
             tag.put("name", rs.getString("name"));
             tag.put("enabled", true);
-            tag.put("sort_order", rs.getInt("sort_order"));
             return tag;
         });
     }

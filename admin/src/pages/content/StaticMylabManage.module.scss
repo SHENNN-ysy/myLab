@@ -6,7 +6,14 @@
 /* antd 组件内部元素无 scoped 类名，需 :global 保持原 scoped 语义 */
 .draft-toolbar :global(.ant-alert) { flex: 1; }
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
-.tag-table { margin-bottom: 24px; }
+.tag-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
+.tag-item { display: grid; gap: 10px; min-width: 0; padding: 14px; background: #fff; border: 1px solid #f0f0f0; border-radius: 10px; }
+.tag-item-head, .tag-item-footer { display: flex; align-items: center; gap: 12px; }
+.tag-item-head { justify-content: space-between; }
+.tag-item-footer { justify-content: flex-end; }
+.tag-rank { color: #1677ff; font-size: 12px; font-weight: 600; }
+.tag-usage { color: #8c8c8c; font-size: 12px; }
+.new-tag-field { margin: 18px 0 4px; }
 .card-editor { display: grid; gap: 16px; }
 .editor-section { padding: 18px; background: #fafafa; border: 1px solid #f0f0f0; border-radius: 10px; }
 .project-section { background: #f6faff; border-color: #d6e4ff; }
@@ -57,4 +64,4 @@
 .row-actions .danger { color: #ff4d4f; }
 @media (max-width: 1050px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .markdown-editor { grid-template-columns: 1fr; } .markdown-pane + .markdown-pane { border-top: 1px solid #e8e8e8; border-left: 0; } }
-@media (max-width: 720px) { .page-head, .draft-toolbar { align-items: stretch; flex-direction: column; } .card-grid { grid-template-columns: 1fr; } .editor-section { padding: 14px; } .editor-status { align-items: flex-start; } }
+@media (max-width: 720px) { .page-head, .draft-toolbar { align-items: stretch; flex-direction: column; } .card-grid, .tag-grid { grid-template-columns: 1fr; } .editor-section { padding: 14px; } .editor-status { align-items: flex-start; } }

@@ -7,7 +7,6 @@ export interface PublicHomeImage {
   image_url?: string
   alt?: string
   object_position?: string
-  sort_order?: number
 }
 
 export interface PublicAboutContent {

@@ -12,7 +12,7 @@ export default function MyLabView() {
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'chain' | 'grid'>('chain')
 
-  /* 后台已配置标签时按后台顺序展示，并遵循启停状态；静态兜底仍按出现次数汇总。 */
+  /* 标签按当前公开卡片引用次数降序展示；同次数按名称排序，确保刷新后的顺序稳定。 */
   const tagSummary = useMemo(() => {
     const counts = new Map<string, number>()
     for (const post of labPosts) {
@@ -25,10 +25,11 @@ export default function MyLabView() {
       return managedTags
         .filter(tag => tag.enabled !== false && Boolean(tag.name))
         .map(tag => ({ tag: tag.name as string, count: counts.get(tag.name as string) ?? 0 }))
+        .sort((left, right) => right.count - left.count || left.tag.localeCompare(right.tag, 'zh-CN'))
     }
     return [...counts.entries()]
       .map(([tag, count]) => ({ tag, count }))
-      .sort((a, b) => b.count - a.count)
+      .sort((left, right) => right.count - left.count || left.tag.localeCompare(right.tag, 'zh-CN'))
   }, [content, labPosts])
 
   /* 搜索（标题/摘要/标签）+ 标签筛选 */

@@ -97,6 +97,7 @@ starter ────────> application / common / infrastructure
 - 草稿可手动归档（`POST /admin/content/{moduleKey}/draft/archive`）：草稿原地转为归档版本，不产生新草稿，不影响线上内容
 - 历史列表包含当前线上、当前草稿和其他未删除版本；仪表盘历史数量不得包含软删除版本
 - MyLab Markdown 正文保存在 `mylab_cards.markdown_content` 并参与版本复制；公开列表不返回正文，单篇详情接口按 `post_key` 返回正文
+- MyLab 全局标签不再支持人工排序和后台启停；`mylab_tags.sort_order` 仅为历史兼容保留且应用不读写，前台按当前公开卡片引用次数降序展示，后台标签管理按当前草稿卡片引用次数降序展示；标签新增、显式保存名称和删除使用独立接口，MyLab 草稿保存只提交卡片
 - MyLab PROJECT 卡片的 `project_show_order`为 null 表示不在首页项目区展示（卡片仍在 MyLab 列出）；仅参与展示的卡片校验位次（0-5）唯一且发布时必填侧边栏正文
 - `mylab_resources` 只保存卡片封面图片引用；Markdown 文件可在后台本地读取到编辑区，但不上传 OSS
 - 新上传 OSS 图片的 object key 固定为 `业务目录/UUID.扩展名`；不配置统一前缀和日期目录，历史 key 继续兼容读取
@@ -179,6 +180,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 3. 后台前端所有资源路径基于 `ADMIN_ROUTE` 生成的 Vite base
 4. CSS Modules 会把 `animation` 引用的 keyframes 名一并作用域化：`.module.css` 里引用的 `@keyframes` 必须定义在同一模块内，定义在全局 CSS 里的同名 keyframes 匹配不上（动画静默失效，构建不报错）
 5. CSS Modules 里禁用 `.container span` 这类后代裸标签选择器：模块只哈希类名，标签仍是全局的，会命中内部 antd 组件渲染的同名标签（如 Button 的文字 span）导致颜色等样式被意外覆盖；给目标元素加专用类名
+6. 可编辑业务标识不得同时用作 React 列表或 Ant Design Collapse 的 `key`；编辑器应维护不参与接口提交的不可变本地 ID，避免输入时组件被卸载重建、面板收起或焦点丢失
 
 ### 通用约定
 1. 发现经典错误修复后，将原因与对策补充到本文档或 docs/ 相应文档

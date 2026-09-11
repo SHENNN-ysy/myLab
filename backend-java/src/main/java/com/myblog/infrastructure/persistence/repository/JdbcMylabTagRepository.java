@@ -34,7 +34,7 @@ public class JdbcMylabTagRepository implements MylabTagRepository {
     @Override
     public List<MylabTag> findAll(boolean includeDisabled) {
         String filter = includeDisabled ? "" : " AND enabled = TRUE";
-        return jdbc.query("SELECT * FROM mylab_tags WHERE deleted_at IS NULL" + filter + " ORDER BY sort_order, tag_key", MAPPER);
+        return jdbc.query("SELECT * FROM mylab_tags WHERE deleted_at IS NULL" + filter + " ORDER BY name, tag_key", MAPPER);
     }
 
     /** 按 id 批量查询启用中的标签，入参为空时直接返回空列表 */
@@ -69,16 +69,16 @@ public class JdbcMylabTagRepository implements MylabTagRepository {
     @Override
     public void add(MylabTag tag) {
         jdbc.update("""
-                INSERT INTO mylab_tags (id, tag_key, name, enabled, sort_order, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, tag.getId(), tag.getTagKey(), tag.getName(), tag.getEnabled(), tag.getSortOrder(),
+                INSERT INTO mylab_tags (id, tag_key, name, enabled, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, tag.getId(), tag.getTagKey(), tag.getName(), tag.getEnabled(),
                 tag.getCreatedAt(), tag.getUpdatedAt());
     }
 
     @Override
     public void save(MylabTag tag) {
-        jdbc.update("UPDATE mylab_tags SET tag_key = ?, name = ?, enabled = ?, sort_order = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
-                tag.getTagKey(), tag.getName(), tag.getEnabled(), tag.getSortOrder(), tag.getUpdatedAt(), tag.getId());
+        jdbc.update("UPDATE mylab_tags SET tag_key = ?, name = ?, enabled = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+                tag.getTagKey(), tag.getName(), tag.getEnabled(), tag.getUpdatedAt(), tag.getId());
     }
 
     /** 软删除标签；仅当记录存在且未删除时返回 true */
@@ -93,7 +93,6 @@ public class JdbcMylabTagRepository implements MylabTagRepository {
         tag.setTagKey(rs.getString("tag_key"));
         tag.setName(rs.getString("name"));
         tag.setEnabled(rs.getBoolean("enabled"));
-        tag.setSortOrder(rs.getInt("sort_order"));
         tag.setCreatedAt(rs.getObject("created_at", OffsetDateTime.class));
         tag.setUpdatedAt(rs.getObject("updated_at", OffsetDateTime.class));
         tag.setDeletedAt(rs.getObject("deleted_at", OffsetDateTime.class));

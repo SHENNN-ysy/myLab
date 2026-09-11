@@ -58,8 +58,7 @@ public final class ContentDtos {
     public record TagWrite(
             @JsonProperty("tag_key") String tagKey,
             String name,
-            Boolean enabled,
-            @JsonProperty("sort_order") Integer sortOrder) { }
+            Boolean enabled) { }
 
     /** 标签列表出参。 */
     public record TagList(List<com.myblog.application.model.entity.MylabTag> tags) { }

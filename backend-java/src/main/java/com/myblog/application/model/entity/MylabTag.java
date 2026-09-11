@@ -16,8 +16,6 @@ public class MylabTag {
     private String name;
     // 是否启用，停用的标签不在前台展示
     private Boolean enabled;
-    // 展示排序权重，越小越靠前
-    private Integer sortOrder;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     private OffsetDateTime deletedAt;

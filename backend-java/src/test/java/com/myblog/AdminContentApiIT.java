@@ -246,10 +246,15 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
 
         // 创建：落库可查
         JsonNode created = assertStatusAndCode(exchange(TAGS_URL, HttpMethod.POST, admin,
-                        Map.of("tag_key", tagKey, "name", "API IT 标签", "sort_order", 0)),
+                        Map.of("tag_key", tagKey, "name", "API IT 标签")),
                 HttpStatus.OK, 0);
         UUID tagId = UUID.fromString(created.path("data").path("id").asText());
         assertThat(countRows("mylab_tags", "id = '" + tagId + "' AND deleted_at IS NULL")).isEqualTo(1);
+        assertThat(created.path("data").has("sort_order")).isFalse();
+        assertThat(jdbc.queryForObject("SELECT sort_order FROM mylab_tags WHERE id = ?", Integer.class, tagId)).isZero();
+        JsonNode listedAfterCreate = assertStatusAndCode(
+                exchange(TAGS_URL, HttpMethod.GET, admin, null), HttpStatus.OK, 0);
+        assertThat(listedAfterCreate.path("data").findValuesAsText("id")).contains(tagId.toString());
 
         // 重复标识冲突、缺少必填名称
         assertStatusAndCode(exchange(TAGS_URL, HttpMethod.POST, admin,
@@ -259,12 +264,21 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
                         Map.of("tag_key", uniqueKey("apitest-tag-"))),
                 HttpStatus.UNPROCESSABLE_ENTITY, 12004);
 
-        // 更新：名称落库
+        // 更新：名称落库，但兼容保留的历史排序值不再被应用覆盖
+        jdbc.update("UPDATE mylab_tags SET sort_order = 42 WHERE id = ?", tagId);
+        assertStatusAndCode(rest.getForEntity("/api/v1/public/content", JsonNode.class), HttpStatus.OK, 0);
+        assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isTrue();
         assertStatusAndCode(exchange(TAGS_URL + "/" + tagId, HttpMethod.PUT, admin,
-                        Map.of("tag_key", tagKey, "name", "API IT 标签（改）")),
+                        Map.of("tag_key", tagKey, "name", "API IT 标签（改）", "enabled", false)),
                 HttpStatus.OK, 0);
+        assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isFalse();
         assertThat(jdbc.queryForObject("SELECT name FROM mylab_tags WHERE id = ?",
                 String.class, tagId)).isEqualTo("API IT 标签（改）");
+        assertThat(jdbc.queryForObject("SELECT enabled FROM mylab_tags WHERE id = ?", Boolean.class, tagId)).isFalse();
+        assertThat(jdbc.queryForObject("SELECT sort_order FROM mylab_tags WHERE id = ?", Integer.class, tagId)).isEqualTo(42);
+        JsonNode listedAfterDisable = assertStatusAndCode(
+                exchange(TAGS_URL, HttpMethod.GET, admin, null), HttpStatus.OK, 0);
+        assertThat(listedAfterDisable.path("data").findValuesAsText("id")).contains(tagId.toString());
 
         // 删除：软标记 deleted_at；重复删除与删除不存在 id 均 404
         assertStatusAndCode(exchange(TAGS_URL + "/" + tagId, HttpMethod.DELETE, admin, null),

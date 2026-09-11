@@ -165,7 +165,6 @@ export interface MylabContentData {
     tag_key: string
     name: string
     enabled: boolean
-    sort_order: number
   }>
 }
 
