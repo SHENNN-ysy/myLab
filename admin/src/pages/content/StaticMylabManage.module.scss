@@ -59,8 +59,9 @@
 .lab-card-body h3 { margin: 9px 0; font-size: 16px; }
 .lab-card-body p { min-height: 64px; color: #595959; line-height: 1.6; }
 .card-meta { display: flex; align-items: center; justify-content: space-between; color: #8c8c8c; font-size: 12px; }
-.card-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.card-selector :global(.ant-select) { flex: 1; min-width: 0; }
+.row-actions button { padding: 2px 5px; color: #1677ff; cursor: pointer; background: transparent; border: 0; }
+.row-actions button:disabled { color: #bfbfbf; cursor: not-allowed; }
+.row-actions .danger { color: #ff4d4f; }
 @media (max-width: 1050px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .markdown-editor { grid-template-columns: 1fr; } .markdown-pane + .markdown-pane { border-top: 1px solid #e8e8e8; border-left: 0; } }
 @media (max-width: 720px) { .page-head, .draft-toolbar { align-items: stretch; flex-direction: column; } .card-grid, .tag-grid { grid-template-columns: 1fr; } .editor-section { padding: 14px; } .editor-status { align-items: flex-start; } }

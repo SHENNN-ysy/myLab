@@ -273,6 +273,34 @@ class UserServiceImplTest {
         verify(sessions).revokeAll(user.getId());
     }
 
+    /** 用户名或密码超过长度上限时拒绝创建。 */
+    @Test
+    void createRejectsOverlongUsernameOrPassword() {
+        assertThatThrownBy(() -> service.create(superadmin,
+                new UserCommands.Create("a".repeat(65), null, "password-1")))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.create(superadmin,
+                new UserCommands.Create("newuser", null, "p".repeat(65))))
+                .isInstanceOf(ValidationException.class);
+        verify(users, never()).add(any());
+    }
+
+    /** 更新密码长度不合法时拒绝，且不重新哈希、不落库。 */
+    @Test
+    void updateRejectsInvalidPasswordLength() {
+        User user = persistedUser("editor", "editor");
+        when(users.findByIdForUpdate(user.getId())).thenReturn(user);
+
+        assertThatThrownBy(() -> service.update(admin, user.getId(),
+                new UserCommands.Update(null, null, "short")))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.update(admin, user.getId(),
+                new UserCommands.Update(null, null, "p".repeat(65))))
+                .isInstanceOf(ValidationException.class);
+        verify(auth, never()).hash(any());
+        verify(users, never()).save(any());
+    }
+
     private User persistedUser(String username, String role) {
         User user = new User();
         user.setId(UUID.randomUUID());

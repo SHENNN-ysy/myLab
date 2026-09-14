@@ -134,7 +134,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 | GET | `/api/v1/public/content/{moduleKey}` | 获取其他指定模块当前发布内容 |
 | GET | `/api/v1/public/mylab/{postKey}` | 获取当前发布版本中的指定 MyLab 卡片详情 |
 
-`/api/v1/public/content` 和 MyLab 单篇详情使用 Redis Cache-Aside 缓存；Redis 未命中或不可用时回源 PostgreSQL。`/api/v1/public/content/mylab` 与其他公开单模块接口不使用缓存，始终直接查询当前发布版本。发布或下线事务提交后会清理受影响的公开缓存。
+`/api/v1/public/content`、`/api/v1/public/content/mylab` 和 MyLab 单篇详情分别使用独立 Redis Cache-Aside 缓存；Redis 未命中或不可用时回源 PostgreSQL。其他公开单模块接口始终直接查询当前发布版本。发布或下线事务提交后会清理受影响的公开缓存。
 
 聚合接口的 `data` 使用模块名作为属性；没有发布版本或已经下线的模块不出现在聚合结果中：
 
@@ -154,7 +154,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 
 公开响应只返回已启用内容，并把资源 ID 转换为可访问 URL。单模块没有发布版本或已经下线时返回 `12002`；MyLab 卡片不存在时返回 `10005`。
 
-首页的 `myproject.cards` 只包含 `card_type = PROJECT` 且 `project_show_order` 非空的项目，不包含全局 `tags`、卡片 `tag_ids`/`tags` 或 Markdown 正文；项目区仍按 `project_show_order ASC` 展示。
+首页的 `myproject.cards` 只包含 `card_type = PROJECT` 且 `project_show_order` 非空的项目，不包含全局 `tags` 字典、卡片 `tag_ids` 或 Markdown 正文；每张项目卡片通过自身的 `tags` 数组返回实际引用的有效标签名称，项目区仍按 `project_show_order ASC` 展示。
 
 ## 5. 后台内容管理
 
@@ -424,7 +424,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 - `mylab_cards.sort_order` 仅为兼容历史数据保留，程序不再读写；管理端与公开 MyLab 列表均按 `post_date DESC`、`post_key ASC` 排序。
 - 后台编辑器可读取本地 `.md`、`.markdown` UTF-8 文件并覆盖编辑区，文件内容仍通过草稿接口保存，不上传 OSS。
 - 公开接口在 `tags` 中返回有效标签对象，并在卡片中同时返回解析后的标签名称数组。
-- `/api/v1/public/content` 只返回首页项目摘要；`/api/v1/public/content/mylab` 返回全部 MyLab 卡片摘要与标签，两者均不包含 `markdown_content`；`/api/v1/public/mylab/{postKey}` 返回单篇完整正文。
+- `/api/v1/public/content` 只返回首页项目摘要和各项目实际引用的标签名称；`/api/v1/public/content/mylab` 通过独立缓存返回全部 MyLab 卡片摘要与标签，两者均不包含 `markdown_content`；`/api/v1/public/mylab/{postKey}` 返回单篇完整正文。
 
 ## 6. MyLab 全局标签
 

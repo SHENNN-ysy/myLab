@@ -19,6 +19,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -33,6 +34,7 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
@@ -66,6 +68,8 @@ class ContentModuleServiceImplCoverageTest {
         // 缓存桩直接透传回源 supplier，让用例聚焦服务层逻辑而非缓存
         lenient().when(publicCache.readAll(any())).thenAnswer(invocation ->
                 ((Supplier<Map<String, Object>>) invocation.getArgument(0)).get());
+        lenient().when(publicCache.readMylabSummary(any())).thenAnswer(invocation ->
+                ((Supplier<Map<String, Object>>) invocation.getArgument(0)).get());
         lenient().when(publicCache.readMylabDetail(any(), any())).thenAnswer(invocation ->
                 ((Supplier<Map<String, Object>>) invocation.getArgument(1)).get());
         service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic,
@@ -75,7 +79,7 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- 公开读取路径 ----------
 
-    /** 聚合接口将 MyLab 投影为项目摘要，不暴露全量卡片和标签。 */
+    /** 聚合接口将 MyLab 投影为项目摘要，只暴露各项目实际引用的标签名称。 */
     @Test
     @SuppressWarnings("unchecked")
     void publicContentAggregatesOnlyPublishedModules() {
@@ -92,7 +96,7 @@ class ContentModuleServiceImplCoverageTest {
         when(mylabPublic.readProjects(mylab.getId())).thenReturn(Map.of(
                 "cards", List.of(
                         Map.of("post_key", "project-a", "enabled", true,
-                                "tag_ids", List.of(TAG_ID.toString())),
+                                "tags", List.of("Spring Boot")),
                         Map.of("post_key", "project-b", "enabled", false))));
 
         Map<String, Object> result = service.publicContent();
@@ -101,13 +105,21 @@ class ContentModuleServiceImplCoverageTest {
         Map<String, Object> projectData = (Map<String, Object>) result.get("myproject");
         List<Map<String, Object>> cards = (List<Map<String, Object>>) projectData.get("cards");
         assertThat(cards).hasSize(1);
-        assertThat(cards.getFirst()).doesNotContainKeys("tag_ids", "tags", "markdown_content");
+        assertThat(cards.getFirst()).containsEntry("tags", List.of("Spring Boot"));
+        assertThat(cards.getFirst()).doesNotContainKeys("tag_ids", "markdown_content");
     }
 
     /** 模块无已发布版本时按未上线处理，抛 NotFoundException。 */
     @Test
     void publicModuleWithoutPublishedReleaseIsOffline() {
         assertThatThrownBy(() -> service.publicModule("about"))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    /** MyLab 列表缓存回源时无已发布版本，同样按模块未上线处理。 */
+    @Test
+    void publicMylabWithoutPublishedReleaseIsOffline() {
+        assertThatThrownBy(() -> service.publicModule("mylab"))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -135,6 +147,32 @@ class ContentModuleServiceImplCoverageTest {
 
         assertThatThrownBy(() -> service.publicMylabDetail("missing"))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    /** post_key 格式非法时直接拒绝，不访问缓存与数据库。 */
+    @Test
+    void publicMylabDetailRejectsMalformedPostKey() {
+        assertThatThrownBy(() -> service.publicMylabDetail("bad key!"))
+                .isInstanceOf(ValidationException.class);
+        verify(publicCache, never()).readMylabDetail(any(), any());
+        verify(mylabPublic, never()).readDetail(any(), any());
+    }
+
+    /** 文章不存在时回源结果以空详情写入缓存（负缓存），防止缓存穿透。 */
+    @Test
+    @SuppressWarnings("unchecked")
+    void publicMylabDetailCachesEmptyDetailForUnknownPostKey() {
+        ContentRelease published = release("mylab", "PUBLISHED");
+        when(releases.findPublished("mylab")).thenReturn(published);
+        when(mylabPublic.readDetail(published.getId(), "missing")).thenReturn(null);
+
+        assertThatThrownBy(() -> service.publicMylabDetail("missing"))
+                .isInstanceOf(NotFoundException.class);
+
+        // 捕获传给缓存的加载器，验证其把 NotFound 转换为空详情负缓存
+        ArgumentCaptor<Supplier<Map<String, Object>>> loader = ArgumentCaptor.forClass(Supplier.class);
+        verify(publicCache).readMylabDetail(eq("missing"), loader.capture());
+        assertThat(loader.getValue().get()).isEmpty();
     }
 
     /** 公开 hobbies 数据过滤 enabled=false 的卡片和时间标签。 */

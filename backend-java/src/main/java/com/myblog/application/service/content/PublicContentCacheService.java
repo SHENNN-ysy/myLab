@@ -21,6 +21,7 @@ import java.util.function.Supplier;
 @Service
 public class PublicContentCacheService {
     static final String ALL_LOCK = "all";
+    static final String MYLAB_SUMMARY_LOCK = "mylab:summary";
     static final String MYLAB_DETAILS_LOCK = "mylab:details";
     private static final long MIN_POLL_MILLIS = 50;
     private static final long MAX_POLL_MILLIS = 100;
@@ -41,6 +42,11 @@ public class PublicContentCacheService {
         return readThrough(cache::getAll, cache::putAll, loader, ALL_LOCK);
     }
 
+    /** 优先读取 MyLab 公开列表摘要缓存，未命中时独立回源并写入。 */
+    public Map<String, Object> readMylabSummary(Supplier<Map<String, Object>> loader) {
+        return readThrough(cache::getMylabSummary, cache::putMylabSummary, loader, MYLAB_SUMMARY_LOCK);
+    }
+
     /** 优先读取指定 MyLab 文章详情，所有详情冷加载共享同一把 Hash 锁。 */
     public Map<String, Object> readMylabDetail(String postKey, Supplier<Map<String, Object>> loader) {
         return readThrough(() -> cache.getMylabDetail(postKey),
@@ -52,6 +58,7 @@ public class PublicContentCacheService {
         if (!properties.enabled()) return;
         invalidateUnderLock(ALL_LOCK, cache::evictAll);
         if ("mylab".equals(moduleKey)) {
+            invalidateUnderLock(MYLAB_SUMMARY_LOCK, cache::evictMylabSummary);
             invalidateUnderLock(MYLAB_DETAILS_LOCK, cache::evictMylabDetails);
         }
     }

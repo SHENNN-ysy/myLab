@@ -17,6 +17,11 @@ public interface AuthService {
     AuthResultVO login(String username, String password);
 
     /**
+     * 吊销指定会话令牌；令牌已失效时保持幂等。
+     */
+    void logout(String token);
+
+    /**
      * 按用户 ID 取当前登录用户，不存在时抛未认证异常。
      */
     User current(UUID id);

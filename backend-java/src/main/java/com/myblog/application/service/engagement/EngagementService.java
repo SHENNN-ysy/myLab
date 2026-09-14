@@ -3,6 +3,7 @@ package com.myblog.application.service.engagement;
 import com.myblog.application.model.dto.EngagementDtos;
 import com.myblog.application.port.EngagementStore;
 import com.myblog.application.repository.EngagementStatsRepository;
+import com.myblog.common.constant.ContentConstant;
 import com.myblog.common.exception.EngagementUnavailableException;
 import com.myblog.common.exception.NotFoundException;
 import com.myblog.common.exception.ValidationException;
@@ -32,7 +33,7 @@ import java.util.regex.Pattern;
 @Slf4j
 public class EngagementService {
     public static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Shanghai"); // 统计口径统一按业务时区（东八区）划日
-    private static final Pattern POST_KEY_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$");
+    private static final Pattern POST_KEY_PATTERN = ContentConstant.POST_KEY_PATTERN;
     private static final Set<Integer> TREND_DAYS = Set.of(7, 30, 90);
 
     private final EngagementStore store;

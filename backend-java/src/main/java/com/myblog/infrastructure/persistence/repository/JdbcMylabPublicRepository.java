@@ -26,8 +26,10 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
 
     @Override
     public Map<String, Object> readProjects(UUID releaseId) {
+        List<Map<String, Object>> cards = cards(releaseId, null, false, true, false);
+        attachTagNames(cards);
         Map<String, Object> root = new LinkedHashMap<>();
-        root.put("cards", cards(releaseId, null, false, true, false));
+        root.put("cards", cards);
         return root;
     }
 
@@ -90,6 +92,28 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
                         + placeholders + ") ORDER BY card_id, sort_order",
                 collectTag, cardIds.toArray());
         cards.forEach(card -> card.put("tag_ids", tagIds.getOrDefault(card.get("row_id"), List.of())));
+    }
+
+    /** 只查询所选项目实际引用的有效标签，并按卡片内标签顺序直接展开为名称数组。 */
+    private void attachTagNames(List<Map<String, Object>> cards) {
+        if (cards.isEmpty()) return;
+        List<UUID> cardIds = cards.stream().map(card -> (UUID) card.get("row_id")).toList();
+        String placeholders = String.join(",", java.util.Collections.nCopies(cardIds.size(), "?"));
+        Map<UUID, List<String>> tagNames = new HashMap<>();
+        RowCallbackHandler collectTag = rs -> tagNames
+                .computeIfAbsent(rs.getObject("card_id", UUID.class), ignored -> new ArrayList<>())
+                .add(rs.getString("name"));
+        jdbc.query("""
+                SELECT link.card_id, tag.name
+                FROM mylab_card_tags link
+                JOIN mylab_tags tag ON tag.id = link.tag_id
+                WHERE link.deleted_at IS NULL
+                  AND tag.deleted_at IS NULL
+                  AND tag.enabled = TRUE
+                  AND link.card_id IN (
+                """ + placeholders + ") ORDER BY link.card_id, link.sort_order",
+                collectTag, cardIds.toArray());
+        cards.forEach(card -> card.put("tags", tagNames.getOrDefault(card.get("row_id"), List.of())));
     }
 
     private List<Map<String, Object>> activeTags() {

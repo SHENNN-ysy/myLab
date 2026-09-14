@@ -146,6 +146,21 @@ class PublicContentCacheServiceTest {
         verify(lock).release(org.mockito.ArgumentMatchers.eq(PublicContentCacheService.MYLAB_DETAILS_LOCK), any());
     }
 
+    /** MyLab 列表使用独立 String 缓存与锁，不与首页聚合缓存互相覆盖。 */
+    @Test
+    void mylabSummaryUsesDedicatedReaderAndWriter() {
+        PublicContentCache cache = mock(PublicContentCache.class);
+        DistributedLock lock = mock(DistributedLock.class);
+        when(cache.getMylabSummary()).thenReturn(Optional.empty());
+        when(lock.tryAcquire(any(), any(), any())).thenReturn(true);
+        PublicContentCacheService service = service(cache, lock, Duration.ofSeconds(1));
+        Map<String, Object> loaded = Map.of("tags", java.util.List.of(), "cards", java.util.List.of());
+
+        assertThat(service.readMylabSummary(() -> loaded)).isSameAs(loaded);
+        verify(cache).putMylabSummary(loaded);
+        verify(lock).release(org.mockito.ArgumentMatchers.eq(PublicContentCacheService.MYLAB_SUMMARY_LOCK), any());
+    }
+
     /** 缓存关闭时始终回源加载，失效操作也不触碰缓存。 */
     @Test
     void disabledCacheAlwaysUsesLoader() {
@@ -163,7 +178,7 @@ class PublicContentCacheServiceTest {
         verify(cache, never()).evictAll();
     }
 
-    /** 失效操作在锁内同时清除全量缓存与 MyLab 详情缓存，两把锁各释放一次。 */
+    /** MyLab 失效在锁内同时清除聚合、列表与详情缓存。 */
     @Test
     void invalidationDeletesAllAndMylabDetailsUnderLocks() {
         PublicContentCache cache = mock(PublicContentCache.class);
@@ -174,8 +189,9 @@ class PublicContentCacheServiceTest {
         service.invalidate("mylab");
 
         verify(cache).evictAll();
+        verify(cache).evictMylabSummary();
         verify(cache).evictMylabDetails();
-        verify(lock, org.mockito.Mockito.times(2)).release(any(), any());
+        verify(lock, org.mockito.Mockito.times(3)).release(any(), any());
     }
 
     /** 并发冷读只回源一次：起跑门闩保证两线程同时进入，先到者持锁加载，后者等锁后命中缓存。 */
@@ -273,6 +289,16 @@ class PublicContentCacheServiceTest {
         }
 
         @Override
+        public Optional<Map<String, Object>> getMylabSummary() {
+            return Optional.empty();
+        }
+
+        @Override
+        public void putMylabSummary(Map<String, Object> content) {
+            // 并发测试只覆盖首页聚合缓存。
+        }
+
+        @Override
         public Optional<Map<String, Object>> getMylabDetail(String postKey) {
             return Optional.ofNullable(details.get(postKey));
         }
@@ -285,6 +311,11 @@ class PublicContentCacheServiceTest {
         @Override
         public void evictAll() {
             all.set(null);
+        }
+
+        @Override
+        public void evictMylabSummary() {
+            // 并发测试只覆盖首页聚合缓存。
         }
 
         @Override

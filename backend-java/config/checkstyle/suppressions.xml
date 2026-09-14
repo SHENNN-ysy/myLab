@@ -60,7 +60,5 @@
     <suppress files="SecurityConfig.java" message=".*'403'.*"/>
     <suppress files="SystemService.java" message=".*'10.0'.*"/>
     <suppress files="SystemService.java" message=".*'1000'.*"/>
-    <suppress files="UserServiceImpl.java" message=".*'3'.*"/>
-    <suppress files="UserServiceImpl.java" message=".*'8'.*"/>
     <suppress files="VisitorIdentityService.java" message=".*'32'.*"/>
 </suppressions>

@@ -74,7 +74,7 @@ starter ────────> application / common / infrastructure
 ```
 
 硬性规则：
-1. `controller` 只做 HTTP 协议转换，禁止业务逻辑，禁止直接访问 Mapper/JDBC/Redis/OSS
+1. `controller` 只做 HTTP 协议转换，禁止业务逻辑，禁止直接访问 Mapper/JDBC/Redis/OSS，且只允许调用应用服务，禁止直接依赖 `application.port`/`application.repository`（ArchUnit 强制）
 2. 应用服务只依赖 `repository`/`port` 接口，禁止依赖 `infrastructure` 实现
 3. 应用服务禁止接收 `HttpServletRequest`、`MultipartFile` 等 Web 对象（文件上传走 `UploadFile` 命令）
 4. `common` 不得反向依赖其他层；`infrastructure` 不得依赖 `controller`/`starter`
@@ -100,15 +100,16 @@ starter ────────> application / common / infrastructure
 - MyLab 全局标签不再支持人工排序和后台启停；`mylab_tags.sort_order` 仅为历史兼容保留且应用不读写，前台按当前公开卡片引用次数降序展示，后台标签管理按当前草稿卡片引用次数降序展示；标签新增、显式保存名称和删除使用独立接口，MyLab 草稿保存只提交卡片
 - `mylab_cards.sort_order` 仅为历史兼容保留，程序不再读写；MyLab 管理视图与公开列表按 `post_date DESC`、`post_key ASC` 排序
 - MyLab PROJECT 卡片的 `project_show_order`为 null 表示不在首页项目区展示（卡片仍在 MyLab 列出）；仅参与展示的卡片校验位次（0-5）唯一且发布时必填侧边栏正文
-- 首页 `/public/content` 使用 `myproject` 返回不含标签的展示项目摘要；`/public/content/mylab` 直查 PG 返回全部公开 MyLab 卡片摘要与标签
+- 首页 `/public/content` 使用 `myproject` 返回展示项目摘要及各项目实际引用的标签名称，但不返回全局标签字典；`/public/content/mylab` 通过独立 Redis Cache-Aside 返回全部公开 MyLab 卡片摘要与标签
 - `mylab_resources` 只保存卡片封面图片引用；Markdown 文件可在后台本地读取到编辑区，但不上传 OSS
 - 新上传 OSS 图片的 object key 固定为 `业务目录/UUID.扩展名`；不配置统一前缀和日期目录，历史 key 继续兼容读取
-- 前台 `/public/content` 与 MyLab 单篇详情使用 Redis Cache-Aside；公开单模块和后台管理接口直查 PG；发布/下线提交后失效缓存
+- 前台 `/public/content`、`/public/content/mylab` 与 MyLab 单篇详情使用相互独立的 Redis Cache-Aside；其他公开单模块和后台管理接口直查 PG；发布/下线提交后失效缓存；MyLab 单篇详情先校验 post_key 格式（`ContentConstant.POST_KEY_PATTERN`），不存在/未发布的 key 以空详情做负缓存防穿透，负缓存随发布失效事件一并清除
 
 ### 认证与安全
 - 管理后台使用随机 UUID Bearer Token；Redis 仅保存 SHA-256 摘要和会话 Hash，并以用户 ZSet 反向索引全部会话；空闲 8 小时滑动过期
 - 登录与敏感账号写操作使用 PostgreSQL 用户行锁；修改用户名、密码、角色、启用状态或删除用户时批量吊销该用户全部会话
 - Redis 会话服务不可用时登录和受保护接口返回 503，公开接口与访客 HMAC 不依赖管理会话
+- 挂载进 SecurityFilterChain 的自定义 `@Component` Filter（如 SessionAuthenticationFilter）必须同时声明 `FilterRegistrationBean` 并 `setEnabled(false)` 禁用容器自动注册，否则每个请求会在容器链与安全链中各执行一次（OncePerRequestFilter 两次注册的去重键不同，去重失效）
 - 密码 BCrypt（强度 12）；初始管理员仅在系统无用户时创建一次（`INIT_ADMIN_*`，未配置时本地兜底 admin/admin123，生产 compose 强制必填）
 - 种子接管：`V1__baseline.sql` 内置固定 ID/用户名的种子管理员，启动时仅当该行用户名与密码哈希**均与基线完全一致**才按 `INIT_ADMIN_*` 接管；一旦某次启动（如 `.env` 缺失密码被置空）已覆写该行，之后补回配置不会再生效，需把该行重置回基线种子值后重启才能重新接管
 - 限流走 Redis：登录接口独立（更严）阈值 + 全局限流；Redis 故障 fail-open

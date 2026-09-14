@@ -3,7 +3,6 @@ package com.myblog.controller;
 import com.myblog.application.model.dto.AuthDtos;
 import com.myblog.common.result.Result;
 import com.myblog.application.service.auth.AuthService;
-import com.myblog.application.port.SessionService;
 import com.myblog.common.security.CurrentUser;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,21 +20,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 认证接口：管理员登录、会话注销、当前用户信息查询及账号信息修改。
- * Bearer 令牌对应 Redis 会话，业务逻辑委托给 {@link AuthService} 与 {@link SessionService}。
+ * Bearer 令牌对应 Redis 会话，业务逻辑全部委托给 {@link AuthService}。
  */
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "认证")
 public class AuthController {
 
-    // 认证应用服务：登录、用户查询、改密
+    // 认证应用服务：登录、登出、用户查询、改密
     private final AuthService auth;
-    // 会话服务：负责当前会话注销
-    private final SessionService sessions;
 
-    public AuthController(AuthService auth, SessionService sessions) {
+    public AuthController(AuthService auth) {
         this.auth = auth;
-        this.sessions = sessions;
     }
 
     /**
@@ -63,7 +59,7 @@ public class AuthController {
     @Operation(summary = "退出当前登录", description = "注销当前 Redis 会话令牌。",
             security = @SecurityRequirement(name = "bearerAuth"))
     public Result<?> logout(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
-        sessions.revoke(authorization.substring(7).trim());
+        auth.logout(authorization.substring(7).trim());
         return Result.ok(null, "已退出登录");
     }
 

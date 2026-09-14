@@ -128,10 +128,11 @@ export interface PublicMylabContent {
   tags?: PublicMylabTag[]
 }
 
-/** 首页项目投影：只含需在首页展示的项目卡片，不含标签。 */
-export type PublicProjectCard = Omit<PublicMylabCard, 'tag_ids' | 'tags' | 'markdown_content'> & {
+/** 首页项目投影：只含需在首页展示的项目卡片及其标签名称，不含全局标签字典与 Markdown。 */
+export type PublicProjectCard = Omit<PublicMylabCard, 'tag_ids' | 'markdown_content'> & {
   card_type?: 'PROJECT'
   project_show_order?: number
+  tags?: string[]
 }
 
 export interface PublicProjectContent {

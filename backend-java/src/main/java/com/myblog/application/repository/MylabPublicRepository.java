@@ -6,7 +6,7 @@ import java.util.UUID;
 /** MyLab 公开列表与详情的只读查询端口。 */
 public interface MylabPublicRepository {
 
-    /** 读取首页展示的项目卡片摘要，不返回标签信息与 Markdown 正文。 */
+    /** 读取首页展示的项目卡片摘要，只返回各项目实际引用的标签名称，不返回全局标签字典与 Markdown 正文。 */
     Map<String, Object> readProjects(UUID releaseId);
 
     /** 读取不含 Markdown 正文的卡片摘要集合。 */

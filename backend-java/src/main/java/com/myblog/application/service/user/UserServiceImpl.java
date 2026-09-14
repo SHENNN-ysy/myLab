@@ -69,9 +69,11 @@ public class UserServiceImpl implements UserService {
         }
         String username = command.username();
         String password = command.password();
-        if (username.length() < 3 || password.length() < 8) {
-            throw new ValidationException("用户名至少 3 位且密码至少 8 位");
+        if (username.length() < UserCommands.MIN_USERNAME_LENGTH
+                || username.length() > UserCommands.MAX_USERNAME_LENGTH) {
+            throw new ValidationException("用户名长度须为 3-64 位");
         }
+        requireValidPassword(password);
         if (users.usernameExists(username)) {
             throw new ConflictException(ErrorCode.USER_ALREADY_EXISTS, null);
         }
@@ -114,6 +116,7 @@ public class UserServiceImpl implements UserService {
             changed.add("is_active");
         }
         if (command.password() != null) {
+            requireValidPassword(command.password());
             user.setPasswordHash(auth.hash(command.password()));
             changed.add("password");
         }
@@ -149,6 +152,17 @@ public class UserServiceImpl implements UserService {
     private UserOutVO toOut(User user) {
         return new UserOutVO(user.getId(), user.getUsername(), user.getRole(), user.getIsActive(),
                 user.getLastLoginAt(), user.getCreatedAt(), user.getUpdatedAt());
+    }
+
+    /**
+     * 密码长度与登录/改密接口（AuthDtos）保持一致（8-64 位）；
+     * 上限同时避免 BCrypt 对超 72 字节输入的静默截断。
+     */
+    private static void requireValidPassword(String password) {
+        if (password.length() < UserCommands.MIN_PASSWORD_LENGTH
+                || password.length() > UserCommands.MAX_PASSWORD_LENGTH) {
+            throw new ValidationException("密码长度须为 8-64 位");
+        }
     }
 
     private static void requireValidRole(String role) {

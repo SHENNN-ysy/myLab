@@ -267,11 +267,14 @@ class AdminContentApiIT extends AbstractApiIntegrationTest {
         // 更新：名称落库，但兼容保留的历史排序值不再被应用覆盖
         jdbc.update("UPDATE mylab_tags SET sort_order = 42 WHERE id = ?", tagId);
         assertStatusAndCode(rest.getForEntity("/api/v1/public/content", JsonNode.class), HttpStatus.OK, 0);
+        assertStatusAndCode(rest.getForEntity("/api/v1/public/content/mylab", JsonNode.class), HttpStatus.OK, 0);
         assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isTrue();
+        assertThat(redis.hasKey(RedisPublicContentCache.MYLAB_SUMMARY_KEY)).isTrue();
         assertStatusAndCode(exchange(TAGS_URL + "/" + tagId, HttpMethod.PUT, admin,
                         Map.of("tag_key", tagKey, "name", "API IT 标签（改）", "enabled", false)),
                 HttpStatus.OK, 0);
         assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isFalse();
+        assertThat(redis.hasKey(RedisPublicContentCache.MYLAB_SUMMARY_KEY)).isFalse();
         assertThat(jdbc.queryForObject("SELECT name FROM mylab_tags WHERE id = ?",
                 String.class, tagId)).isEqualTo("API IT 标签（改）");
         assertThat(jdbc.queryForObject("SELECT enabled FROM mylab_tags WHERE id = ?", Boolean.class, tagId)).isFalse();
