@@ -8,6 +8,7 @@ import type {
   EngagementView,
   PublicContent,
   PublicMylabCard,
+  PublicMylabContent,
   SiteStatistics,
 } from '@/types'
 
@@ -46,6 +47,21 @@ export const fetchPublicContent = async (): Promise<PublicContent> => {
       throw new Error(body.error || body.message || `内容接口请求失败: ${response.status}`)
     }
     return body.data || {}
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
+/** MyLab 公开列表；与首页聚合分离，返回全部卡片摘要和标签。 */
+export const fetchMylabContent = async (): Promise<PublicMylabContent> => {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 5000)
+  try {
+    const response = await fetch(`${apiBase}/public/content/mylab`, {
+      headers: acceptJson,
+      signal: controller.signal,
+    })
+    return await parseResult<PublicMylabContent>(response, 'MyLab 列表接口请求失败')
   } finally {
     window.clearTimeout(timeout)
   }

@@ -111,12 +111,27 @@ public abstract class AbstractApiIntegrationTest {
      */
     protected void ensurePublishedMylabCard(String postKey, String title, boolean enabled) {
         UUID releaseId = publishedMylabReleaseId();
-        // sort_order 取大值 9000：测试卡片排在基线数据之后，不干扰既有排序
+        // 直接写入历史 sort_order 列，公开查询不应使用该值排序。
         jdbc.update("INSERT INTO mylab_cards (id, release_id, post_key, card_title, card_summary,"
                         + " post_date, enabled, sort_order, card_type, markdown_content)"
                         + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ARTICLE', ?)",
                 UUID.randomUUID(), releaseId, postKey, title, "API IT 自建卡片",
                 LocalDate.now(), enabled, 9000, "# " + title + "\n\nAPI 集成测试正文。");
+    }
+
+    /** 在当前已发布 MyLab 版本中插入一张首页展示项目。 */
+    protected void ensurePublishedMylabProject(String postKey, String title, boolean enabled) {
+        UUID releaseId = publishedMylabReleaseId();
+        Integer showOrder = jdbc.queryForObject(
+                "SELECT COALESCE(MAX(project_show_order), -1) + 1 FROM mylab_cards"
+                        + " WHERE release_id = ? AND card_type = 'PROJECT' AND deleted_at IS NULL",
+                Integer.class, releaseId);
+        jdbc.update("INSERT INTO mylab_cards (id, release_id, post_key, card_title, card_summary,"
+                        + " post_date, enabled, sort_order, card_type, project_show_order, project_contents, markdown_content)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, 9000, 'PROJECT', ?, ?, ?)",
+                UUID.randomUUID(), releaseId, postKey, title, "API IT 自建项目",
+                LocalDate.now(), enabled, showOrder, "API 集成测试项目说明。",
+                "# " + title + "\n\nAPI 集成测试正文。");
     }
 
     /** 取当前已发布 mylab 版本的 id；不存在时按发布约束（published_by/published_at 非空）自建一版 */

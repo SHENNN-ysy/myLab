@@ -7,7 +7,6 @@ export interface PublicHomeImage {
   image_url?: string
   alt?: string
   object_position?: string
-  sort_order?: number
 }
 
 export interface PublicAboutContent {
@@ -123,6 +122,23 @@ export interface PublicMylabCard {
   enabled?: boolean
 }
 
+/** MyLab 列表接口：全部公开卡片摘要与标签字典。 */
+export interface PublicMylabContent {
+  cards?: PublicMylabCard[]
+  tags?: PublicMylabTag[]
+}
+
+/** 首页项目投影：只含需在首页展示的项目卡片及其标签名称，不含全局标签字典与 Markdown。 */
+export type PublicProjectCard = Omit<PublicMylabCard, 'tag_ids' | 'markdown_content'> & {
+  card_type?: 'PROJECT'
+  project_show_order?: number
+  tags?: string[]
+}
+
+export interface PublicProjectContent {
+  cards?: PublicProjectCard[]
+}
+
 export interface PublicContent {
   home?: { images?: PublicHomeImage[] }
   about?: PublicAboutContent
@@ -134,5 +150,5 @@ export interface PublicContent {
     time_points?: PublicHobbyTimePoint[]
   }
   vibe?: { tools?: PublicVibeTool[] }
-  mylab?: { cards?: PublicMylabCard[]; tags?: PublicMylabTag[] }
+  myproject?: PublicProjectContent
 }

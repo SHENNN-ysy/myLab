@@ -12,6 +12,7 @@ import com.myblog.application.repository.ContentReleaseRepository;
 import com.myblog.application.repository.FileRepository;
 import com.myblog.application.repository.MylabTagRepository;
 import com.myblog.application.repository.MylabPublicRepository;
+import com.myblog.common.constant.ContentConstant;
 import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.NotFoundException;
@@ -46,6 +47,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     static final int MAX_VERSION_NAME_CHARACTERS = 120;
     static final int MAX_VERSION_DESCRIPTION_CHARACTERS = 2_000;
     private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab"); // 支持的内容模块清单
+    private static final List<String> PUBLIC_KEYS = List.of(
+            "home", "about", "skills", "footprints", "hobbies", "vibe", "myproject");
     private static final Set<String> TIME_KEYS = Set.of("爱好1", "爱好2", "爱好3", "爱好4", "爱好5"); // hobbies 时间分布图的五个维度
     private static final ObjectMapper OM = JacksonObjectMapper.get();
 
@@ -78,20 +81,23 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         // 缓存仅保存数据库原始摘要；URL 与启用状态仍在每次响应时动态处理。
         Map<String, Object> rawContent = publicCache.readAll(this::loadPublicContent);
         Map<String, Object> result = new LinkedHashMap<>();
-        for (String key : KEYS) {
+        for (String key : PUBLIC_KEYS) {
             if (rawContent.containsKey(key)) result.put(key, publicData(key, rawContent.get(key)));
         }
         return result;
     }
 
-    /** 缓存未命中时从 PostgreSQL 汇总原始摘要，MyLab 此处不加载 Markdown 正文。 */
+    /** 缓存未命中时从 PostgreSQL 汇总首页摘要，MyLab 只投影为携带自身标签的 myproject。 */
     private Map<String, Object> loadPublicContent() {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String key : KEYS) {
             ContentRelease release = releases.findPublished(key);
             if (release == null) continue;
-            Object data = "mylab".equals(key) ? mylabPublic.readSummary(release.getId()) : releases.readData(release);
-            result.put(key, data);
+            if ("mylab".equals(key)) {
+                result.put("myproject", mylabPublic.readProjects(release.getId()));
+            } else {
+                result.put(key, releases.readData(release));
+            }
         }
         return result;
     }
@@ -101,12 +107,22 @@ public class ContentModuleServiceImpl implements ContentModuleService {
      */
     @Override
     public Object publicModule(String moduleKey) {
-        // 单模块接口主要供后台按模块加载，按约定直接查询数据库，不读写公开缓存。
         requireKey(moduleKey);
+        if ("mylab".equals(moduleKey)) {
+            Map<String, Object> data = publicCache.readMylabSummary(this::loadPublicMylabSummary);
+            return publicData(moduleKey, data);
+        }
+        // MyLab 列表使用独立缓存；其余公开单模块接口仍直接查询数据库。
         ContentRelease release = releases.findPublished(moduleKey);
         if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, moduleKey);
-        Object data = "mylab".equals(moduleKey) ? mylabPublic.readSummary(release.getId()) : releases.readData(release);
-        return publicData(moduleKey, data);
+        return publicData(moduleKey, releases.readData(release));
+    }
+
+    /** MyLab 列表缓存未命中时读取当前发布版本的卡片摘要与标签字典。 */
+    private Map<String, Object> loadPublicMylabSummary() {
+        ContentRelease release = releases.findPublished("mylab");
+        if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, "mylab");
+        return mylabPublic.readSummary(release.getId());
     }
 
     /**
@@ -115,12 +131,29 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     @Override
     @SuppressWarnings("unchecked")
     public Object publicMylabDetail(String postKey) {
+        // 先校验 post_key 格式，拦截随机构造的非法 key，避免穿透缓存直接打到数据库。
+        if (postKey == null || !ContentConstant.POST_KEY_PATTERN.matcher(postKey).matches()) {
+            throw new ValidationException("post_key 格式不正确");
+        }
         // Hash 中保存原始详情和 Markdown，公开 URL 在命中缓存后仍重新生成。
-        Map<String, Object> detail = publicCache.readMylabDetail(postKey, () -> loadPublicMylabDetail(postKey));
+        Map<String, Object> detail = publicCache.readMylabDetail(postKey, () -> loadDetailOrEmpty(postKey));
         Map<String, Object> root = (Map<String, Object>) publicData("mylab", detail);
         List<Map<String, Object>> cards = (List<Map<String, Object>>) root.getOrDefault("cards", List.of());
         return cards.stream().filter(card -> postKey.equals(card.get("post_key")))
                 .findFirst().orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, postKey));
+    }
+
+    /**
+     * 回源加载单篇详情；文章不存在或未发布时返回空详情作为负缓存写入缓存，
+     * 防止同一无效 post_key 反复打到数据库。空详情在下方卡片匹配中仍会抛出 NotFoundException，
+     * 发布/下线后缓存失效事件会清掉负缓存条目，不影响新文章可见性。
+     */
+    private Map<String, Object> loadDetailOrEmpty(String postKey) {
+        try {
+            return loadPublicMylabDetail(postKey);
+        } catch (NotFoundException exception) {
+            return Map.of();
+        }
     }
 
     /** MyLab 详情缓存未命中时，仅查询当前已发布版本中的指定文章。 */
@@ -642,7 +675,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     }
 
     /**
-     * 公开化数据：在管理视图数据基础上过滤 enabled=false 的条目，mylab 卡片额外把 tag_ids 展开为标签名。
+     * 公开化数据：过滤 enabled=false 的条目，mylab 额外把 tag_ids 展开为标签名；
+     * 首页 myproject 只保留项目摘要和各项目实际引用的标签名称。
      */
     @SuppressWarnings("unchecked")
     private Object publicData(String moduleKey, Object raw) {
@@ -654,6 +688,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             case "hobbies" -> "cards";
             case "vibe" -> "tools";
             case "mylab" -> "cards";
+            case "myproject" -> "cards";
             default -> null;
         };
         if (field == null) return root;
@@ -670,6 +705,9 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             if ("mylab".equals(moduleKey)) {
                 List<?> ids = (List<?>) result.getOrDefault("tag_ids", List.of());
                 result.put("tags", ids.stream().map(String::valueOf).map(tagNames::get).filter(Objects::nonNull).toList());
+            } else if ("myproject".equals(moduleKey)) {
+                result.remove("tag_ids");
+                result.remove("markdown_content");
             }
             visible.add(result);
         }
@@ -709,7 +747,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
                         putUrl(item, "image_object_key", "image_url");
                         if (item.get("image_url") != null) item.put("image", item.get("image_url"));
                     });
-            case "mylab" -> ((List<Map<String, Object>>) root.getOrDefault("cards", List.of()))
+            case "mylab", "myproject" -> ((List<Map<String, Object>>) root.getOrDefault("cards", List.of()))
                     .forEach(item -> {
                         putUrl(item, "image_object_key", "image_url");
                     });

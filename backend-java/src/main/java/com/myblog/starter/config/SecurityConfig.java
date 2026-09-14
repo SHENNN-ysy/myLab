@@ -6,6 +6,7 @@ import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.common.properties.AppProperties;
 import com.myblog.common.result.Result;
 import com.myblog.infrastructure.security.SessionAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -82,6 +83,20 @@ public class SecurityConfig {
                         }))
                 .addFilterBefore(sessionFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    /**
+     * 禁用 SessionAuthenticationFilter 在 Servlet 容器中的自动注册。
+     * 该过滤器已通过 SecurityFilterChain 挂载；若不禁用，Spring Boot 会将其再注册进容器链，
+     * 而 OncePerRequestFilter 两次注册的去重键不同，导致每个请求重复执行会话认证。
+     */
+    @Bean
+    public FilterRegistrationBean<SessionAuthenticationFilter> sessionAuthFilterRegistration(
+            SessionAuthenticationFilter sessionFilter) {
+        FilterRegistrationBean<SessionAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(sessionFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     /**

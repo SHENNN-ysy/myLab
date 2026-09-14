@@ -85,6 +85,14 @@ class AuthServiceImplTest {
         verify(users).save(user);
     }
 
+    /** 登出委托会话端口吊销当前令牌。 */
+    @Test
+    void logoutRevokesGivenToken() {
+        service.logout("opaque-token");
+
+        verify(sessions).revoke("opaque-token");
+    }
+
     /** 会话对应的用户不存在时按未认证处理。 */
     @Test
     void currentRejectsUnknownUser() {

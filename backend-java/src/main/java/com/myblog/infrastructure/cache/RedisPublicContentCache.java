@@ -18,7 +18,9 @@ import java.util.Optional;
 @Slf4j
 @Repository
 public class RedisPublicContentCache implements PublicContentCache {
-    public static final String ALL_KEY = "myblog:content:v1:all";
+    // 聚合契约 v3 为 myproject 卡片补充其实际标签，换 key 避免命中旧结构。
+    public static final String ALL_KEY = "myblog:content:v3:all";
+    public static final String MYLAB_SUMMARY_KEY = "myblog:content:v1:mylab:summary";
     public static final String MYLAB_DETAILS_KEY = "myblog:content:v1:mylab:details";
     private static final ObjectMapper OBJECT_MAPPER = JacksonObjectMapper.get();
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() { };
@@ -44,6 +46,19 @@ public class RedisPublicContentCache implements PublicContentCache {
         redis.opsForValue().set(ALL_KEY, encode(content), properties.ttl());
     }
 
+    /** 从独立 String Key 读取 MyLab 公开列表原始摘要。 */
+    @Override
+    public Optional<Map<String, Object>> getMylabSummary() {
+        String value = redis.opsForValue().get(MYLAB_SUMMARY_KEY);
+        return decode(value, () -> redis.delete(MYLAB_SUMMARY_KEY), MYLAB_SUMMARY_KEY);
+    }
+
+    /** 写入 MyLab 公开列表摘要并设置统一缓存 TTL。 */
+    @Override
+    public void putMylabSummary(Map<String, Object> content) {
+        redis.opsForValue().set(MYLAB_SUMMARY_KEY, encode(content), properties.ttl());
+    }
+
     /** 使用 postKey 作为 Hash field 读取单篇原始详情。 */
     @Override
     public Optional<Map<String, Object>> getMylabDetail(String postKey) {
@@ -64,6 +79,12 @@ public class RedisPublicContentCache implements PublicContentCache {
     @Override
     public void evictAll() {
         redis.delete(ALL_KEY);
+    }
+
+    /** 删除 MyLab 公开列表摘要缓存。 */
+    @Override
+    public void evictMylabSummary() {
+        redis.delete(MYLAB_SUMMARY_KEY);
     }
 
     /** 删除整个 MyLab 详情 Hash，防止发布后保留旧文章 field。 */

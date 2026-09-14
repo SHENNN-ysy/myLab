@@ -255,10 +255,10 @@ public class JdbcContentReleaseRepository implements ContentReleaseRepository {
      */
     private List<Map<String, Object>> readActiveTags() {
         return jdbc.query("""
-                SELECT id, tag_key, name, enabled, sort_order
-                FROM mylab_tags WHERE enabled = TRUE AND deleted_at IS NULL ORDER BY sort_order, tag_key
+                SELECT id, tag_key, name, enabled
+                FROM mylab_tags WHERE enabled = TRUE AND deleted_at IS NULL ORDER BY name, tag_key
                 """, (rs, n) -> mapOf("id", rs.getObject("id"), "tag_key", rs.getString("tag_key"),
-                "name", rs.getString("name"), "enabled", true, "sort_order", rs.getInt("sort_order")));
+                "name", rs.getString("name"), "enabled", true));
     }
 
     /** 按模块名取编解码器，无法识别时抛异常（与原 switch default 分支语义一致） */

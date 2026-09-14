@@ -68,6 +68,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     /**
+     * 退出登录：吊销当前会话令牌，重复吊销保持幂等。
+     */
+    public void logout(String token) {
+        sessions.revoke(token);
+    }
+
+    @Override
+    /**
      * 按 ID 取当前用户，不存在时视为认证失败。
      */
     public User current(UUID id) {

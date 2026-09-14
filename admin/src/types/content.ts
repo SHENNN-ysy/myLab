@@ -148,7 +148,6 @@ export interface MylabCardData {
   post_date: string
   tag_ids: string[]
   enabled: boolean
-  sort_order: number
   card_type: 'PROJECT' | 'ARTICLE'
   project_show_order: number | null
   project_contents: string | null
@@ -165,7 +164,6 @@ export interface MylabContentData {
     tag_key: string
     name: string
     enabled: boolean
-    sort_order: number
   }>
 }
 

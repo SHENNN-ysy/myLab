@@ -5,12 +5,11 @@ export interface MylabTag {
   tag_key: string
   name: string
   enabled: boolean
-  sort_order: number
   created_at?: string
   updated_at?: string
 }
 
-export type MylabTagWrite = Pick<MylabTag, 'tag_key' | 'name' | 'enabled' | 'sort_order'>
+export type MylabTagWrite = Pick<MylabTag, 'tag_key' | 'name' | 'enabled'>
 
 export const getMylabTagsApi = async (): Promise<MylabTag[]> => {
   const data = await request.get<MylabTag[]>('/admin/mylab/tags')

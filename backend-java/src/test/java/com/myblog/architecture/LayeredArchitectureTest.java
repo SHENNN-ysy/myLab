@@ -18,13 +18,14 @@ class LayeredArchitectureTest {
             .matching("com.myblog.application.service.(*)..")
             .should().beFreeOfCycles();
 
-    /** 应用核心（service/port/repository）不得依赖 infrastructure 适配层。 */
+    /** 应用核心（service/port/repository/model）不得依赖 infrastructure 适配层。 */
     @ArchTest
     static final ArchRule applicationCoreMustNotDependOnInfrastructure = noClasses()
             .that().resideInAnyPackage(
                     "com.myblog.application.service..",
                     "com.myblog.application.port..",
-                    "com.myblog.application.repository..")
+                    "com.myblog.application.repository..",
+                    "com.myblog.application.model..")
             .should().dependOnClassesThat().resideInAPackage("com.myblog.infrastructure..");
 
     /** 应用层不得反向依赖 controller 交付层与 starter 装配层。 */
@@ -60,6 +61,14 @@ class LayeredArchitectureTest {
             .should().dependOnClassesThat().resideInAnyPackage(
                     "com.myblog.infrastructure..",
                     "com.myblog.starter..");
+
+    /** controller 交付层只能调用应用服务，禁止绕过 service 直达 port/repository 契约。 */
+    @ArchTest
+    static final ArchRule controllersMustNotDependOnPortsOrRepositories = noClasses()
+            .that().resideInAPackage("com.myblog.controller..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "com.myblog.application.port..",
+                    "com.myblog.application.repository..");
 
     /** starter 装配层不得依赖 controller，避免装配层反向耦合交付层。 */
     @ArchTest

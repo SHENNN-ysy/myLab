@@ -57,6 +57,8 @@ class ContentModuleServiceImplTest {
         // 桩：公开缓存默认直接执行回源回调，等价于无缓存场景
         lenient().when(publicCache.readAll(any())).thenAnswer(invocation ->
                 ((Supplier<Map<String, Object>>) invocation.getArgument(0)).get());
+        lenient().when(publicCache.readMylabSummary(any())).thenAnswer(invocation ->
+                ((Supplier<Map<String, Object>>) invocation.getArgument(0)).get());
         lenient().when(publicCache.readMylabDetail(any(), any())).thenAnswer(invocation ->
                 ((Supplier<Map<String, Object>>) invocation.getArgument(1)).get());
         service = new ContentModuleServiceImpl(releases, tags, resources, storage, mylabPublic,
@@ -100,7 +102,7 @@ class ContentModuleServiceImplTest {
                 && "skills".equals(changed.moduleKey())));
     }
 
-    /** 公开 MyLab 只读取已发布版本：直查 PG 摘要，不走公开缓存。 */
+    /** 公开 MyLab 列表通过独立缓存只读取已发布版本。 */
     @Test
     @SuppressWarnings("unchecked")
     void publicMylabUsesOnlyPublishedRelease() {
@@ -114,6 +116,7 @@ class ContentModuleServiceImplTest {
         Map<String, Object> result = (Map<String, Object>) service.publicModule("mylab");
 
         assertThat((List<?>) result.get("cards")).hasSize(1);
+        verify(publicCache).readMylabSummary(any());
         verify(publicCache, never()).readAll(any());
         verify(publicCache, never()).readMylabDetail(any(), any());
     }

@@ -19,6 +19,11 @@ export interface UseStaticModuleOptions<T> {
   validate: () => boolean
 }
 
+export interface SaveDraftOptions {
+  /** 已存在草稿时沿用其版本名称与描述，不再重复弹窗。 */
+  reuseExistingMetadata?: boolean
+}
+
 /**
  * 静态内容模块的通用持久化骨架：加载、保存草稿、发布。
  * 各模块页面只需提供数据映射（apply）、提交载荷（payload）和草稿校验（validate）；
@@ -69,13 +74,20 @@ export function useStaticModule<T>(
     return result
   }, [assign, moduleKey])
 
-  const saveDraft = useCallback(async () => {
+  const saveDraft = useCallback(async (saveOptions: SaveDraftOptions = {}) => {
     const meta = moduleMetaRef.current
     if (!meta || !optionsRef.current.validate()) return
-    const metadata = await requestMetadata({
-      versionName: meta.draft_version_name,
-      versionDescription: meta.draft_version_description,
-    })
+    const existingMetadata = {
+      versionName: meta.draft_version_name?.trim() || '',
+      versionDescription: meta.draft_version_description?.trim() || '',
+    }
+    const canReuseMetadata = saveOptions.reuseExistingMetadata
+      && Boolean(meta.draft_release_id)
+      && Boolean(existingMetadata.versionName)
+      && Boolean(existingMetadata.versionDescription)
+    const metadata = canReuseMetadata
+      ? existingMetadata
+      : await requestMetadata(existingMetadata)
     if (!metadata) return
     setSaving(true)
     try {

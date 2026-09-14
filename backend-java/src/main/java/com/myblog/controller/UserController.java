@@ -9,6 +9,7 @@ import com.myblog.common.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,7 +57,7 @@ public class UserController {
     @PostMapping
     @Operation(summary = "创建管理员账号", description = "仅 superadmin 可执行。")
     public Result<UserOutVO> create(@AuthenticationPrincipal CurrentUser actor,
-                                    @RequestBody UserCommands.Create command) {
+                                    @Valid @RequestBody UserCommands.Create command) {
         return Result.ok(users.create(actor, command));
     }
 
@@ -67,7 +68,7 @@ public class UserController {
     @Operation(summary = "更新管理员账号")
     public Result<UserOutVO> update(@AuthenticationPrincipal CurrentUser actor,
                                     @PathVariable UUID id,
-                                    @RequestBody UserCommands.Update command) {
+                                    @Valid @RequestBody UserCommands.Update command) {
         return Result.ok(users.update(actor, id, command));
     }
 

@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.time.Duration;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,30 +26,45 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
     @Autowired
     private DistributedLock distributedLock;
 
-    /** 全量公开内容包含已发布 mylab 卡片，列表不携带 Markdown 正文。 */
+    /** 首页聚合只返回 myproject 项目摘要，不返回 MyLab 全量信息。 */
     @Test
-    void publicContentIncludesPublishedMylabModule() {
+    void publicContentIncludesProjectProjectionOnly() {
         String postKey = uniqueKey("apitest-pub-");
-        ensurePublishedMylabCard(postKey, "公开内容测试文章", true);
+        String articleKey = uniqueKey("apitest-article-");
+        ensurePublishedMylabProject(postKey, "公开内容测试项目", true);
+        ensurePublishedMylabCard(articleKey, "不应进入首页聚合的文章", true);
+        UUID projectId = jdbc.queryForObject("SELECT id FROM mylab_cards WHERE post_key = ?", UUID.class, postKey);
+        UUID tagId = UUID.randomUUID();
+        String tagKey = uniqueKey("apitest-project-tag-");
+        String tagName = "项目标签-" + tagKey;
+        jdbc.update("INSERT INTO mylab_tags (id, tag_key, name) VALUES (?, ?, ?)", tagId, tagKey, tagName);
+        jdbc.update("INSERT INTO mylab_card_tags (id, card_id, tag_id, sort_order) VALUES (?, ?, ?, 0)",
+                UUID.randomUUID(), projectId, tagId);
 
         // 匿名读取全量已发布内容，mylab 模块中应能看到自建卡片
         JsonNode body = assertStatusAndCode(
                 rest.getForEntity(CONTENT_URL, JsonNode.class), HttpStatus.OK, 0);
 
-        JsonNode card = findCard(body.path("data").path("mylab").path("cards"), postKey);
-        assertThat(card).as("已发布 mylab 模块中应包含自建卡片").isNotNull();
-        assertThat(card.has("markdown_content")).as("公开列表不应携带大正文").isFalse();
+        JsonNode card = findCard(body.path("data").path("myproject").path("cards"), postKey);
+        assertThat(body.path("data").has("mylab")).isFalse();
+        assertThat(card).as("myproject 中应包含首页项目").isNotNull();
+        assertThat(card.has("markdown_content")).isFalse();
+        assertThat(card.has("tag_ids")).isFalse();
+        assertThat(body.path("data").path("myproject").has("tags")).isFalse();
+        assertThat(card.path("tags").isArray()).isTrue();
+        assertThat(card.path("tags").get(0).asText()).isEqualTo(tagName);
+        assertThat(findCard(body.path("data").path("myproject").path("cards"), articleKey)).isNull();
     }
 
     /** 全量内容在缓存被删除前一直命中 Redis；删除后回源数据库重建。 */
     @Test
     void publicContentUsesAllCacheUntilItIsEvicted() {
         String postKey = uniqueKey("apitest-cache-");
-        ensurePublishedMylabCard(postKey, "缓存前标题", true);
+        ensurePublishedMylabProject(postKey, "缓存前标题", true);
 
         JsonNode first = assertStatusAndCode(
                 rest.getForEntity(CONTENT_URL, JsonNode.class), HttpStatus.OK, 0);
-        assertThat(findCard(first.path("data").path("mylab").path("cards"), postKey)
+        assertThat(findCard(first.path("data").path("myproject").path("cards"), postKey)
                 .path("title").asText()).isEqualTo("缓存前标题");
         assertThat(redis.hasKey(RedisPublicContentCache.ALL_KEY)).isTrue();
         // 21_600 秒 = 缓存 TTL 上限 6 小时
@@ -57,13 +73,13 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         jdbc.update("UPDATE mylab_cards SET card_title = ? WHERE post_key = ?", "数据库新标题", postKey);
         JsonNode cached = assertStatusAndCode(
                 rest.getForEntity(CONTENT_URL, JsonNode.class), HttpStatus.OK, 0);
-        assertThat(findCard(cached.path("data").path("mylab").path("cards"), postKey)
+        assertThat(findCard(cached.path("data").path("myproject").path("cards"), postKey)
                 .path("title").asText()).isEqualTo("缓存前标题");
 
         redis.delete(RedisPublicContentCache.ALL_KEY);
         JsonNode refreshed = assertStatusAndCode(
                 rest.getForEntity(CONTENT_URL, JsonNode.class), HttpStatus.OK, 0);
-        assertThat(findCard(refreshed.path("data").path("mylab").path("cards"), postKey)
+        assertThat(findCard(refreshed.path("data").path("myproject").path("cards"), postKey)
                 .path("title").asText()).isEqualTo("数据库新标题");
     }
 
@@ -83,19 +99,51 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         assertThat(findCard(cards, hiddenKey)).as("停用卡片不应出现在公开输出").isNull();
     }
 
-    /** 单模块接口直查数据库，不受全量缓存内容影响。 */
+    /** MyLab 完整列表忽略历史 sort_order，按发布日期倒序返回。 */
     @Test
-    void publicModuleReadsDatabaseInsteadOfAllCache() {
+    void publicMylabSortsCardsByPostDateDescending() {
+        String olderKey = uniqueKey("apitest-older-");
+        String newerKey = uniqueKey("apitest-newer-");
+        ensurePublishedMylabCard(olderKey, "旧日期卡片", true);
+        ensurePublishedMylabCard(newerKey, "新日期卡片", true);
+        jdbc.update("UPDATE mylab_cards SET post_date = DATE '2025-01-01', sort_order = 0 WHERE post_key = ?", olderKey);
+        jdbc.update("UPDATE mylab_cards SET post_date = DATE '2026-01-01', sort_order = 9999 WHERE post_key = ?", newerKey);
+
+        JsonNode body = assertStatusAndCode(
+                rest.getForEntity(CONTENT_URL + "/mylab", JsonNode.class), HttpStatus.OK, 0);
+        JsonNode cards = body.path("data").path("cards");
+
+        assertThat(cardIndex(cards, newerKey)).isLessThan(cardIndex(cards, olderKey));
+        assertThat(findCard(cards, newerKey).has("sort_order")).isFalse();
+    }
+
+    /** MyLab 列表使用独立缓存，不受首页聚合缓存影响，删除后重新回源数据库。 */
+    @Test
+    void publicMylabUsesIndependentSummaryCacheUntilEvicted() {
         String postKey = uniqueKey("apitest-module-");
-        ensurePublishedMylabCard(postKey, "单模块直查数据库", true);
+        ensurePublishedMylabCard(postKey, "列表缓存前标题", true);
         // 预置一个不含该卡片的全量缓存作为干扰，验证单模块接口不读它
         redis.opsForValue().set(RedisPublicContentCache.ALL_KEY,
                 "{\"mylab\":{\"tags\":[],\"cards\":[]}}", Duration.ofHours(6));
 
-        JsonNode body = assertStatusAndCode(
+        JsonNode first = assertStatusAndCode(
                 rest.getForEntity(CONTENT_URL + "/mylab", JsonNode.class), HttpStatus.OK, 0);
+        assertThat(findCard(first.path("data").path("cards"), postKey).path("title").asText())
+                .isEqualTo("列表缓存前标题");
+        assertThat(redis.hasKey(RedisPublicContentCache.MYLAB_SUMMARY_KEY)).isTrue();
+        assertThat(redis.getExpire(RedisPublicContentCache.MYLAB_SUMMARY_KEY)).isBetween(1L, 21_600L);
 
-        assertThat(findCard(body.path("data").path("cards"), postKey)).isNotNull();
+        jdbc.update("UPDATE mylab_cards SET card_title = ? WHERE post_key = ?", "列表数据库新标题", postKey);
+        JsonNode cached = assertStatusAndCode(
+                rest.getForEntity(CONTENT_URL + "/mylab", JsonNode.class), HttpStatus.OK, 0);
+        assertThat(findCard(cached.path("data").path("cards"), postKey).path("title").asText())
+                .isEqualTo("列表缓存前标题");
+
+        redis.delete(RedisPublicContentCache.MYLAB_SUMMARY_KEY);
+        JsonNode refreshed = assertStatusAndCode(
+                rest.getForEntity(CONTENT_URL + "/mylab", JsonNode.class), HttpStatus.OK, 0);
+        assertThat(findCard(refreshed.path("data").path("cards"), postKey).path("title").asText())
+                .isEqualTo("列表数据库新标题");
     }
 
     /** 单篇详情返回 Markdown 正文并写入详情缓存。 */
@@ -120,14 +168,14 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
     @Test
     void corruptedAllCacheIsDeletedAndRebuilt() {
         String postKey = uniqueKey("apitest-corrupt-");
-        ensurePublishedMylabCard(postKey, "损坏缓存回源", true);
+        ensurePublishedMylabProject(postKey, "损坏缓存回源", true);
         // 预置一段非法 JSON 作为损坏缓存
         redis.opsForValue().set(RedisPublicContentCache.ALL_KEY, "{broken-json", Duration.ofHours(6));
 
         JsonNode body = assertStatusAndCode(
                 rest.getForEntity(CONTENT_URL, JsonNode.class), HttpStatus.OK, 0);
 
-        assertThat(findCard(body.path("data").path("mylab").path("cards"), postKey)).isNotNull();
+        assertThat(findCard(body.path("data").path("myproject").path("cards"), postKey)).isNotNull();
         assertThat(redis.opsForValue().get(RedisPublicContentCache.ALL_KEY)).startsWith("{");
         assertThat(redis.opsForValue().get(RedisPublicContentCache.ALL_KEY)).doesNotContain("broken-json");
     }
@@ -189,5 +237,14 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
             }
         }
         return null;
+    }
+
+    /** 查找卡片在响应数组中的下标，未找到时返回 -1。 */
+    private int cardIndex(JsonNode cards, String postKey) {
+        if (!cards.isArray()) return -1;
+        for (int index = 0; index < cards.size(); index++) {
+            if (postKey.equals(cards.get(index).path("post_key").asText())) return index;
+        }
+        return -1;
     }
 }

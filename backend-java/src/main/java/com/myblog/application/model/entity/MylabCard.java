@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /**
  * 实验室卡片实体，对应 mylab_cards 表。
- * 每条记录属于某个 content_releases 版本，按 sort_order、post_key 排序；
+ * 每条记录属于某个 content_releases 版本，列表按发布日期倒序、post_key 排序；
  * card_type 为 PROJECT 时携带 project_show_order/project_contents（表约束兜底），
  * 标签与资源分别通过 mylab_card_tags、mylab_resources 关联表挂载。
  */
@@ -34,8 +34,6 @@ public class MylabCard extends BaseEntity {
     private LocalDate postDate;
 
     private Boolean enabled;
-
-    private Integer sortOrder;
 
     // 卡片类型（PROJECT/ARTICLE）
     private String cardType;

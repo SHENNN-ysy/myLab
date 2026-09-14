@@ -39,7 +39,7 @@ const markdownComponents: Components = {
 export default function MyLabPostView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { labPosts } = useLabPosts()
+  const { labPosts, loaded: mylabLoaded } = useLabPosts()
 
   const post = labPosts.find(p => p.id === id) ?? null
   const postKey = post?.id ?? ''
@@ -318,6 +318,10 @@ export default function MyLabPostView() {
               ))}
             </div>
           </aside>
+        </div>
+      ) : !mylabLoaded ? (
+        <div className={styles['post-missing']}>
+          <p>正在加载这条记录…</p>
         </div>
       ) : (
         /* ============ 记录不存在 ============ */

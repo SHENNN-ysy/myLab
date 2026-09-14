@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 公开内容缓存端口：缓存前台全量摘要与 MyLab 单篇原始详情。
+ * 公开内容缓存端口：缓存前台全量摘要、MyLab 列表摘要与单篇原始详情。
  */
 public interface PublicContentCache {
 
@@ -14,6 +14,12 @@ public interface PublicContentCache {
     /** 写入全部模块的原始公开摘要。 */
     void putAll(Map<String, Object> content);
 
+    /** 读取 MyLab 公开列表原始摘要。 */
+    Optional<Map<String, Object>> getMylabSummary();
+
+    /** 写入 MyLab 公开列表原始摘要。 */
+    void putMylabSummary(Map<String, Object> content);
+
     /** 按文章标识读取 MyLab 原始详情。 */
     Optional<Map<String, Object>> getMylabDetail(String postKey);
 
@@ -22,6 +28,9 @@ public interface PublicContentCache {
 
     /** 删除全部模块摘要缓存。 */
     void evictAll();
+
+    /** 删除 MyLab 公开列表摘要缓存。 */
+    void evictMylabSummary();
 
     /** 删除全部 MyLab 文章详情缓存。 */
     void evictMylabDetails();

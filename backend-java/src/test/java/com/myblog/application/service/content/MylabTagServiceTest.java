@@ -2,6 +2,7 @@ package com.myblog.application.service.content;
 
 import com.myblog.application.model.dto.ContentDtos;
 import com.myblog.application.model.entity.MylabTag;
+import com.myblog.application.model.event.PublishedContentChangedEvent;
 import com.myblog.application.repository.MylabTagRepository;
 import com.myblog.common.exception.ConflictException;
 import com.myblog.common.exception.ForbiddenException;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -28,11 +30,12 @@ import static org.mockito.Mockito.when;
 
 /**
  * MylabTagService 单测：覆盖 MyLab 标签增删改查的管理员权限控制、字段校验、
- * 默认值与去空格处理，以及键名唯一性冲突检测。
+ * 默认启用值与去空格处理，以及键名唯一性冲突检测。
  */
 @ExtendWith(MockitoExtension.class)
 class MylabTagServiceTest {
     @Mock MylabTagRepository tags;
+    @Mock ApplicationEventPublisher events;
 
     private MylabTagService service;
     private CurrentUser admin;
@@ -40,7 +43,7 @@ class MylabTagServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new MylabTagService(tags);
+        service = new MylabTagService(tags, events);
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
         viewer = new CurrentUser(UUID.randomUUID(), "guest", "viewer");
     }
@@ -64,7 +67,7 @@ class MylabTagServiceTest {
     /** 非管理员创建标签被拒绝。 */
     @Test
     void createRequiresAdmin() {
-        assertThatThrownBy(() -> service.create(viewer, new ContentDtos.TagWrite("demo", "演示", null, null)))
+        assertThatThrownBy(() -> service.create(viewer, new ContentDtos.TagWrite("demo", "演示", null)))
                 .isInstanceOf(ForbiddenException.class);
     }
 
@@ -73,16 +76,9 @@ class MylabTagServiceTest {
     void createRejectsMissingCommandOrBlankFields() {
         assertThatThrownBy(() -> service.create(admin, null))
                 .isInstanceOf(ValidationException.class);
-        assertThatThrownBy(() -> service.create(admin, new ContentDtos.TagWrite("  ", "演示", null, null)))
+        assertThatThrownBy(() -> service.create(admin, new ContentDtos.TagWrite("  ", "演示", null)))
                 .isInstanceOf(ValidationException.class);
-        assertThatThrownBy(() -> service.create(admin, new ContentDtos.TagWrite("demo", null, null, null)))
-                .isInstanceOf(ValidationException.class);
-    }
-
-    /** 排序值为负报参数错误。 */
-    @Test
-    void createRejectsNegativeSortOrder() {
-        assertThatThrownBy(() -> service.create(admin, new ContentDtos.TagWrite("demo", "演示", null, -1)))
+        assertThatThrownBy(() -> service.create(admin, new ContentDtos.TagWrite("demo", null, null)))
                 .isInstanceOf(ValidationException.class);
     }
 
@@ -91,15 +87,15 @@ class MylabTagServiceTest {
     void createRejectsDuplicatedKeyOrName() {
         when(tags.keyOrNameExists("demo", "演示", null)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(admin, new ContentDtos.TagWrite(" demo ", " 演示 ", null, null)))
+        assertThatThrownBy(() -> service.create(admin, new ContentDtos.TagWrite(" demo ", " 演示 ", null)))
                 .isInstanceOf(ConflictException.class);
         verify(tags, never()).add(any());
     }
 
-    /** 创建时去除首尾空格，并填充默认启用状态、排序值与时间戳。 */
+    /** 创建时去除首尾空格，并填充默认启用状态与时间戳。 */
     @Test
     void createAppliesDefaultsAndTrimsFields() {
-        MylabTag result = service.create(admin, new ContentDtos.TagWrite(" demo ", " 演示 ", null, null));
+        MylabTag result = service.create(admin, new ContentDtos.TagWrite(" demo ", " 演示 ", null));
 
         ArgumentCaptor<MylabTag> added = ArgumentCaptor.forClass(MylabTag.class);
         verify(tags).add(added.capture());
@@ -108,26 +104,25 @@ class MylabTagServiceTest {
         assertThat(tag.getTagKey()).isEqualTo("demo");
         assertThat(tag.getName()).isEqualTo("演示");
         assertThat(tag.getEnabled()).isTrue();
-        assertThat(tag.getSortOrder()).isZero();
         assertThat(tag.getCreatedAt()).isNotNull();
         assertThat(tag.getUpdatedAt()).isNotNull();
         assertThat(result).isSameAs(tag);
+        verify(events).publishEvent(any(PublishedContentChangedEvent.class));
     }
 
-    /** 显式传入的启用状态与排序值不被默认值覆盖。 */
+    /** 显式传入的停用状态不被默认值覆盖。 */
     @Test
-    void createKeepsExplicitEnabledAndSortOrder() {
-        MylabTag result = service.create(admin, new ContentDtos.TagWrite("demo", "演示", false, 5));
+    void createKeepsExplicitEnabled() {
+        MylabTag result = service.create(admin, new ContentDtos.TagWrite("demo", "演示", false));
 
         assertThat(result.getEnabled()).isFalse();
-        assertThat(result.getSortOrder()).isEqualTo(5);
     }
 
     /** 非管理员更新标签被拒绝。 */
     @Test
     void updateRequiresAdmin() {
         assertThatThrownBy(() -> service.update(viewer, UUID.randomUUID(),
-                new ContentDtos.TagWrite("demo", "演示", null, null)))
+                new ContentDtos.TagWrite("demo", "演示", null)))
                 .isInstanceOf(ForbiddenException.class);
     }
 
@@ -137,7 +132,7 @@ class MylabTagServiceTest {
         UUID id = UUID.randomUUID();
         when(tags.findById(id)).thenReturn(null);
 
-        assertThatThrownBy(() -> service.update(admin, id, new ContentDtos.TagWrite("demo", "演示", null, null)))
+        assertThatThrownBy(() -> service.update(admin, id, new ContentDtos.TagWrite("demo", "演示", null)))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -147,11 +142,11 @@ class MylabTagServiceTest {
         MylabTag tag = persistedTag("demo", "演示");
         when(tags.findById(tag.getId())).thenReturn(tag);
 
-        assertThatThrownBy(() -> service.update(admin, tag.getId(), new ContentDtos.TagWrite("demo", " ", null, null)))
+        assertThatThrownBy(() -> service.update(admin, tag.getId(), new ContentDtos.TagWrite("demo", " ", null)))
                 .isInstanceOf(ValidationException.class);
 
         when(tags.keyOrNameExists("other", "其他", tag.getId())).thenReturn(true);
-        assertThatThrownBy(() -> service.update(admin, tag.getId(), new ContentDtos.TagWrite("other", "其他", null, null)))
+        assertThatThrownBy(() -> service.update(admin, tag.getId(), new ContentDtos.TagWrite("other", "其他", null)))
                 .isInstanceOf(ConflictException.class);
         verify(tags, never()).save(any());
     }
@@ -161,31 +156,29 @@ class MylabTagServiceTest {
     void updateKeepsUnsetFieldsAndRefreshesTimestamp() {
         MylabTag tag = persistedTag("demo", "演示");
         tag.setEnabled(false);
-        tag.setSortOrder(7);
         OffsetDateTime previousUpdate = tag.getUpdatedAt();
         when(tags.findById(tag.getId())).thenReturn(tag);
 
-        MylabTag result = service.update(admin, tag.getId(), new ContentDtos.TagWrite(" new-key ", " 新名称 ", null, null));
+        MylabTag result = service.update(admin, tag.getId(), new ContentDtos.TagWrite(" new-key ", " 新名称 ", null));
 
         assertThat(result.getTagKey()).isEqualTo("new-key");
         assertThat(result.getName()).isEqualTo("新名称");
         assertThat(result.getEnabled()).isFalse();
-        assertThat(result.getSortOrder()).isEqualTo(7);
         assertThat(result.getUpdatedAt()).isAfterOrEqualTo(previousUpdate);
         verify(tags).keyOrNameExists("new-key", "新名称", tag.getId());
         verify(tags).save(tag);
+        verify(events).publishEvent(any(PublishedContentChangedEvent.class));
     }
 
-    /** 显式传入的启用状态与排序值（含 false/0）生效。 */
+    /** 显式传入的启用状态生效。 */
     @Test
-    void updateAppliesExplicitEnabledAndSortOrder() {
+    void updateAppliesExplicitEnabled() {
         MylabTag tag = persistedTag("demo", "演示");
         when(tags.findById(tag.getId())).thenReturn(tag);
 
-        MylabTag result = service.update(admin, tag.getId(), new ContentDtos.TagWrite("demo", "演示", true, 0));
+        MylabTag result = service.update(admin, tag.getId(), new ContentDtos.TagWrite("demo", "演示", true));
 
         assertThat(result.getEnabled()).isTrue();
-        assertThat(result.getSortOrder()).isZero();
     }
 
     /** 非管理员删除标签被拒绝。 */
@@ -214,6 +207,7 @@ class MylabTagServiceTest {
         service.delete(admin, id);
 
         verify(tags).remove(id);
+        verify(events).publishEvent(any(PublishedContentChangedEvent.class));
     }
 
     private MylabTag persistedTag(String key, String name) {
@@ -222,7 +216,6 @@ class MylabTagServiceTest {
         tag.setTagKey(key);
         tag.setName(name);
         tag.setEnabled(true);
-        tag.setSortOrder(0);
         OffsetDateTime now = OffsetDateTime.now();
         tag.setCreatedAt(now);
         tag.setUpdatedAt(now);
