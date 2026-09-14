@@ -87,7 +87,7 @@ starter ────────> application / common / infrastructure
 | `user` | 后台用户管理（创建/删除限 superadmin） |
 | `content` | 七个内容模块（home/about/skills/footprints/hobbies/vibe/mylab）的草稿、发布、下线、历史版本与恢复 |
 | `file` | 文件元数据、OSS 上传、预签名 URL |
-| `engagement` | 浏览/点赞计数（Redis Lua 原子操作，定时快照落 PG，Redis 故障降级读快照） |
+| `engagement` | 浏览/点赞计数（Redis Lua 原子操作，定时快照落 PG，Redis 故障降级读快照）；写接口防刷校验优先读 Redis 已发布索引（`PublishedPostCache`），未命中回源 PG 补写，MyLab 发布/下线提交后整体重建 |
 | `system` | 健康状态与系统信息 |
 
 ### 版本化内容系统

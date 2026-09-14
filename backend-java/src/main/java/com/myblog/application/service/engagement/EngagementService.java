@@ -2,6 +2,7 @@ package com.myblog.application.service.engagement;
 
 import com.myblog.application.model.dto.EngagementDtos;
 import com.myblog.application.port.EngagementStore;
+import com.myblog.application.port.PublishedPostCache;
 import com.myblog.application.repository.EngagementStatsRepository;
 import com.myblog.common.constant.ContentConstant;
 import com.myblog.common.exception.EngagementUnavailableException;
@@ -38,10 +39,13 @@ public class EngagementService {
 
     private final EngagementStore store;
     private final EngagementStatsRepository repository;
+    private final PublishedPostCache publishedPosts;
 
-    public EngagementService(EngagementStore store, EngagementStatsRepository repository) {
+    public EngagementService(EngagementStore store, EngagementStatsRepository repository,
+                             PublishedPostCache publishedPosts) {
         this.store = store;
         this.repository = repository;
+        this.publishedPosts = publishedPosts;
     }
 
     /**
@@ -136,12 +140,23 @@ public class EngagementService {
     /**
      * 写入前的双层校验：先校验 post_key 格式，再确认文章存在且属于已发布内容，
      * 防止对未公开或不存在的内容刷互动计数。
+     * 已发布集合变化极慢（仅发布/下线时变化）：优先命中 Redis 索引，未命中回源
+     * PostgreSQL 并补写索引，避免每次浏览/点赞都对数据库做一次 JOIN 查询。
      */
     private void validatePublishedPost(String postKey) {
         validatePostKey(postKey);
+        if (publishedPosts.contains(postKey)) {
+            return;
+        }
         if (!repository.publishedPostExists(postKey)) {
             throw new NotFoundException("文章或项目不存在、未启用或尚未发布");
         }
+        publishedPosts.add(postKey);
+    }
+
+    /** MyLab 发布/下线事务提交后，按数据库当前已发布集合整体重建防刷索引。 */
+    public void refreshPublishedPostIndex() {
+        publishedPosts.rebuild(repository.findPublishedPostKeys());
     }
 
     /** 归一化批量查询的 post_key：去空白、去重、校验格式，并限制单次最多 100 个以防滥用。 */

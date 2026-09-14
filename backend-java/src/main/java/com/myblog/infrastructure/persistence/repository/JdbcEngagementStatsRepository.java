@@ -44,6 +44,21 @@ public class JdbcEngagementStatsRepository implements EngagementStatsRepository 
         return count != null && count > 0;
     }
 
+    /** 查询当前已发布且启用的全部 MyLab 卡片 post_key，过滤条件与 publishedPostExists 保持一致 */
+    @Override
+    public List<String> findPublishedPostKeys() {
+        return jdbc.queryForList("""
+                SELECT card.post_key
+                FROM mylab_cards card
+                JOIN content_releases release ON release.id = card.release_id
+                WHERE release.module_key = 'mylab'
+                  AND release.state = 'PUBLISHED'
+                  AND release.deleted_at IS NULL
+                  AND card.enabled = TRUE
+                  AND card.deleted_at IS NULL
+                """, String.class);
+    }
+
     @Override
     public List<EngagementDtos.EngagementSummary> findEngagement(List<String> postKeys) {
         if (postKeys.isEmpty()) return List.of();

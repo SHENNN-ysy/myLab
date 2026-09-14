@@ -2,6 +2,7 @@ package com.myblog.application.service.engagement;
 
 import com.myblog.application.model.dto.EngagementDtos;
 import com.myblog.application.port.EngagementStore;
+import com.myblog.application.port.PublishedPostCache;
 import com.myblog.application.repository.EngagementStatsRepository;
 import com.myblog.common.exception.EngagementUnavailableException;
 import com.myblog.common.exception.NotFoundException;
@@ -34,13 +35,14 @@ import static org.mockito.Mockito.when;
 class EngagementServiceTest {
     @Mock EngagementStore store;
     @Mock EngagementStatsRepository repository;
+    @Mock PublishedPostCache publishedPosts;
 
     private EngagementService service;
     private CurrentUser admin;
 
     @BeforeEach
     void setUp() {
-        service = new EngagementService(store, repository);
+        service = new EngagementService(store, repository, publishedPosts);
         admin = new CurrentUser(UUID.randomUUID(), "admin", "admin");
     }
 
@@ -141,6 +143,38 @@ class EngagementServiceTest {
 
         assertThatThrownBy(() -> service.engagement(keys))
                 .isInstanceOf(ValidationException.class);
+    }
+
+    /** 已发布索引命中时不再查询数据库，直接放行互动。 */
+    @Test
+    void interactionSkipsDatabaseCheckWhenPublishedIndexHits() {
+        EngagementDtos.EngagementView view = view("post-a", 5, 1, false);
+        when(publishedPosts.contains("post-a")).thenReturn(true);
+        when(store.registerView(eq("visitor"), eq("post-a"), any())).thenReturn(view);
+
+        assertThat(service.registerView("visitor", "post-a")).isEqualTo(view);
+        verify(repository, never()).publishedPostExists(any());
+    }
+
+    /** 索引未命中且数据库确认已发布时，补写索引后放行互动。 */
+    @Test
+    void interactionBackfillsIndexAfterDatabaseConfirmsPublished() {
+        EngagementDtos.EngagementView view = view("post-a", 5, 2, true);
+        when(repository.publishedPostExists("post-a")).thenReturn(true);
+        when(store.like(eq("visitor"), eq("post-a"), any())).thenReturn(view);
+
+        assertThat(service.like("visitor", "post-a")).isEqualTo(view);
+        verify(publishedPosts).add("post-a");
+    }
+
+    /** 索引重建按数据库当前已发布集合整体替换。 */
+    @Test
+    void refreshPublishedPostIndexRebuildsFromDatabase() {
+        when(repository.findPublishedPostKeys()).thenReturn(List.of("post-a", "post-b"));
+
+        service.refreshPublishedPostIndex();
+
+        verify(publishedPosts).rebuild(List.of("post-a", "post-b"));
     }
 
     /** 已发布文章的浏览登记委托给 Redis 存储。 */
