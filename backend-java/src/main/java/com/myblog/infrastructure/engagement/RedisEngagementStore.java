@@ -2,7 +2,10 @@ package com.myblog.infrastructure.engagement;
 
 import com.myblog.application.model.dto.EngagementDtos;
 import com.myblog.application.port.EngagementStore;
+import com.myblog.common.constant.RedisKeyPrefix;
 import com.myblog.common.exception.EngagementUnavailableException;
+import com.myblog.common.properties.EngagementStreamProperties;
+import com.myblog.common.properties.VisitorProperties;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -21,132 +24,197 @@ import java.util.UUID;
 
 /**
  * Redis 互动实时统计实现：浏览/点赞/访问的实时计数只活在 Redis，匿名访客
- * 以 HMAC 散列后的 visitorHash 作为键（72h TTL），不持久化任何访客明细。
+ * 以 HMAC 散列后的 visitorHash 作为 Hash 键（24h 滑动 TTL），不持久化任何访客明细。
  * <p>
  * 一致性模型：
  * <ul>
  *   <li>所有跨键计数变化均由 Lua 脚本原子完成（校验访客、去重、加减计数、
  *       登记脏集合一次提交），避免并发请求下计数与脏标记脱节；</li>
- *   <li>每次成功计数都把受影响对象登记进 dirty 集合（文章/站点/按日三类），
- *       快照任务按 dirty→processing→ack 三步认领：先整体搬入 processing，
- *       落 PG 成功后才从 processing 删除（ack）；任务中途失败时 processing
- *       中的标记保留，下次认领前由 {@link #recoverProcessing()} 搬回 dirty 重试，
- *       保证"至少一次"落库而不丢更新；</li>
+ *   <li>每次有效计数都在同一 Lua 中追加 Redis Stream 脏聚合通知；Consumer Group
+ *       批量读取 Redis 最新绝对值，落 PG 成功后才确认消息，提供至少一次处理；</li>
+ *   <li>迁移观察期继续同步登记 dirty 集合，关闭 Stream 开关即可回退到旧快照任务；</li>
  *   <li>PG 中的值是 Redis 绝对值的周期性快照（整体覆盖而非增量），
  *       重启时再从 PG 回填 Redis 兜底（putIfAbsent，不覆盖 Redis 已有值）。
  * </ul>
  */
 @Component
 public class RedisEngagementStore implements EngagementStore {
-    static final String SITE_METRICS_KEY = "blog:site:metrics";
-    // dirty/processing 三类脏集合：stats=文章维度、site=站点总计、daily=按日统计
-    static final String DIRTY_STATS_KEY = "blog:dirty:stats";
-    static final String PROCESSING_STATS_KEY = "blog:processing:stats";
-    static final String DIRTY_SITE_KEY = "blog:dirty:site";
-    static final String PROCESSING_SITE_KEY = "blog:processing:site";
-    static final String DIRTY_DAILY_KEY = "blog:dirty:daily";
-    static final String PROCESSING_DAILY_KEY = "blog:processing:daily";
-    private static final String SNAPSHOT_LOCK_KEY = "blog:lock:snapshot";
-    private static final Duration VISITOR_TTL = Duration.ofHours(72);
+    static final String SITE_METRICS_KEY = RedisKeyPrefix.BLOG + "site:metrics";
+    // 迁移观察期保留的 dirty/processing 集合：关闭 Stream 后由旧快照任务消费。
+    static final String DIRTY_STATS_KEY = RedisKeyPrefix.BLOG + "dirty:stats";
+    static final String PROCESSING_STATS_KEY = RedisKeyPrefix.BLOG + "processing:stats";
+    static final String DIRTY_SITE_KEY = RedisKeyPrefix.BLOG + "dirty:site";
+    static final String PROCESSING_SITE_KEY = RedisKeyPrefix.BLOG + "processing:site";
+    static final String DIRTY_DAILY_KEY = RedisKeyPrefix.BLOG + "dirty:daily";
+    static final String PROCESSING_DAILY_KEY = RedisKeyPrefix.BLOG + "processing:daily";
+    private static final String SNAPSHOT_LOCK_KEY = RedisKeyPrefix.BLOG + "lock:snapshot";
     private static final long DAILY_TTL_SECONDS = Duration.ofDays(120).toSeconds();
 
+    /** 创建只含元数据的新访客 Hash；访问与页面去重字段由后续业务脚本原子写入。 */
+    private static final DefaultRedisScript<Long> CREATE_VISITOR_SCRIPT = new DefaultRedisScript<>("""
+            redis.call('HSET', KEYS[1], 'created_at', ARGV[1], 'last_seen_at', ARGV[1])
+            redis.call('PEXPIRE', KEYS[1], ARGV[2])
+            return 1
+            """, Long.class);
+
     /**
-     * 浏览脚本：访客过期直接报错；30 分钟去重窗口内重复浏览不计数；
-     * 首次计数时同步累加文章、站点总计、当日三处计数，并把受影响对象登记进三类脏集合。
+     * 页面浏览脚本：一份凭证只登记一次访问，每个页面字段只登记一次浏览；
+     * 详情页同时累加文章浏览，全部状态与聚合更新在一个 Lua 事务内完成。
      */
-    private static final DefaultRedisScript<List> VIEW_SCRIPT = script("""
+    private static final DefaultRedisScript<List> PAGE_VIEW_SCRIPT = script("""
             if redis.call('EXISTS', KEYS[1]) == 0 then return redis.error_reply('VISITOR_EXPIRED') end
-            local counted = redis.call('SET', KEYS[2], '1', 'EX', 1800, 'NX')
-            if counted then
-              redis.call('HINCRBY', KEYS[3], 'view_count', 1)
-              redis.call('HINCRBY', KEYS[4], 'total_view_count', 1)
-              redis.call('HINCRBY', KEYS[5], 'view_count', 1)
-              redis.call('EXPIRE', KEYS[5], ARGV[2])
-              redis.call('SADD', KEYS[7], ARGV[1])
-              redis.call('SADD', KEYS[8], 'site')
-              redis.call('SADD', KEYS[9], ARGV[3])
+            redis.call('HSET', KEYS[1], 'last_seen_at', ARGV[8])
+            redis.call('PEXPIRE', KEYS[1], ARGV[7])
+            local firstVisit = redis.call('HSETNX', KEYS[1], 'visit', ARGV[8])
+            local firstView = redis.call('HSETNX', KEYS[1], ARGV[2], ARGV[8])
+            if firstVisit == 1 then
+              redis.call('HINCRBY', KEYS[3], 'visit_count', 1)
+              redis.call('HINCRBY', KEYS[4], 'visit_count', 1)
+            end
+            if firstView == 1 then
+              redis.call('HINCRBY', KEYS[3], 'total_view_count', 1)
+              redis.call('HINCRBY', KEYS[4], 'view_count', 1)
+              if ARGV[9] == '1' then redis.call('HINCRBY', KEYS[2], 'view_count', 1) end
+            end
+            if firstVisit == 1 or firstView == 1 then
+              redis.call('EXPIRE', KEYS[4], ARGV[4])
+              redis.call('SADD', KEYS[6], 'site')
+              redis.call('SADD', KEYS[7], ARGV[5])
+              if ARGV[9] == '1' and firstView == 1 then redis.call('SADD', KEYS[5], ARGV[1]) end
+              if ARGV[6] == '1' then
+                if ARGV[9] == '1' and firstView == 1 then
+                  redis.call('XADD', KEYS[8], '*',
+                    'event_type', 'VIEW', 'post_key', ARGV[1], 'stat_date', ARGV[5],
+                    'post_dirty', '1', 'site_dirty', '1', 'daily_dirty', '1')
+                else
+                  redis.call('XADD', KEYS[8], '*',
+                    'event_type', 'VISIT', 'post_key', '', 'stat_date', ARGV[5],
+                    'post_dirty', '0', 'site_dirty', '1', 'daily_dirty', '1')
+                end
+              end
             end
             return {
-              tonumber(redis.call('HGET', KEYS[3], 'view_count') or '0'),
-              tonumber(redis.call('HGET', KEYS[3], 'like_count') or '0'),
-              redis.call('SISMEMBER', KEYS[6], ARGV[1]),
-              tonumber(redis.call('HGET', KEYS[4], 'visit_count') or '0'),
-              tonumber(redis.call('HGET', KEYS[4], 'total_view_count') or '0'),
-              tonumber(redis.call('HGET', KEYS[4], 'total_like_count') or '0')
+              tonumber(redis.call('HGET', KEYS[2], 'view_count') or '0'),
+              tonumber(redis.call('HGET', KEYS[2], 'like_count') or '0'),
+              redis.call('HEXISTS', KEYS[1], ARGV[3]),
+              tonumber(redis.call('HGET', KEYS[3], 'visit_count') or '0'),
+              tonumber(redis.call('HGET', KEYS[3], 'total_view_count') or '0'),
+              tonumber(redis.call('HGET', KEYS[3], 'total_like_count') or '0')
             }
             """);
 
     /**
-     * 点赞脚本：SADD 天然幂等（重复点赞不重复计数）；点赞集合的 TTL 跟随访客键，
-     * 使访客过期后其点赞关系一并失效；仅首次点赞时累加计数并登记脏集合。
+     * 点赞脚本：点赞字段 HSETNX 天然幂等；若详情浏览尚未登记，则同时补记访问和浏览，
+     * 保证新口径下每次访问至少对应一个页面浏览。
      */
     private static final DefaultRedisScript<List> LIKE_SCRIPT = script("""
             if redis.call('EXISTS', KEYS[1]) == 0 then return redis.error_reply('VISITOR_EXPIRED') end
-            local ttl = redis.call('PTTL', KEYS[1])
-            if ttl <= 0 then return redis.error_reply('VISITOR_EXPIRED') end
-            local added = redis.call('SADD', KEYS[2], ARGV[1])
-            redis.call('PEXPIRE', KEYS[2], ttl)
+            redis.call('HSET', KEYS[1], 'last_seen_at', ARGV[8])
+            redis.call('PEXPIRE', KEYS[1], ARGV[7])
+            local firstVisit = redis.call('HSETNX', KEYS[1], 'visit', ARGV[8])
+            local firstView = redis.call('HSETNX', KEYS[1], ARGV[2], ARGV[8])
+            local added = redis.call('HSETNX', KEYS[1], ARGV[3], ARGV[8])
+            if firstVisit == 1 then
+              redis.call('HINCRBY', KEYS[3], 'visit_count', 1)
+              redis.call('HINCRBY', KEYS[4], 'visit_count', 1)
+            end
+            if firstView == 1 then
+              redis.call('HINCRBY', KEYS[2], 'view_count', 1)
+              redis.call('HINCRBY', KEYS[3], 'total_view_count', 1)
+              redis.call('HINCRBY', KEYS[4], 'view_count', 1)
+            end
             if added == 1 then
-              redis.call('HINCRBY', KEYS[3], 'like_count', 1)
-              redis.call('HINCRBY', KEYS[4], 'total_like_count', 1)
-              redis.call('HINCRBY', KEYS[5], 'like_count', 1)
-              redis.call('EXPIRE', KEYS[5], ARGV[2])
-              redis.call('SADD', KEYS[6], ARGV[1])
-              redis.call('SADD', KEYS[7], 'site')
-              redis.call('SADD', KEYS[8], ARGV[3])
+              redis.call('HINCRBY', KEYS[2], 'like_count', 1)
+              redis.call('HINCRBY', KEYS[3], 'total_like_count', 1)
+              redis.call('HINCRBY', KEYS[4], 'like_count', 1)
+            end
+            if firstVisit == 1 or firstView == 1 or added == 1 then
+              redis.call('EXPIRE', KEYS[4], ARGV[4])
+              redis.call('SADD', KEYS[6], 'site')
+              redis.call('SADD', KEYS[7], ARGV[5])
+              if firstView == 1 or added == 1 then redis.call('SADD', KEYS[5], ARGV[1]) end
+              if ARGV[6] == '1' then
+                if added == 1 then
+                  redis.call('XADD', KEYS[8], '*',
+                    'event_type', 'LIKE', 'post_key', ARGV[1], 'stat_date', ARGV[5],
+                    'post_dirty', '1', 'site_dirty', '1', 'daily_dirty', '1')
+                elseif firstView == 1 then
+                  redis.call('XADD', KEYS[8], '*',
+                    'event_type', 'VIEW', 'post_key', ARGV[1], 'stat_date', ARGV[5],
+                    'post_dirty', '1', 'site_dirty', '1', 'daily_dirty', '1')
+                else
+                  redis.call('XADD', KEYS[8], '*',
+                    'event_type', 'VISIT', 'post_key', '', 'stat_date', ARGV[5],
+                    'post_dirty', '0', 'site_dirty', '1', 'daily_dirty', '1')
+                end
+              end
             end
             return {
-              tonumber(redis.call('HGET', KEYS[3], 'view_count') or '0'),
-              tonumber(redis.call('HGET', KEYS[3], 'like_count') or '0'),
+              tonumber(redis.call('HGET', KEYS[2], 'view_count') or '0'),
+              tonumber(redis.call('HGET', KEYS[2], 'like_count') or '0'),
               1,
-              tonumber(redis.call('HGET', KEYS[4], 'visit_count') or '0'),
-              tonumber(redis.call('HGET', KEYS[4], 'total_view_count') or '0'),
-              tonumber(redis.call('HGET', KEYS[4], 'total_like_count') or '0')
+              tonumber(redis.call('HGET', KEYS[3], 'visit_count') or '0'),
+              tonumber(redis.call('HGET', KEYS[3], 'total_view_count') or '0'),
+              tonumber(redis.call('HGET', KEYS[3], 'total_like_count') or '0')
             }
             """);
 
     /**
-     * 取消点赞脚本：仅当点赞集合中确实存在（SREM=1）才减计数；减前判断当前值 > 0，
-     * 防止 Redis 计数被快照/回填流程重置后出现负数。
+     * 取消点赞脚本：HDEL 成功才减计数；若详情尚未浏览则先补记访问和浏览。
+     * 浏览与取消点赞可能分别产生 VIEW、UNLIKE 两条脏通知，消费者读取绝对值后幂等落库。
      */
     private static final DefaultRedisScript<List> UNLIKE_SCRIPT = script("""
             if redis.call('EXISTS', KEYS[1]) == 0 then return redis.error_reply('VISITOR_EXPIRED') end
-            local removed = redis.call('SREM', KEYS[2], ARGV[1])
-            if removed == 1 then
-              local postLikes = tonumber(redis.call('HGET', KEYS[3], 'like_count') or '0')
-              local siteLikes = tonumber(redis.call('HGET', KEYS[4], 'total_like_count') or '0')
-              if postLikes > 0 then redis.call('HINCRBY', KEYS[3], 'like_count', -1) end
-              if siteLikes > 0 then redis.call('HINCRBY', KEYS[4], 'total_like_count', -1) end
-              redis.call('SADD', KEYS[5], ARGV[1])
-              redis.call('SADD', KEYS[6], 'site')
-            end
-            return {
-              tonumber(redis.call('HGET', KEYS[3], 'view_count') or '0'),
-              tonumber(redis.call('HGET', KEYS[3], 'like_count') or '0'),
-              0,
-              tonumber(redis.call('HGET', KEYS[4], 'visit_count') or '0'),
-              tonumber(redis.call('HGET', KEYS[4], 'total_view_count') or '0'),
-              tonumber(redis.call('HGET', KEYS[4], 'total_like_count') or '0')
-            }
-            """);
-
-    /**
-     * 访问脚本：30 分钟会话窗口去重（窗口内访问只续期不计数）；
-     * 新会话才累加站点与当日访问数并登记脏集合。
-     */
-    private static final DefaultRedisScript<List> VISIT_SCRIPT = script("""
-            if redis.call('EXISTS', KEYS[1]) == 0 then return redis.error_reply('VISITOR_EXPIRED') end
-            if redis.call('EXISTS', KEYS[2]) == 1 then
-              redis.call('PEXPIRE', KEYS[2], 1800000)
-            else
-              redis.call('SET', KEYS[2], '1', 'PX', 1800000)
+            redis.call('HSET', KEYS[1], 'last_seen_at', ARGV[8])
+            redis.call('PEXPIRE', KEYS[1], ARGV[7])
+            local firstVisit = redis.call('HSETNX', KEYS[1], 'visit', ARGV[8])
+            local firstView = redis.call('HSETNX', KEYS[1], ARGV[2], ARGV[8])
+            local removed = redis.call('HDEL', KEYS[1], ARGV[3])
+            if firstVisit == 1 then
               redis.call('HINCRBY', KEYS[3], 'visit_count', 1)
               redis.call('HINCRBY', KEYS[4], 'visit_count', 1)
-              redis.call('EXPIRE', KEYS[4], ARGV[1])
-              redis.call('SADD', KEYS[5], 'site')
-              redis.call('SADD', KEYS[6], ARGV[2])
+            end
+            if firstView == 1 then
+              redis.call('HINCRBY', KEYS[2], 'view_count', 1)
+              redis.call('HINCRBY', KEYS[3], 'total_view_count', 1)
+              redis.call('HINCRBY', KEYS[4], 'view_count', 1)
+            end
+            if removed == 1 then
+              local postLikes = tonumber(redis.call('HGET', KEYS[2], 'like_count') or '0')
+              local siteLikes = tonumber(redis.call('HGET', KEYS[3], 'total_like_count') or '0')
+              if postLikes > 0 then redis.call('HINCRBY', KEYS[2], 'like_count', -1) end
+              if siteLikes > 0 then redis.call('HINCRBY', KEYS[3], 'total_like_count', -1) end
+            end
+            if firstVisit == 1 or firstView == 1 then
+              redis.call('EXPIRE', KEYS[4], ARGV[4])
+              redis.call('SADD', KEYS[6], 'site')
+              redis.call('SADD', KEYS[7], ARGV[5])
+              if firstView == 1 then redis.call('SADD', KEYS[5], ARGV[1]) end
+              if ARGV[6] == '1' then
+                if firstView == 1 then
+                  redis.call('XADD', KEYS[8], '*',
+                    'event_type', 'VIEW', 'post_key', ARGV[1], 'stat_date', ARGV[5],
+                    'post_dirty', '1', 'site_dirty', '1', 'daily_dirty', '1')
+                else
+                  redis.call('XADD', KEYS[8], '*',
+                    'event_type', 'VISIT', 'post_key', '', 'stat_date', ARGV[5],
+                    'post_dirty', '0', 'site_dirty', '1', 'daily_dirty', '1')
+                end
+              end
+            end
+            if removed == 1 then
+              redis.call('SADD', KEYS[5], ARGV[1])
+              redis.call('SADD', KEYS[6], 'site')
+              if ARGV[6] == '1' then
+                redis.call('XADD', KEYS[8], '*',
+                  'event_type', 'UNLIKE', 'post_key', ARGV[1], 'stat_date', '',
+                  'post_dirty', '1', 'site_dirty', '1', 'daily_dirty', '0')
+              end
             end
             return {
+              tonumber(redis.call('HGET', KEYS[2], 'view_count') or '0'),
+              tonumber(redis.call('HGET', KEYS[2], 'like_count') or '0'),
+              0,
               tonumber(redis.call('HGET', KEYS[3], 'visit_count') or '0'),
               tonumber(redis.call('HGET', KEYS[3], 'total_view_count') or '0'),
               tonumber(redis.call('HGET', KEYS[3], 'total_like_count') or '0')
@@ -160,9 +228,14 @@ public class RedisEngagementStore implements EngagementStore {
             """, Long.class);
 
     private final StringRedisTemplate redis;
+    private final EngagementStreamProperties streamProperties;
+    private final long visitorTtlMillis;
 
-    public RedisEngagementStore(StringRedisTemplate redis) {
+    public RedisEngagementStore(StringRedisTemplate redis, EngagementStreamProperties streamProperties,
+                                VisitorProperties visitorProperties) {
         this.redis = redis;
+        this.streamProperties = streamProperties;
+        this.visitorTtlMillis = visitorProperties.visitorIdentityTtl().toMillis();
     }
 
     @Override
@@ -177,7 +250,9 @@ public class RedisEngagementStore implements EngagementStore {
     @Override
     public void createVisitor(String visitorHash) {
         try {
-            redis.opsForValue().set(visitorKey(visitorHash), "1", VISITOR_TTL);
+            String now = Long.toString(System.currentTimeMillis());
+            redis.execute(CREATE_VISITOR_SCRIPT, List.of(visitorKey(visitorHash)),
+                    now, Long.toString(visitorTtlMillis));
         } catch (RuntimeException exception) {
             throw new EngagementUnavailableException();
         }
@@ -211,39 +286,43 @@ public class RedisEngagementStore implements EngagementStore {
     }
 
     @Override
-    public EngagementDtos.EngagementView registerView(String visitorHash, String postKey, LocalDate date) {
-        List<?> values = execute(VIEW_SCRIPT, List.of(
-                visitorKey(visitorHash), "blog:view:dedupe:" + postKey + ":" + visitorHash,
-                engagementKey(postKey), SITE_METRICS_KEY, dailyKey(date), likesKey(visitorHash),
-                DIRTY_STATS_KEY, DIRTY_SITE_KEY, DIRTY_DAILY_KEY),
-                postKey, Long.toString(DAILY_TTL_SECONDS), date.toString());
-        return engagementView(postKey, values);
+    public EngagementDtos.PageViewResult registerPageView(
+            String visitorHash, EngagementDtos.PageType pageType, String postKey, LocalDate date) {
+        boolean detail = pageType == EngagementDtos.PageType.MYLAB_DETAIL;
+        String effectivePostKey = detail ? postKey : "_page";
+        List<?> values = execute(PAGE_VIEW_SCRIPT, List.of(
+                visitorKey(visitorHash), engagementKey(effectivePostKey), SITE_METRICS_KEY, dailyKey(date),
+                DIRTY_STATS_KEY, DIRTY_SITE_KEY, DIRTY_DAILY_KEY, RedisEngagementEventStream.STREAM_KEY),
+                detail ? postKey : "", viewField(pageType, postKey), likeField(effectivePostKey),
+                Long.toString(DAILY_TTL_SECONDS), date.toString(), streamEnabled(),
+                Long.toString(visitorTtlMillis), Long.toString(System.currentTimeMillis()), detail ? "1" : "0");
+        return new EngagementDtos.PageViewResult(pageType.wireValue(), detail ? postKey : null,
+                detail ? asLong(values.get(0)) : null,
+                detail ? asLong(values.get(1)) : null,
+                detail ? asLong(values.get(2)) == 1 : null,
+                siteView(values, 3));
     }
 
     @Override
     public EngagementDtos.EngagementView like(String visitorHash, String postKey, LocalDate date) {
         List<?> values = execute(LIKE_SCRIPT, List.of(
-                visitorKey(visitorHash), likesKey(visitorHash), engagementKey(postKey), SITE_METRICS_KEY,
-                dailyKey(date), DIRTY_STATS_KEY, DIRTY_SITE_KEY, DIRTY_DAILY_KEY),
-                postKey, Long.toString(DAILY_TTL_SECONDS), date.toString());
+                visitorKey(visitorHash), engagementKey(postKey), SITE_METRICS_KEY, dailyKey(date),
+                DIRTY_STATS_KEY, DIRTY_SITE_KEY, DIRTY_DAILY_KEY, RedisEngagementEventStream.STREAM_KEY),
+                postKey, viewField(EngagementDtos.PageType.MYLAB_DETAIL, postKey), likeField(postKey),
+                Long.toString(DAILY_TTL_SECONDS), date.toString(), streamEnabled(),
+                Long.toString(visitorTtlMillis), Long.toString(System.currentTimeMillis()));
         return engagementView(postKey, values);
     }
 
     @Override
-    public EngagementDtos.EngagementView unlike(String visitorHash, String postKey) {
+    public EngagementDtos.EngagementView unlike(String visitorHash, String postKey, LocalDate date) {
         List<?> values = execute(UNLIKE_SCRIPT, List.of(
-                visitorKey(visitorHash), likesKey(visitorHash), engagementKey(postKey), SITE_METRICS_KEY,
-                DIRTY_STATS_KEY, DIRTY_SITE_KEY), postKey);
+                visitorKey(visitorHash), engagementKey(postKey), SITE_METRICS_KEY, dailyKey(date),
+                DIRTY_STATS_KEY, DIRTY_SITE_KEY, DIRTY_DAILY_KEY, RedisEngagementEventStream.STREAM_KEY),
+                postKey, viewField(EngagementDtos.PageType.MYLAB_DETAIL, postKey), likeField(postKey),
+                Long.toString(DAILY_TTL_SECONDS), date.toString(), streamEnabled(),
+                Long.toString(visitorTtlMillis), Long.toString(System.currentTimeMillis()));
         return engagementView(postKey, values);
-    }
-
-    @Override
-    public EngagementDtos.SiteStatisticsView registerVisit(String visitorHash, LocalDate date) {
-        List<?> values = execute(VISIT_SCRIPT, List.of(
-                visitorKey(visitorHash), "blog:site:session:" + visitorHash, SITE_METRICS_KEY,
-                dailyKey(date), DIRTY_SITE_KEY, DIRTY_DAILY_KEY),
-                Long.toString(DAILY_TTL_SECONDS), date.toString());
-        return siteView(values, 0);
     }
 
     @Override
@@ -382,20 +461,32 @@ public class RedisEngagementStore implements EngagementStore {
         return value.getBytes(StandardCharsets.UTF_8);
     }
 
-    private static String visitorKey(String visitorHash) {
-        return "blog:visitor:" + visitorHash;
+    private String streamEnabled() {
+        return streamProperties.enabled() ? "1" : "0";
     }
 
-    private static String likesKey(String visitorHash) {
-        return "blog:visitor:likes:" + visitorHash;
+    private static String visitorKey(String visitorHash) {
+        return RedisKeyPrefix.BLOG + "visitor:v2:" + visitorHash;
+    }
+
+    private static String viewField(EngagementDtos.PageType pageType, String postKey) {
+        return switch (pageType) {
+            case HOME -> "view:home";
+            case MYLAB -> "view:mylab";
+            case MYLAB_DETAIL -> "view:post:" + postKey;
+        };
+    }
+
+    private static String likeField(String postKey) {
+        return "like:" + postKey;
     }
 
     private static String engagementKey(String postKey) {
-        return "blog:engagement:" + postKey;
+        return RedisKeyPrefix.BLOG + "engagement:" + postKey;
     }
 
     private static String dailyKey(LocalDate date) {
-        return "blog:daily:" + date;
+        return RedisKeyPrefix.BLOG + "daily:" + date;
     }
 
     private static DefaultRedisScript<List> script(String source) {

@@ -46,9 +46,10 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     static final int MAX_MYLAB_MARKDOWN_CHARACTERS = 500_000;
     static final int MAX_VERSION_NAME_CHARACTERS = 120;
     static final int MAX_VERSION_DESCRIPTION_CHARACTERS = 2_000;
+    private static final int MYLAB_LATEST_LIMIT = 5; // 聚合接口返回的 MyLab 最新卡片数量
     private static final List<String> KEYS = List.of("home", "about", "skills", "footprints", "hobbies", "vibe", "mylab"); // 支持的内容模块清单
     private static final List<String> PUBLIC_KEYS = List.of(
-            "home", "about", "skills", "footprints", "hobbies", "vibe", "myproject");
+            "home", "about", "skills", "footprints", "hobbies", "vibe", "myproject", "mylab");
     private static final Set<String> TIME_KEYS = Set.of("爱好1", "爱好2", "爱好3", "爱好4", "爱好5"); // hobbies 时间分布图的五个维度
     private static final ObjectMapper OM = JacksonObjectMapper.get();
 
@@ -87,7 +88,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return result;
     }
 
-    /** 缓存未命中时从 PostgreSQL 汇总首页摘要，MyLab 只投影为携带自身标签的 myproject。 */
+    /** 缓存未命中时从 PostgreSQL 汇总首页摘要，MyLab 只投影为携带自身标签的 myproject 与最新 5 张卡片的 mylab。 */
     private Map<String, Object> loadPublicContent() {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String key : KEYS) {
@@ -95,6 +96,7 @@ public class ContentModuleServiceImpl implements ContentModuleService {
             if (release == null) continue;
             if ("mylab".equals(key)) {
                 result.put("myproject", mylabPublic.readProjects(release.getId()));
+                result.put("mylab", mylabPublic.readLatest(release.getId(), MYLAB_LATEST_LIMIT));
             } else {
                 result.put(key, releases.readData(release));
             }
@@ -675,8 +677,8 @@ public class ContentModuleServiceImpl implements ContentModuleService {
     }
 
     /**
-     * 公开化数据：过滤 enabled=false 的条目，mylab 额外把 tag_ids 展开为标签名；
-     * 首页 myproject 只保留项目摘要和各项目实际引用的标签名称。
+     * 公开化数据：过滤 enabled=false 的条目；携带标签字典的 mylab 全量摘要把 tag_ids 展开为标签名，
+     * 首页 myproject 剔除 tag_ids 与 Markdown；mylab 最新摘要的标签名已在仓储层展开，原样透传。
      */
     @SuppressWarnings("unchecked")
     private Object publicData(String moduleKey, Object raw) {
@@ -695,20 +697,23 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         List<Map<String, Object>> source = (List<Map<String, Object>>) root.getOrDefault(field, List.of());
         List<Map<String, Object>> visible = new ArrayList<>();
         Map<String, String> tagNames = new LinkedHashMap<>();
-        if ("mylab".equals(moduleKey)) {
+        // 全量摘要带标签字典时需要把 tag_ids 展开为名称；聚合接口的最新摘要无字典，标签名已就位
+        boolean mylabWithTagDictionary = "mylab".equals(moduleKey) && root.containsKey("tags");
+        if (mylabWithTagDictionary) {
             List<Map<String, Object>> activeTags = (List<Map<String, Object>>) root.getOrDefault("tags", List.of());
             activeTags.forEach(tag -> tagNames.put(String.valueOf(tag.get("id")), String.valueOf(tag.get("name"))));
         }
         for (Map<String, Object> item : source) {
             if (Boolean.FALSE.equals(item.get("enabled"))) continue;
             Map<String, Object> result = new LinkedHashMap<>(item);
-            if ("mylab".equals(moduleKey)) {
+            if (mylabWithTagDictionary) {
                 List<?> ids = (List<?>) result.getOrDefault("tag_ids", List.of());
                 result.put("tags", ids.stream().map(String::valueOf).map(tagNames::get).filter(Objects::nonNull).toList());
             } else if ("myproject".equals(moduleKey)) {
                 result.remove("tag_ids");
                 result.remove("markdown_content");
             }
+            // 无标签字典的 mylab 载荷（最新摘要、单篇详情）：标签名已在仓储层展开或由前端字典解析，原样透传
             visible.add(result);
         }
         root.put(field, visible);

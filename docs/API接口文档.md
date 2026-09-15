@@ -129,10 +129,15 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/v1/public/content` | 聚合首页内容；MyLab 只返回 `myproject` 项目摘要 |
+| GET | `/api/v1/public/content` | 聚合首页内容；MyLab 返回 `myproject` 项目摘要和 `mylab` 最新 5 张卡片摘要 |
 | GET | `/api/v1/public/content/mylab` | 获取 MyLab 全部公开卡片摘要与标签 |
 | GET | `/api/v1/public/content/{moduleKey}` | 获取其他指定模块当前发布内容 |
 | GET | `/api/v1/public/mylab/{postKey}` | 获取当前发布版本中的指定 MyLab 卡片详情 |
+| GET | `/api/v1/public/mylab/engagement?post_keys={key1,key2}` | 批量查询文章浏览/点赞数 |
+| POST | `/api/v1/public/analytics/page-views` | 统一登记首页、MyLab 列表或 MyLab 详情页浏览 |
+| PUT | `/api/v1/public/mylab/{postKey}/likes` | 点赞文章，重复请求幂等 |
+| DELETE | `/api/v1/public/mylab/{postKey}/likes` | 取消点赞，重复请求幂等 |
+| GET | `/api/v1/public/analytics/summary` | 查询站点访问、浏览和点赞汇总 |
 
 `/api/v1/public/content`、`/api/v1/public/content/mylab` 和 MyLab 单篇详情分别使用独立 Redis Cache-Aside 缓存；Redis 未命中或不可用时回源 PostgreSQL。其他公开单模块接口始终直接查询当前发布版本。发布或下线事务提交后会清理受影响的公开缓存。
 
@@ -148,6 +153,9 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
   "vibe": {},
   "myproject": {
     "cards": []
+  },
+  "mylab": {
+    "cards": []
   }
 }
 ```
@@ -155,6 +163,38 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 公开响应只返回已启用内容，并把资源 ID 转换为可访问 URL。单模块没有发布版本或已经下线时返回 `12002`；MyLab 卡片不存在时返回 `10005`。
 
 首页的 `myproject.cards` 只包含 `card_type = PROJECT` 且 `project_show_order` 非空的项目，不包含全局 `tags` 字典、卡片 `tag_ids` 或 Markdown 正文；每张项目卡片通过自身的 `tags` 数组返回实际引用的有效标签名称，项目区仍按 `project_show_order ASC` 展示。
+
+聚合接口的 `mylab.cards` 返回当前发布版本中按 `post_date DESC`、`post_key ASC` 排序的最新 5 张启用卡片（文章与项目混合），同样不包含全局 `tags` 字典、`tag_ids` 或 Markdown 正文，每张卡片通过自身的 `tags` 数组返回实际引用的有效标签名称。
+
+页面浏览统一通过 `POST /api/v1/public/analytics/page-views` 上报，请求体如下：
+
+```json
+{ "page_type": "home" }
+{ "page_type": "mylab" }
+{ "page_type": "mylab_detail", "post_key": "first-post" }
+```
+
+`page_type` 只允许 `home`、`mylab`、`mylab_detail`。详情页必须提供格式有效且已经发布的 `post_key`；其他页面类型禁止携带 `post_key`。详情页成功响应示例：
+
+```json
+{
+  "page_type": "mylab_detail",
+  "post_key": "first-post",
+  "view_count": 12,
+  "like_count": 3,
+  "liked": false,
+  "site_statistics": {
+    "visit_count": 8,
+    "total_view_count": 20,
+    "total_like_count": 5,
+    "snapshot_at": "2026-09-15T10:00:00Z"
+  }
+}
+```
+
+首页和 MyLab 列表响应只包含 `page_type` 与 `site_statistics`，不包含文章字段。一份有效访客凭证只累计一次访问；首页、MyLab 列表和每个 MyLab 详情分别只累计一次浏览，总浏览量是这些唯一目标浏览量之和。点赞或取消点赞时，如果当前凭证尚未浏览该详情，会原子补记访问和详情浏览。凭证默认 24 小时滑动过期，成功的页面浏览、点赞或取消点赞都会刷新 Redis TTL 和 `myblog_visitor` HttpOnly Cookie；公开内容查询和统计摘要查询不会续期。
+
+互动写接口由 Redis Lua 原子完成去重、计数与 Stream 通知；访问、浏览和点赞明细合并保存在 `mylab:blog:visitor:v2:{visitorHash}` Hash，接口响应和查询读取 Redis 实时值。后台 Consumer Group 合并同批消息涉及的文章、站点和日期维度，读取 Redis 最新绝对值写入 PostgreSQL，数据库提交成功后才确认消息。Stream 只包含聚合维度，不包含访客标识；Redis 暂时不可用时互动写接口返回 `14001`，查询接口回退到 PostgreSQL 最近快照。历史 PostgreSQL 累计值不会校正或清零，新统计口径仅对改造上线后的流量生效。
 
 ## 5. 后台内容管理
 
@@ -424,7 +464,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 - `mylab_cards.sort_order` 仅为兼容历史数据保留，程序不再读写；管理端与公开 MyLab 列表均按 `post_date DESC`、`post_key ASC` 排序。
 - 后台编辑器可读取本地 `.md`、`.markdown` UTF-8 文件并覆盖编辑区，文件内容仍通过草稿接口保存，不上传 OSS。
 - 公开接口在 `tags` 中返回有效标签对象，并在卡片中同时返回解析后的标签名称数组。
-- `/api/v1/public/content` 只返回首页项目摘要和各项目实际引用的标签名称；`/api/v1/public/content/mylab` 通过独立缓存返回全部 MyLab 卡片摘要与标签，两者均不包含 `markdown_content`；`/api/v1/public/mylab/{postKey}` 返回单篇完整正文。
+- `/api/v1/public/content` 返回首页项目摘要和最新 5 张 MyLab 卡片摘要（文章与项目混合），均只带各卡片实际引用的标签名称；`/api/v1/public/content/mylab` 通过独立缓存返回全部 MyLab 卡片摘要与标签，两者均不包含 `markdown_content`；`/api/v1/public/mylab/{postKey}` 返回单篇完整正文。
 
 ## 6. MyLab 全局标签
 
@@ -532,6 +572,6 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 
 ## 10. 当前不提供的接口
 
-当前后端没有访问日志、访问量、访客数、点赞、操作日志、站点设置、通知设置、独立 `projects` 或 `support` 接口。后台不得使用本地模拟数据伪装为服务端功能。
+当前后端没有访问日志、操作日志、站点设置、通知设置、独立 `projects` 或 `support` 接口。后台不得使用本地模拟数据伪装为服务端功能。
 
 错误码、HTTP 状态与客户端处理方式见《错误码文档》。

@@ -2,6 +2,7 @@ package com.myblog.application.service.engagement;
 
 import com.myblog.application.model.dto.EngagementDtos;
 import com.myblog.application.port.EngagementStore;
+import com.myblog.common.properties.VisitorProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -10,6 +11,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.regex.Pattern;
@@ -27,20 +29,20 @@ public class VisitorIdentityService {
 
     private final EngagementStore store;
     private final byte[] secret;
-    private final boolean cookieSecure;
+    private final VisitorProperties properties;
 
     public VisitorIdentityService(EngagementStore store,
                                   @Value("${app.engagement-hash-secret}") String hashSecret,
-                                  @Value("${app.visitor-cookie-secure:false}") boolean cookieSecure) {
+                                  VisitorProperties properties) {
         this.store = store;
         this.secret = hashSecret.getBytes(StandardCharsets.UTF_8);
-        this.cookieSecure = cookieSecure;
+        this.properties = properties;
     }
 
     /**
      * 解析或签发访客身份：Cookie 令牌格式合法且对应身份仍在有效期内（Redis 未过期）则直接复用；
      * 否则生成新的随机令牌并登记其哈希，issued=true 提示控制器回写新 Cookie。
-     * 复用时不刷新有效期，访客身份到期后自然换新。
+     * 业务 Lua 会在有效互动成功时刷新服务端滑动 TTL，控制器同步刷新浏览器 Cookie 的 Max-Age。
      */
     public EngagementDtos.VisitorIdentity resolve(String cookieToken) {
         if (cookieToken != null && TOKEN_PATTERN.matcher(cookieToken).matches()) {
@@ -59,7 +61,11 @@ public class VisitorIdentityService {
     }
 
     public boolean cookieSecure() {
-        return cookieSecure;
+        return properties.visitorCookieSecure();
+    }
+
+    public Duration identityTtl() {
+        return properties.visitorIdentityTtl();
     }
 
     /** 令牌转访客哈希：带服务端密钥的 HMAC-SHA256，数据库泄漏时无法由哈希反推或伪造令牌。 */

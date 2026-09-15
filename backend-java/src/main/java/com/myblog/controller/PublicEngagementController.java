@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -48,14 +48,16 @@ public class PublicEngagementController {
         return noStore(Result.ok(engagement.engagement(values)));
     }
 
-    @PostMapping("/mylab/{postKey}/views")
-    public ResponseEntity<Result<EngagementDtos.EngagementView>> registerView(
-            @PathVariable String postKey,
+    @PostMapping("/analytics/page-views")
+    public ResponseEntity<Result<EngagementDtos.PageViewResult>> registerPageView(
+            @RequestBody EngagementDtos.PageViewRequest body,
             @CookieValue(name = VisitorIdentityService.COOKIE_NAME, required = false) String visitorToken,
             HttpServletRequest request,
             HttpServletResponse response) {
-        EngagementDtos.VisitorIdentity visitor = visitor(visitorToken, request, response);
-        return noStore(Result.ok(engagement.registerView(visitor.visitorHash(), postKey)));
+        EngagementDtos.VisitorIdentity visitor = identities.resolve(visitorToken);
+        EngagementDtos.PageViewResult result = engagement.registerPageView(visitor.visitorHash(), body);
+        refreshCookie(visitor, request, response);
+        return noStore(Result.ok(result));
     }
 
     @PutMapping("/mylab/{postKey}/likes")
@@ -64,8 +66,10 @@ public class PublicEngagementController {
             @CookieValue(name = VisitorIdentityService.COOKIE_NAME, required = false) String visitorToken,
             HttpServletRequest request,
             HttpServletResponse response) {
-        EngagementDtos.VisitorIdentity visitor = visitor(visitorToken, request, response);
-        return noStore(Result.ok(engagement.like(visitor.visitorHash(), postKey)));
+        EngagementDtos.VisitorIdentity visitor = identities.resolve(visitorToken);
+        EngagementDtos.EngagementView result = engagement.like(visitor.visitorHash(), postKey);
+        refreshCookie(visitor, request, response);
+        return noStore(Result.ok(result));
     }
 
     @DeleteMapping("/mylab/{postKey}/likes")
@@ -74,17 +78,10 @@ public class PublicEngagementController {
             @CookieValue(name = VisitorIdentityService.COOKIE_NAME, required = false) String visitorToken,
             HttpServletRequest request,
             HttpServletResponse response) {
-        EngagementDtos.VisitorIdentity visitor = visitor(visitorToken, request, response);
-        return noStore(Result.ok(engagement.unlike(visitor.visitorHash(), postKey)));
-    }
-
-    @PostMapping("/analytics/visits")
-    public ResponseEntity<Result<EngagementDtos.SiteStatisticsView>> registerVisit(
-            @CookieValue(name = VisitorIdentityService.COOKIE_NAME, required = false) String visitorToken,
-            HttpServletRequest request,
-            HttpServletResponse response) {
-        EngagementDtos.VisitorIdentity visitor = visitor(visitorToken, request, response);
-        return noStore(Result.ok(engagement.registerVisit(visitor.visitorHash())));
+        EngagementDtos.VisitorIdentity visitor = identities.resolve(visitorToken);
+        EngagementDtos.EngagementView result = engagement.unlike(visitor.visitorHash(), postKey);
+        refreshCookie(visitor, request, response);
+        return noStore(Result.ok(result));
     }
 
     @GetMapping("/analytics/summary")
@@ -93,24 +90,20 @@ public class PublicEngagementController {
     }
 
     /**
-     * 解析或签发访客身份：首次访问（或身份轮换）时下发 72 小时有效的匿名身份 Cookie。
+     * 仅在互动业务成功后刷新 24 小时滑动 Cookie。
      * httpOnly 防 XSS 窃取、SameSite=Lax 限制跨站携带，secure 随部署环境（HTTPS）开启。
      */
-    private EngagementDtos.VisitorIdentity visitor(String token, HttpServletRequest request,
-                                                     HttpServletResponse response) {
-        EngagementDtos.VisitorIdentity visitor = identities.resolve(token);
-        if (visitor.issued()) {
-            boolean secure = identities.cookieSecure() || request.isSecure();
-            ResponseCookie cookie = ResponseCookie.from(VisitorIdentityService.COOKIE_NAME, visitor.token())
-                    .httpOnly(true)
-                    .secure(secure)
-                    .sameSite("Lax")
-                    .path("/")
-                    .maxAge(Duration.ofHours(72))
-                    .build();
-            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        }
-        return visitor;
+    private void refreshCookie(EngagementDtos.VisitorIdentity visitor, HttpServletRequest request,
+                               HttpServletResponse response) {
+        boolean secure = identities.cookieSecure() || request.isSecure();
+        ResponseCookie cookie = ResponseCookie.from(VisitorIdentityService.COOKIE_NAME, visitor.token())
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(identities.identityTtl())
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     /** 互动数据实时变化，禁止任何缓存，保证计数即时可见。 */

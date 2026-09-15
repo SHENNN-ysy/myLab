@@ -26,13 +26,16 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
     @Autowired
     private DistributedLock distributedLock;
 
-    /** 首页聚合只返回 myproject 项目摘要，不返回 MyLab 全量信息。 */
+    /** 首页聚合返回 myproject 项目摘要与 mylab 最新 5 张卡片摘要（文章与项目混合），均不含标签字典与 Markdown。 */
     @Test
-    void publicContentIncludesProjectProjectionOnly() {
+    void publicContentIncludesProjectProjectionAndLatestMylabCards() {
         String postKey = uniqueKey("apitest-pub-");
         String articleKey = uniqueKey("apitest-article-");
         ensurePublishedMylabProject(postKey, "公开内容测试项目", true);
-        ensurePublishedMylabCard(articleKey, "不应进入首页聚合的文章", true);
+        ensurePublishedMylabCard(articleKey, "最新摘要测试文章", true);
+        // 远期日期保证两张自建卡片稳定占据最新摘要前两位，不受其他测试数据干扰
+        jdbc.update("UPDATE mylab_cards SET post_date = DATE '2099-01-02' WHERE post_key = ?", postKey);
+        jdbc.update("UPDATE mylab_cards SET post_date = DATE '2099-01-01' WHERE post_key = ?", articleKey);
         UUID projectId = jdbc.queryForObject("SELECT id FROM mylab_cards WHERE post_key = ?", UUID.class, postKey);
         UUID tagId = UUID.randomUUID();
         String tagKey = uniqueKey("apitest-project-tag-");
@@ -41,12 +44,11 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         jdbc.update("INSERT INTO mylab_card_tags (id, card_id, tag_id, sort_order) VALUES (?, ?, ?, 0)",
                 UUID.randomUUID(), projectId, tagId);
 
-        // 匿名读取全量已发布内容，mylab 模块中应能看到自建卡片
+        // 匿名读取全量已发布内容，myproject 与 mylab 中应能看到自建卡片
         JsonNode body = assertStatusAndCode(
                 rest.getForEntity(CONTENT_URL, JsonNode.class), HttpStatus.OK, 0);
 
         JsonNode card = findCard(body.path("data").path("myproject").path("cards"), postKey);
-        assertThat(body.path("data").has("mylab")).isFalse();
         assertThat(card).as("myproject 中应包含首页项目").isNotNull();
         assertThat(card.has("markdown_content")).isFalse();
         assertThat(card.has("tag_ids")).isFalse();
@@ -54,6 +56,19 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
         assertThat(card.path("tags").isArray()).isTrue();
         assertThat(card.path("tags").get(0).asText()).isEqualTo(tagName);
         assertThat(findCard(body.path("data").path("myproject").path("cards"), articleKey)).isNull();
+
+        // mylab 最新摘要：文章与项目混合按发布日期倒序，标签名已展开，且无全局标签字典与 Markdown
+        JsonNode latest = body.path("data").path("mylab");
+        assertThat(latest.has("tags")).isFalse();
+        JsonNode latestCards = latest.path("cards");
+        assertThat(latestCards.isArray()).isTrue();
+        assertThat(latestCards.size()).isLessThanOrEqualTo(5);
+        assertThat(latestCards.get(0).path("post_key").asText()).isEqualTo(postKey);
+        assertThat(latestCards.get(1).path("post_key").asText()).isEqualTo(articleKey);
+        JsonNode latestProject = findCard(latestCards, postKey);
+        assertThat(latestProject.has("markdown_content")).isFalse();
+        assertThat(latestProject.has("tag_ids")).isFalse();
+        assertThat(latestProject.path("tags").get(0).asText()).isEqualTo(tagName);
     }
 
     /** 全量内容在缓存被删除前一直命中 Redis；删除后回源数据库重建。 */

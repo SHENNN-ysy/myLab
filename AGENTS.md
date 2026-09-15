@@ -87,7 +87,7 @@ starter ────────> application / common / infrastructure
 | `user` | 后台用户管理（创建/删除限 superadmin） |
 | `content` | 七个内容模块（home/about/skills/footprints/hobbies/vibe/mylab）的草稿、发布、下线、历史版本与恢复 |
 | `file` | 文件元数据、OSS 上传、预签名 URL |
-| `engagement` | 浏览/点赞计数（Redis Lua 原子操作，定时快照落 PG，Redis 故障降级读快照） |
+| `engagement` | 页面浏览/点赞/访问由 Redis Lua 原子计数并写 Stream 脏聚合通知；一份访客凭证只计一次访问，首页、MyLab 列表及每篇详情分别去重浏览；Consumer Group 批量读取最新绝对值落 PG，成功后 XACK，Redis 故障降级读 PG 快照；写接口防刷校验优先读 Redis 已发布索引（`PublishedPostCache`），未命中回源 PG 补写，MyLab 发布/下线提交后整体重建 |
 | `system` | 健康状态与系统信息 |
 
 ### 版本化内容系统
@@ -100,10 +100,10 @@ starter ────────> application / common / infrastructure
 - MyLab 全局标签不再支持人工排序和后台启停；`mylab_tags.sort_order` 仅为历史兼容保留且应用不读写，前台按当前公开卡片引用次数降序展示，后台标签管理按当前草稿卡片引用次数降序展示；标签新增、显式保存名称和删除使用独立接口，MyLab 草稿保存只提交卡片
 - `mylab_cards.sort_order` 仅为历史兼容保留，程序不再读写；MyLab 管理视图与公开列表按 `post_date DESC`、`post_key ASC` 排序
 - MyLab PROJECT 卡片的 `project_show_order`为 null 表示不在首页项目区展示（卡片仍在 MyLab 列出）；仅参与展示的卡片校验位次（0-5）唯一且发布时必填侧边栏正文
-- 首页 `/public/content` 使用 `myproject` 返回展示项目摘要及各项目实际引用的标签名称，但不返回全局标签字典；`/public/content/mylab` 通过独立 Redis Cache-Aside 返回全部公开 MyLab 卡片摘要与标签
+- 首页 `/public/content` 使用 `myproject` 返回展示项目摘要，并以 `mylab` 返回最新 5 张启用卡片摘要（文章与项目混合，按 `post_date DESC`、`post_key ASC`），两者均只带各卡片实际引用的标签名称，不返回全局标签字典；`/public/content/mylab` 通过独立 Redis Cache-Aside 返回全部公开 MyLab 卡片摘要与标签
 - `mylab_resources` 只保存卡片封面图片引用；Markdown 文件可在后台本地读取到编辑区，但不上传 OSS
 - 新上传 OSS 图片的 object key 固定为 `业务目录/UUID.扩展名`；不配置统一前缀和日期目录，历史 key 继续兼容读取
-- 前台 `/public/content`、`/public/content/mylab` 与 MyLab 单篇详情使用相互独立的 Redis Cache-Aside；其他公开单模块和后台管理接口直查 PG；发布/下线提交后失效缓存；MyLab 单篇详情先校验 post_key 格式（`ContentConstant.POST_KEY_PATTERN`），不存在/未发布的 key 以空详情做负缓存防穿透，负缓存随发布失效事件一并清除
+- 前台 `/public/content`、`/public/content/mylab` 与 MyLab 单篇详情使用相互独立的 Redis Cache-Aside；其他公开单模块和后台管理接口直查 PG；发布/下线提交后失效缓存；MyLab 单篇详情先校验 post_key 格式（`ContentConstant.POST_KEY_PATTERN`），不存在/未发布的 key 以空详情做负缓存防穿透，负缓存随发布失效事件一并清除；缓存载荷结构变化（如聚合接口新增字段）时必须升级 key 版本号（如 `v3`→`v4`），否则旧结构缓存会存活至 TTL（最长 6 小时）导致新字段不生效
 
 ### 认证与安全
 - 管理后台使用随机 UUID Bearer Token；Redis 仅保存 SHA-256 摘要和会话 Hash，并以用户 ZSet 反向索引全部会话；空闲 8 小时滑动过期
@@ -113,7 +113,8 @@ starter ────────> application / common / infrastructure
 - 密码 BCrypt（强度 12）；初始管理员仅在系统无用户时创建一次（`INIT_ADMIN_*`，未配置时本地兜底 admin/admin123，生产 compose 强制必填）
 - 种子接管：`V1__baseline.sql` 内置固定 ID/用户名的种子管理员，启动时仅当该行用户名与密码哈希**均与基线完全一致**才按 `INIT_ADMIN_*` 接管；一旦某次启动（如 `.env` 缺失密码被置空）已覆写该行，之后补回配置不会再生效，需把该行重置回基线种子值后重启才能重新接管
 - 限流走 Redis：登录接口独立（更严）阈值 + 全局限流；Redis 故障 fail-open
-- 访客标识经 HMAC 哈希（`ENGAGEMENT_HASH_SECRET`），互动明细只存 Redis（72h TTL）不落库
+- 访客标识经 HMAC 哈希（`ENGAGEMENT_HASH_SECRET`），访问、页面浏览和点赞状态合并保存在 `mylab:blog:visitor:v2:{visitorHash}` Hash，不落库；凭证默认 24 小时滑动过期（`VISITOR_IDENTITY_TTL`），有效页面浏览、点赞或取消点赞都会刷新 Redis TTL 和 HttpOnly Cookie
+- 一份有效访客凭证只累计一次访问；首页、MyLab 列表和每个已发布 MyLab 详情分别只累计一次浏览，详情首次互动会补记该详情浏览，保证新口径下总浏览量不小于访问量
 
 ### 数据库
 - PostgreSQL 16，schema 由 Flyway 管理：全新库执行 `V1__baseline.sql` 初始化；存量库以 V1 为基线接管
@@ -176,6 +177,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 5. **配置**：敏感配置一律走环境变量占位符（`${VAR:默认值}`），不提交真实值；`.env`、`application-dev.yml`、`nginx/certs/`、`deploy/nginx/certs/` 已 gitignore
 6. **质量门**：改动后端后至少跑 `mvn verify`；`application.service` 行覆盖率 ≥ 99%，新增业务逻辑必须补单测
 7. **注释要求**：生成的代码必须有注释，注释要简洁精准
+8. **Redis key 命名**：统一使用 `mylab:` 顶层命名空间，下分 `auth:`、`blog:`、`rate:`；公开内容缓存在 `mylab:blog:content:`。带动态段（如 `mylab:blog:engagement:{postKey}`）的 key 空间下不得再放固定命名的其他类型 key，须用独立子前缀隔离（已发布索引用 `mylab:blog:engagement:index:published-posts`；曾因与计数 Hash 撞名，post_key 为 `published-posts` 时会 WRONGTYPE）
 
 ### 前端硬性规则
 1. 优先使用既有技术栈组件（后台用 Ant Design Vue），避免自造轮子
@@ -201,6 +203,8 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 | 数据库设计 | [docs/数据库表结构重设计.md](docs/数据库表结构重设计.md) | 版本化内容系统表设计 |
 | 测试工作流 | [docs/测试工作流.md](docs/测试工作流.md) | 测试约定与流程 |
 | Redis 公开内容缓存 | [docs/Redis公开内容缓存开发说明.md](docs/Redis公开内容缓存开发说明.md) | 前台公开内容缓存、分布式锁与失效机制 |
+| Redis Stream 互动落库 | [docs/Redis Stream互动统计落库改造说明.md](docs/Redis Stream互动统计落库改造说明.md) | 浏览、点赞、访问统计的异步落库、一致性、监控与回滚 |
+| Redis Key 命名空间 | [docs/Redis Key命名空间说明.md](docs/Redis Key命名空间说明.md) | `mylab:` 统一顶层、三类子空间与发布迁移注意事项 |
 | 部署说明 | [deploy/README.md](deploy/README.md) | Nginx/SSL/域名配置细节 |
 | CI 内存耗尽事故复盘 | [docs/事故复盘-CI构建内存耗尽.md](docs/事故复盘-CI构建内存耗尽.md) | 2026-09-07 事故经过、根因、修复与独立 CI 服务器规划 |
 | 本地环境变量模板 | [.env.example](.env.example) | 本地一键部署配置 |

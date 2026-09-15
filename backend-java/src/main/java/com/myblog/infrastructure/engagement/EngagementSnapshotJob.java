@@ -6,6 +6,7 @@ import com.myblog.application.service.engagement.EngagementService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -14,12 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 互动聚合快照任务：每分钟把 Redis 中的绝对计数按 dirty→processing→ack 认领模式
+ * 兼容回滚用互动快照任务：仅在 ENGAGEMENT_STREAM_ENABLED=false 时启用，每分钟按 dirty→processing→ack
  * 整体覆盖写入 PostgreSQL（见 {@link RedisEngagementStore} 的一致性模型），
  * 并在应用启动时把 PG 快照回填 Redis，作为 Redis 数据丢失后的兜底恢复。
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "app.engagement-stream", name = "enabled", havingValue = "false")
 public class EngagementSnapshotJob implements ApplicationRunner {
     private final RedisEngagementStore store;
     private final EngagementStatsRepository repository;

@@ -60,8 +60,7 @@ public class SecurityConfig {
                                 .map(p -> p + "/**").toArray(String[]::new))
                         .permitAll()
                         .requestMatchers(HttpMethod.POST,
-                                "/api/v1/public/analytics/visits",
-                                "/api/v1/public/mylab/*/views")
+                                "/api/v1/public/analytics/page-views")
                         .permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/public/mylab/*/likes")
                         .permitAll()

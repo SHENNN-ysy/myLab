@@ -13,6 +13,9 @@ import java.util.List;
 public interface EngagementStatsRepository {
     boolean publishedPostExists(String postKey);
 
+    /** 查询当前已发布且启用的全部 MyLab 卡片 post_key，用于重建互动防刷索引。 */
+    List<String> findPublishedPostKeys();
+
     List<EngagementDtos.EngagementSummary> findEngagement(List<String> postKeys);
 
     List<EngagementDtos.EngagementSummary> findAllEngagement();

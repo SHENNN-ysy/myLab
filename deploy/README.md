@@ -75,7 +75,7 @@ cp deploy/.env.example deploy/.env
 
 - `BLOG_DOMAIN`、`CORS_ORIGINS`；
 - `ADMIN_ROUTE`、`JENKINS_ROUTE`，二者必须以 `/` 开头且不能冲突；
-- PostgreSQL、Redis、管理会话空闲时间、访客哈希和初始管理员密码；
+- PostgreSQL、Redis、管理会话空闲时间、访客凭证有效期、互动 Stream 参数、访客哈希和初始管理员密码；
 - OSS/CDN 参数；
 - `TLS_CERT_FILE`、`TLS_KEY_FILE`；
 - `DOCKER_GID`。
@@ -317,9 +317,23 @@ cat /data/jenkins/deploy-state/myblog-current-release
 
 JWT 双令牌切换到 Redis 会话的版本必须让 backend 与 admin 使用同一个 release tag 一起发布。上线后旧 JWT 会统一失效，管理员需要重新登录一次；这是预期行为。确认新版本稳定前保留服务器 `deploy/.env` 中的旧 `JWT_SECRET`，仅用于回滚旧镜像，新程序不会读取；超过回滚观察期后再删除。
 
-上线验收时确认后台 Network 不再请求 `/auth/refresh`，登录响应不含 `refresh_token`，Redis 中只出现 `auth:session:<sha256>` 与 `auth:user-sessions:<user_id>`。将 Redis 暂时设为不可达时，带本地 Token 的后台受保护请求应返回 503 且前端不清除登录状态；公开博客接口仍可访问。
+上线验收时确认后台 Network 不再请求 `/auth/refresh`，登录响应不含 `refresh_token`，Redis 中只出现 `mylab:auth:session:<sha256>` 与 `mylab:auth:user-sessions:<user_id>`。将 Redis 暂时设为不可达时，带本地 Token 的后台受保护请求应返回 503 且前端不清除登录状态；公开博客接口仍可访问。
 
-### 8.4 移除 Jenkins 临时端口
+### 8.4 Redis Stream 互动统计版本上线
+
+互动统计版本默认设置 `ENGAGEMENT_STREAM_ENABLED=true`。写请求会在原有 Redis Lua 事务内同时更新实时聚合 Hash、兼容 dirty 集合并追加 Stream 消息；新消费任务按批读取 Redis 最新绝对值，PostgreSQL 提交成功后再确认消息。上线不修改数据库结构和公开 API，前后端不要求同时发布。
+
+上线后重点观察 Actuator 指标 `engagement.stream.length`、`engagement.stream.pending`、`engagement.stream.messages.processed`、`engagement.stream.consume.failures`、`engagement.stream.batch.duration` 和 `engagement.stream.last.success.epoch.millis`。`pending` 持续增长或最后成功时间长期不更新时，应先检查 Redis、PostgreSQL 和消费失败日志，不要直接清空 Stream。
+
+需要应用级回滚时，将 `deploy/.env` 设置为 `ENGAGEMENT_STREAM_ENABLED=false` 并重建 backend。旧 `EngagementSnapshotJob` 会恢复运行，继续消费迁移期同步保留的 dirty 集合；确认回滚后再排查 Stream，禁止在切换期间同时运行新旧版本 backend。详细数据结构、恢复和排障命令见《Redis Stream 互动统计落库改造说明》。
+
+### 8.5 访客与页面浏览统计版本上线
+
+该版本删除两个旧上报接口并改用 `POST /api/v1/public/analytics/page-views`，因此 backend 与博客前台必须使用同一个 release tag 一起发布。确认 `deploy/.env` 设置 `VISITOR_IDENTITY_TTL=24h`；无需执行数据库迁移，历史 PostgreSQL 累计值不会清零或校正。
+
+上线后，旧 Visitor、Session、View 和 Likes Key 不迁移也不主动删除，会按原 TTL 自然过期；旧 Cookie 首次请求时会轮换为 v2 凭证。验收时确认新互动写入 `mylab:blog:visitor:v2:*` Hash，TTL 在有效互动后回到约 24 小时，并且不再产生新的 `mylab:blog:site:session:*`、`mylab:blog:view:dedupe:*` 或 `mylab:blog:visitor:likes:*` Key。
+
+### 8.6 移除 Jenkins 临时端口
 
 确认 `https://<BLOG_DOMAIN><JENKINS_ROUTE>/` 可访问后，仅使用正式 Compose 重建 Jenkins：
 

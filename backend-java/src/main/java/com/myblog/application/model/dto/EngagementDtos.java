@@ -8,6 +8,26 @@ import java.util.List;
 public final class EngagementDtos {
     private EngagementDtos() { }
 
+    /** 公开页面浏览类型；wireValue 是稳定的 HTTP 契约值。 */
+    public enum PageType {
+        HOME("home"),
+        MYLAB("mylab"),
+        MYLAB_DETAIL("mylab_detail");
+
+        private final String wireValue;
+
+        PageType(String wireValue) {
+            this.wireValue = wireValue;
+        }
+
+        public String wireValue() {
+            return wireValue;
+        }
+    }
+
+    /** 统一页面浏览请求；详情页必须携带 postKey，其他页面不得携带。 */
+    public record PageViewRequest(String pageType, String postKey) { }
+
     /** 单篇文章的互动计数摘要（浏览数 + 点赞数）。 */
     public record EngagementSummary(String postKey, long viewCount, long likeCount) { }
 
@@ -24,6 +44,15 @@ public final class EngagementDtos {
             long viewCount,
             long likeCount,
             boolean liked,
+            SiteStatisticsView siteStatistics) { }
+
+    /** 页面浏览后的实时统计；首页和列表页省略四个文章字段。 */
+    public record PageViewResult(
+            String pageType,
+            String postKey,
+            Long viewCount,
+            Long likeCount,
+            Boolean liked,
             SiteStatisticsView siteStatistics) { }
 
     /** 单日统计视图，日期按业务时区（Asia/Shanghai）划分。 */

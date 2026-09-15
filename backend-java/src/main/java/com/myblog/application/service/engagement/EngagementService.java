@@ -2,6 +2,7 @@ package com.myblog.application.service.engagement;
 
 import com.myblog.application.model.dto.EngagementDtos;
 import com.myblog.application.port.EngagementStore;
+import com.myblog.application.port.PublishedPostCache;
 import com.myblog.application.repository.EngagementStatsRepository;
 import com.myblog.common.constant.ContentConstant;
 import com.myblog.common.exception.EngagementUnavailableException;
@@ -38,10 +39,13 @@ public class EngagementService {
 
     private final EngagementStore store;
     private final EngagementStatsRepository repository;
+    private final PublishedPostCache publishedPosts;
 
-    public EngagementService(EngagementStore store, EngagementStatsRepository repository) {
+    public EngagementService(EngagementStore store, EngagementStatsRepository repository,
+                             PublishedPostCache publishedPosts) {
         this.store = store;
         this.repository = repository;
+        this.publishedPosts = publishedPosts;
     }
 
     /**
@@ -62,12 +66,14 @@ public class EngagementService {
         }
     }
 
-    /**
-     * 登记一次文章浏览：先确认文章已对外可见再写入 Redis（同一访客当日去重由存储层保证）。
-     */
-    public EngagementDtos.EngagementView registerView(String visitorHash, String postKey) {
-        validatePublishedPost(postKey);
-        return store.registerView(visitorHash, postKey, today());
+    /** 统一登记首页、MyLab 列表或详情页浏览，详情页写入前校验文章仍处于发布状态。 */
+    public EngagementDtos.PageViewResult registerPageView(
+            String visitorHash, EngagementDtos.PageViewRequest request) {
+        if (request == null) throw new ValidationException("请求体不能为空");
+        EngagementDtos.PageType pageType = parsePageType(request.pageType());
+        String postKey = normalizePagePostKey(pageType, request.postKey());
+        if (pageType == EngagementDtos.PageType.MYLAB_DETAIL) validatePublishedPost(postKey);
+        return store.registerPageView(visitorHash, pageType, postKey, today());
     }
 
     /**
@@ -83,12 +89,7 @@ public class EngagementService {
      */
     public EngagementDtos.EngagementView unlike(String visitorHash, String postKey) {
         validatePublishedPost(postKey);
-        return store.unlike(visitorHash, postKey);
-    }
-
-    /** 登记一次站点访问（按访客当日去重，由存储层保证）。 */
-    public EngagementDtos.SiteStatisticsView registerVisit(String visitorHash) {
-        return store.registerVisit(visitorHash, today());
+        return store.unlike(visitorHash, postKey, today());
     }
 
     /**
@@ -136,12 +137,23 @@ public class EngagementService {
     /**
      * 写入前的双层校验：先校验 post_key 格式，再确认文章存在且属于已发布内容，
      * 防止对未公开或不存在的内容刷互动计数。
+     * 已发布集合变化极慢（仅发布/下线时变化）：优先命中 Redis 索引，未命中回源
+     * PostgreSQL 并补写索引，避免每次浏览/点赞都对数据库做一次 JOIN 查询。
      */
     private void validatePublishedPost(String postKey) {
         validatePostKey(postKey);
+        if (publishedPosts.contains(postKey)) {
+            return;
+        }
         if (!repository.publishedPostExists(postKey)) {
             throw new NotFoundException("文章或项目不存在、未启用或尚未发布");
         }
+        publishedPosts.add(postKey);
+    }
+
+    /** MyLab 发布/下线事务提交后，按数据库当前已发布集合整体重建防刷索引。 */
+    public void refreshPublishedPostIndex() {
+        publishedPosts.rebuild(repository.findPublishedPostKeys());
     }
 
     /** 归一化批量查询的 post_key：去空白、去重、校验格式，并限制单次最多 100 个以防滥用。 */
@@ -161,6 +173,26 @@ public class EngagementService {
         if (postKey == null || !POST_KEY_PATTERN.matcher(postKey).matches()) {
             throw new ValidationException("post_key 格式不正确");
         }
+    }
+
+    private EngagementDtos.PageType parsePageType(String rawPageType) {
+        String value = rawPageType == null ? "" : rawPageType.trim();
+        for (EngagementDtos.PageType pageType : EngagementDtos.PageType.values()) {
+            if (pageType.wireValue().equals(value)) return pageType;
+        }
+        throw new ValidationException("page_type 只允许 home、mylab 或 mylab_detail");
+    }
+
+    private String normalizePagePostKey(EngagementDtos.PageType pageType, String rawPostKey) {
+        String postKey = rawPostKey == null ? null : rawPostKey.trim();
+        if (pageType == EngagementDtos.PageType.MYLAB_DETAIL) {
+            validatePostKey(postKey);
+            return postKey;
+        }
+        if (rawPostKey != null) {
+            throw new ValidationException("仅 mylab_detail 页面允许传 post_key");
+        }
+        return null;
     }
 
     private LocalDate today() {

@@ -18,13 +18,12 @@ public interface EngagementStore {
 
     List<EngagementDtos.EngagementSummary> engagement(List<String> postKeys);
 
-    EngagementDtos.EngagementView registerView(String visitorHash, String postKey, LocalDate date);
+    EngagementDtos.PageViewResult registerPageView(
+            String visitorHash, EngagementDtos.PageType pageType, String postKey, LocalDate date);
 
     EngagementDtos.EngagementView like(String visitorHash, String postKey, LocalDate date);
 
-    EngagementDtos.EngagementView unlike(String visitorHash, String postKey);
-
-    EngagementDtos.SiteStatisticsView registerVisit(String visitorHash, LocalDate date);
+    EngagementDtos.EngagementView unlike(String visitorHash, String postKey, LocalDate date);
 
     EngagementDtos.SiteStatisticsView siteStatistics();
 
