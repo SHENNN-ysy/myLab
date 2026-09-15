@@ -1,6 +1,7 @@
 package com.myblog.infrastructure.cache;
 
 import com.myblog.application.port.PublishedPostCache;
+import com.myblog.common.constant.RedisKeyPrefix;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -17,7 +18,9 @@ import java.util.UUID;
 @Slf4j
 @Component
 public class RedisPublishedPostCache implements PublishedPostCache {
-    static final String INDEX_KEY = "blog:engagement:published-posts";
+    // 独立 index 命名空间，避免与文章计数 Hash（mylab:blog:engagement:{postKey}）撞名：
+    // post_key 允许连字符，若文章恰好叫 published-posts 会对 Set 执行 HINCRBY 报 WRONGTYPE
+    static final String INDEX_KEY = RedisKeyPrefix.BLOG + "engagement:index:published-posts";
     private static final Duration INDEX_TTL = Duration.ofHours(24);
 
     private final StringRedisTemplate redis;

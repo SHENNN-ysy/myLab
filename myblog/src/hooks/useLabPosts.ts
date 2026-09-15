@@ -86,3 +86,20 @@ export const useProjectPosts = () => {
 
   return { projectPosts }
 }
+
+/** 首页车站场景：只消费聚合接口中的 mylab 最新 5 张卡片（文章与项目混合），不触发 MyLab 全量请求。 */
+export const useLatestLabPosts = () => {
+  const mylab = usePublicContentStore(state => state.content.mylab)
+  const latestPosts = useMemo<LabPost[]>(() => {
+    const posts = mylab?.cards
+    if (!Array.isArray(posts) || posts.length === 0) {
+      // 接口无数据时按日期倒序取内置兜底的最新 5 条
+      return [...fallbackLabPosts]
+        .sort((left, right) => right.date.localeCompare(left.date) || left.id.localeCompare(right.id))
+        .slice(0, 5)
+    }
+    return mapLabPosts(posts, [])
+  }, [mylab])
+
+  return { latestPosts }
+}

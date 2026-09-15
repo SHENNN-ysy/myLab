@@ -4,6 +4,7 @@ import com.myblog.application.model.entity.User;
 import com.myblog.application.model.vo.AccessTokenVO;
 import com.myblog.application.port.SessionIdentity;
 import com.myblog.application.port.SessionService;
+import com.myblog.common.constant.RedisKeyPrefix;
 import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.common.exception.AuthenticationUnavailableException;
 import com.myblog.common.exception.UnauthorizedException;
@@ -29,8 +30,8 @@ import java.util.UUID;
 @Service
 public class RedisSessionService implements SessionService {
 
-    private static final String SESSION_PREFIX = "auth:session:";
-    private static final String USER_SESSIONS_PREFIX = "auth:user-sessions:";
+    private static final String SESSION_PREFIX = RedisKeyPrefix.AUTH + "session:";
+    private static final String USER_SESSIONS_PREFIX = RedisKeyPrefix.AUTH + "user-sessions:";
     private static final long MILLIS_PER_SECOND = 1000L;
 
     private static final DefaultRedisScript<Long> ISSUE_SCRIPT = new DefaultRedisScript<>("""

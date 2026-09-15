@@ -79,7 +79,7 @@ class ContentModuleServiceImplCoverageTest {
 
     // ---------- 公开读取路径 ----------
 
-    /** 聚合接口将 MyLab 投影为项目摘要，只暴露各项目实际引用的标签名称。 */
+    /** 聚合接口将 MyLab 投影为项目摘要与最新 5 张卡片摘要，只暴露实际引用的标签名称。 */
     @Test
     @SuppressWarnings("unchecked")
     void publicContentAggregatesOnlyPublishedModules() {
@@ -98,15 +98,32 @@ class ContentModuleServiceImplCoverageTest {
                         Map.of("post_key", "project-a", "enabled", true,
                                 "tags", List.of("Spring Boot")),
                         Map.of("post_key", "project-b", "enabled", false))));
+        when(mylabPublic.readLatest(mylab.getId(), 5)).thenReturn(Map.of(
+                "cards", List.of(
+                        Map.of("post_key", "article-new", "card_type", "ARTICLE", "enabled", true,
+                                "card_title", "最新文章", "tags", List.of("Java")),
+                        Map.of("post_key", "project-new", "card_type", "PROJECT", "enabled", true,
+                                "card_title", "最新项目", "tags", List.of("Vue")),
+                        Map.of("post_key", "article-off", "card_type", "ARTICLE", "enabled", false))));
 
         Map<String, Object> result = service.publicContent();
 
-        assertThat(result).containsOnlyKeys("home", "about", "myproject");
+        assertThat(result).containsOnlyKeys("home", "about", "myproject", "mylab");
         Map<String, Object> projectData = (Map<String, Object>) result.get("myproject");
         List<Map<String, Object>> cards = (List<Map<String, Object>>) projectData.get("cards");
         assertThat(cards).hasSize(1);
         assertThat(cards.getFirst()).containsEntry("tags", List.of("Spring Boot"));
         assertThat(cards.getFirst()).doesNotContainKeys("tag_ids", "markdown_content");
+
+        // mylab 最新摘要：文章与项目混合，停用卡片被过滤，标签名原样保留且不附带全局标签字典
+        Map<String, Object> latestData = (Map<String, Object>) result.get("mylab");
+        assertThat(latestData).doesNotContainKey("tags");
+        List<Map<String, Object>> latestCards = (List<Map<String, Object>>) latestData.get("cards");
+        assertThat(latestCards).hasSize(2);
+        assertThat(latestCards.getFirst()).containsEntry("post_key", "article-new")
+                .containsEntry("tags", List.of("Java"));
+        assertThat(latestCards.get(1)).containsEntry("post_key", "project-new")
+                .containsEntry("tags", List.of("Vue"));
     }
 
     /** 模块无已发布版本时按未上线处理，抛 NotFoundException。 */

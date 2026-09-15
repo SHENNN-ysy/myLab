@@ -3,15 +3,15 @@
  */
 import { create } from 'zustand'
 import type { EngagementSummary, EngagementView } from '@/types'
-import { fetchEngagementSummaries, postContentView, putContentLiked } from '@/api/public'
-import { applySiteStatistics, useSiteStatisticsStore } from './siteStatisticsStore'
+import { fetchEngagementSummaries, postPageView, putContentLiked } from '@/api/public'
+import { applySiteStatistics } from './siteStatisticsStore'
 
 interface EngagementState {
   values: Record<string, EngagementView>
   /** 把 postKey 加入批量摘要加载队列（已有数据的跳过） */
   queue: (postKey: string) => void
   /** 上报浏览并返回最新互动数据 */
-  recordView: (postKey: string, signal?: AbortSignal) => Promise<EngagementView>
+  recordView: (postKey: string) => Promise<EngagementView>
   /** 点赞 / 取消点赞并返回最新互动数据 */
   setLiked: (postKey: string, liked: boolean) => Promise<EngagementView>
 }
@@ -60,12 +60,25 @@ export const useEngagementStore = create<EngagementState>()(() => ({
       window.setTimeout(() => void flushQueue(), 0)
     }
   },
-  recordView: async (postKey, signal) => {
-    await useSiteStatisticsStore.getState().ensureVisitorInitialized()
-    return save(await postContentView(postKey, signal))
+  recordView: async postKey => {
+    const result = await postPageView('mylab_detail', postKey)
+    if (
+      !result.post_key ||
+      result.view_count === undefined ||
+      result.like_count === undefined ||
+      result.liked === undefined
+    ) {
+      throw new Error('详情浏览接口未返回文章统计')
+    }
+    applySiteStatistics(result.site_statistics)
+    return save({
+      post_key: result.post_key,
+      view_count: result.view_count,
+      like_count: result.like_count,
+      liked: result.liked,
+    })
   },
   setLiked: async (postKey, liked) => {
-    await useSiteStatisticsStore.getState().ensureVisitorInitialized()
     return save(await putContentLiked(postKey, liked))
   },
 }))

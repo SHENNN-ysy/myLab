@@ -39,6 +39,10 @@ import static org.assertj.core.api.Assertions.assertThat;
         "app.initial-admin-username=api-it-initial-admin",
         "app.initial-admin-password=api-it-initial-admin-password",
         "app.engagement-hash-secret=api-it-engagement-hash-secret",
+        "app.engagement-stream.block-timeout=10ms",
+        "app.engagement-stream.claim-idle=10ms",
+        "app.engagement-stream.poll-delay=1h",
+        "app.engagement-stream.trim-interval=1h",
         "app.rate-limit-per-minute=100000",
         "app.login-rate-limit-per-minute=100000",
 })

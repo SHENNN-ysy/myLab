@@ -26,7 +26,17 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
 
     @Override
     public Map<String, Object> readProjects(UUID releaseId) {
-        List<Map<String, Object>> cards = cards(releaseId, null, false, true, false);
+        List<Map<String, Object>> cards = cards(releaseId, null, false, true, false, false, null);
+        attachTagNames(cards);
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("cards", cards);
+        return root;
+    }
+
+    @Override
+    public Map<String, Object> readLatest(UUID releaseId, int limit) {
+        // 仅启用卡片参与 LIMIT 截取，避免最新 5 条被停用卡片占位后再被公开化过滤
+        List<Map<String, Object>> cards = cards(releaseId, null, false, false, false, true, limit);
         attachTagNames(cards);
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("cards", cards);
@@ -35,12 +45,12 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
 
     @Override
     public Map<String, Object> readSummary(UUID releaseId) {
-        return root(cards(releaseId, null, false, false, true));
+        return root(cards(releaseId, null, false, false, true, false, null));
     }
 
     @Override
     public Map<String, Object> readDetail(UUID releaseId, String postKey) {
-        List<Map<String, Object>> cards = cards(releaseId, postKey, true, false, true);
+        List<Map<String, Object>> cards = cards(releaseId, postKey, true, false, true, false, null);
         // 详情只缓存卡片本体：标签字典仅列表页解析 tag_ids 需要，避免每个 post_key 冗余一份全量标签
         if (cards.isEmpty()) return null;
         Map<String, Object> detail = new LinkedHashMap<>();
@@ -56,15 +66,21 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
     }
 
     private List<Map<String, Object>> cards(UUID releaseId, String postKey, boolean includeMarkdown,
-                                             boolean projectsOnly, boolean includeTagIds) {
+                                             boolean projectsOnly, boolean includeTagIds,
+                                             boolean enabledOnly, Integer limit) {
         String markdownColumn = includeMarkdown ? ", mc.markdown_content\n" : "\n";
         String postFilter = postKey == null ? "" : " AND mc.post_key = ?";
         String projectFilter = projectsOnly
                 ? " AND mc.card_type = 'PROJECT' AND mc.project_show_order IS NOT NULL" : "";
+        String enabledFilter = enabledOnly ? " AND mc.enabled = TRUE" : "";
         String orderBy = projectsOnly
                 ? " ORDER BY mc.project_show_order, mc.post_date DESC NULLS LAST, mc.post_key"
                 : " ORDER BY mc.post_date DESC NULLS LAST, mc.post_key";
-        List<Object> arguments = postKey == null ? List.of(releaseId) : List.of(releaseId, postKey);
+        String limitClause = limit == null ? "" : " LIMIT ?";
+        List<Object> arguments = new ArrayList<>();
+        arguments.add(releaseId);
+        if (postKey != null) arguments.add(postKey);
+        if (limit != null) arguments.add(limit);
         List<Map<String, Object>> cards = jdbc.query("""
                 SELECT mc.id, mc.post_key, mc.card_title, mc.card_summary, mc.post_date,
                        mc.enabled, mc.card_type, mc.project_show_order,
@@ -74,7 +90,7 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
                 LEFT JOIN mylab_resources mr ON mr.card_id = mc.id AND mr.deleted_at IS NULL
                 LEFT JOIN resources image ON image.id = mr.image_resource_id AND image.deleted_at IS NULL
                 WHERE mc.release_id = ? AND mc.deleted_at IS NULL
-                """ + postFilter + projectFilter + orderBy,
+                """ + postFilter + projectFilter + enabledFilter + orderBy + limitClause,
                 (rs, rowNum) -> card(rs, includeMarkdown), arguments.toArray());
         if (includeTagIds) attachTagIds(cards);
         return cards;

@@ -1,6 +1,6 @@
 /* 首页 MyLab「车站」场景：纯 CSS 3D/DOM 场景 + IntersectionObserver 触发一次性进站动画（等价 MyLabStation.vue） */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useProjectPosts } from '@/hooks/useLabPosts'
+import { useLatestLabPosts } from '@/hooks/useLabPosts'
 import { RevealOnScroll } from './ui/RevealOnScroll'
 import { TrainRunner } from './ui/TrainRunner'
 import styles from './MyLabStation.module.css'
@@ -26,7 +26,7 @@ const DEPART_MS = 1000   // 驶离时长，与 .train 基础 transition 对齐
 const MAX_STATION_NAME_LENGTH = 12 // 线路牌与站点详情统一最多展示 12 个字
 
 export function MyLabStation() {
-  const { projectPosts } = useProjectPosts()
+  const { latestPosts } = useLatestLabPosts()
 
   /* 动画状态 */
   const [trainArrived, setTrainArrived] = useState(false)
@@ -37,10 +37,10 @@ export function MyLabStation() {
 
   const cycleTimersRef = useRef<number[]>([])
 
-  /* 后台卡片数据到达后映射为站点：按日期倒序取最新 5 个，站名取标题冒号后的文字（截断显示） */
+  /* 后台最新卡片（文章与项目混合）到达后映射为站点：按日期倒序取最新 5 个，站名取标题冒号后的文字（截断显示） */
   const stations = useMemo<Station[]>(() => {
-    if (!projectPosts.length) return []
-    return [...projectPosts]
+    if (!latestPosts.length) return []
+    return [...latestPosts]
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
       .slice(0, 5)
       .map(p => ({
@@ -50,7 +50,7 @@ export function MyLabStation() {
       tags: (p.tags || []).slice(0, 2),
       summary: p.summary || '',
     }))
-  }, [projectPosts])
+  }, [latestPosts])
 
   /* 初始即选中第一个站点：首屏/刷新时 STATION INFO 面板不为空白 */
   const [selectedIndex, setSelectedIndex] = useState(() => (stations.length > 0 ? 0 : -1))

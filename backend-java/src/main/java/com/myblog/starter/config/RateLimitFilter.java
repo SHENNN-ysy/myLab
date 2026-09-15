@@ -1,6 +1,7 @@
 package com.myblog.starter.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.myblog.common.constant.RedisKeyPrefix;
 import com.myblog.common.enumeration.ErrorCode;
 import com.myblog.common.json.JacksonObjectMapper;
 import com.myblog.common.properties.AppProperties;
@@ -23,7 +24,7 @@ import java.time.Duration;
  * 基于 Redis 的 IP 限流过滤器：全局请求与登录接口按分钟窗口分别计数，超限返回 429。
  * Redis 不可用时放行（best-effort），执行优先级仅次于 {@link WebFilters}。
  *
- * <p>算法为固定窗口：以 {@code rate:{login|global}:{ip}} 为计数键，窗口内首个请求顺带设置
+ * <p>算法为固定窗口：以 {@code mylab:rate:{login|global}:{ip}} 为计数键，窗口内首个请求顺带设置
  * 1 分钟过期，键过期即进入下一窗口、计数自然清零；只需 INCR/EXPIRE 两条命令，实现最简单。
  * 登录接口单独计数是为防密码爆破，阈值通常低于全局阈值。
  * Redis 故障时选择放行而非拒绝：可用性优先，认证与参数校验仍是安全兜底。</p>
@@ -67,7 +68,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         boolean login = req.getRequestURI().endsWith("/auth/login");
         int limit = login ? props.loginRateLimitPerMinute() : props.rateLimitPerMinute();
-        String key = "rate:" + (login ? "login" : "global") + ":" + ip.split(",")[0].trim();
+        String key = RedisKeyPrefix.RATE + (login ? "login" : "global")
+                + ":" + ip.split(",")[0].trim();
         try {
             Long count = redis.opsForValue().increment(key);
             if (count != null && count == 1L) {

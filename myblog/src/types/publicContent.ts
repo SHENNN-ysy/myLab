@@ -139,6 +139,11 @@ export interface PublicProjectContent {
   cards?: PublicProjectCard[]
 }
 
+/** 首页 MyLab 最新卡片投影：最新 5 张启用卡片（文章与项目混合），标签已展开为名称，不含全局标签字典与 Markdown。 */
+export interface PublicMylabLatestContent {
+  cards?: PublicMylabCard[]
+}
+
 export interface PublicContent {
   home?: { images?: PublicHomeImage[] }
   about?: PublicAboutContent
@@ -151,4 +156,5 @@ export interface PublicContent {
   }
   vibe?: { tools?: PublicVibeTool[] }
   myproject?: PublicProjectContent
+  mylab?: PublicMylabLatestContent
 }

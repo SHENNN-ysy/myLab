@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myblog.application.port.PublicContentCache;
+import com.myblog.common.constant.RedisKeyPrefix;
 import com.myblog.common.json.JacksonObjectMapper;
 import com.myblog.common.properties.ContentCacheProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -19,9 +20,9 @@ import java.util.Optional;
 @Repository
 public class RedisPublicContentCache implements PublicContentCache {
     // 聚合契约 v3 为 myproject 卡片补充其实际标签，换 key 避免命中旧结构。
-    public static final String ALL_KEY = "myblog:content:v3:all";
-    public static final String MYLAB_SUMMARY_KEY = "myblog:content:v1:mylab:summary";
-    public static final String MYLAB_DETAILS_KEY = "myblog:content:v1:mylab:details";
+    public static final String ALL_KEY = RedisKeyPrefix.CONTENT + "v3:all";
+    public static final String MYLAB_SUMMARY_KEY = RedisKeyPrefix.CONTENT + "v1:mylab:summary";
+    public static final String MYLAB_DETAILS_KEY = RedisKeyPrefix.CONTENT + "v1:mylab:details";
     private static final ObjectMapper OBJECT_MAPPER = JacksonObjectMapper.get();
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() { };
 

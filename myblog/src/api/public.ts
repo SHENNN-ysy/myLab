@@ -6,6 +6,8 @@
 import type {
   EngagementSummary,
   EngagementView,
+  PageType,
+  PageViewResult,
   PublicContent,
   PublicMylabCard,
   PublicMylabContent,
@@ -14,6 +16,14 @@ import type {
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
 const acceptJson = { Accept: 'application/json' }
+let visitorWriteQueue: Promise<void> = Promise.resolve()
+
+/** 串行执行会签发或刷新访客 Cookie 的写请求，避免首次并发产生多份身份。 */
+const enqueueVisitorWrite = <T>(operation: () => Promise<T>): Promise<T> => {
+  const result = visitorWriteQueue.catch(() => undefined).then(operation)
+  visitorWriteQueue = result.then(() => undefined, () => undefined)
+  return result
+}
 
 /** 后端统一响应信封 */
 interface ResultEnvelope<T> {
@@ -95,41 +105,35 @@ export const fetchEngagementSummaries = async (postKeys: string[]): Promise<Enga
   return result
 }
 
-/** 上报一次浏览 */
-export const postContentView = async (postKey: string, signal?: AbortSignal): Promise<EngagementView> => {
-  const response = await fetch(`${apiBase}/public/mylab/${encodeURIComponent(postKey)}/views`, {
-    method: 'POST',
-    credentials: 'include',
-    cache: 'no-store',
-    signal,
-    headers: acceptJson,
+/** 上报首页、MyLab 列表或详情页浏览；请求不可取消，服务端按访客 Hash 幂等去重。 */
+export const postPageView = (pageType: PageType, postKey?: string): Promise<PageViewResult> =>
+  enqueueVisitorWrite(async () => {
+    const response = await fetch(`${apiBase}/public/analytics/page-views`, {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { ...acceptJson, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        page_type: pageType,
+        ...(postKey ? { post_key: postKey } : {}),
+      }),
+    })
+    return parseResult<PageViewResult>(response, '浏览统计接口请求失败')
   })
-  return parseResult<EngagementView>(response, '互动接口请求失败')
-}
 
 /** 点赞 / 取消点赞 */
-export const putContentLiked = async (postKey: string, liked: boolean): Promise<EngagementView> => {
-  const response = await fetch(`${apiBase}/public/mylab/${encodeURIComponent(postKey)}/likes`, {
-    method: liked ? 'PUT' : 'DELETE',
-    credentials: 'include',
-    cache: 'no-store',
-    headers: acceptJson,
+export const putContentLiked = (postKey: string, liked: boolean): Promise<EngagementView> =>
+  enqueueVisitorWrite(async () => {
+    const response = await fetch(`${apiBase}/public/mylab/${encodeURIComponent(postKey)}/likes`, {
+      method: liked ? 'PUT' : 'DELETE',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: acceptJson,
+    })
+    return parseResult<EngagementView>(response, '互动接口请求失败')
   })
-  return parseResult<EngagementView>(response, '互动接口请求失败')
-}
 
-/** 登记一次站点访问（同时初始化匿名访客身份） */
-export const postSiteVisit = async (): Promise<SiteStatistics> => {
-  const response = await fetch(`${apiBase}/public/analytics/visits`, {
-    method: 'POST',
-    credentials: 'include',
-    cache: 'no-store',
-    headers: acceptJson,
-  })
-  return parseResult<SiteStatistics>(response, '统计接口请求失败')
-}
-
-/** 拉取统计快照（访问登记失败时的降级读取） */
+/** 拉取统计快照（页面浏览上报失败时的降级读取） */
 export const fetchSiteStatisticsSummary = async (): Promise<SiteStatistics> => {
   const response = await fetch(`${apiBase}/public/analytics/summary`, {
     credentials: 'include',

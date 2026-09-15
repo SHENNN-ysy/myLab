@@ -2,11 +2,14 @@ package com.myblog.application.service.engagement;
 
 import com.myblog.application.model.dto.EngagementDtos;
 import com.myblog.application.port.EngagementStore;
+import com.myblog.common.properties.VisitorProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -26,7 +29,7 @@ class VisitorIdentityServiceTest {
     @BeforeEach
     void setUp() {
         // 测试密钥 + 非 HTTPS 环境（cookieSecure=false）
-        service = new VisitorIdentityService(store, "test-secret", false);
+        service = service("test-secret", false);
     }
 
     /** Cookie 缺失时签发新令牌与访客哈希，并在存储中登记新访客。 */
@@ -81,7 +84,7 @@ class VisitorIdentityServiceTest {
     @Test
     void hashIsDeterministicForSameSecretAndToken() {
         when(store.visitorExists(anyString())).thenReturn(true);
-        VisitorIdentityService sameSecret = new VisitorIdentityService(store, "test-secret", false);
+        VisitorIdentityService sameSecret = service("test-secret", false);
 
         EngagementDtos.VisitorIdentity first = service.resolve(VALID_TOKEN);
         EngagementDtos.VisitorIdentity second = sameSecret.resolve(VALID_TOKEN);
@@ -93,7 +96,7 @@ class VisitorIdentityServiceTest {
     @Test
     void differentSecretsProduceDifferentHashes() {
         when(store.visitorExists(anyString())).thenReturn(true);
-        VisitorIdentityService otherSecret = new VisitorIdentityService(store, "other-secret", false);
+        VisitorIdentityService otherSecret = service("other-secret", false);
 
         assertThat(service.resolve(VALID_TOKEN).visitorHash())
                 .isNotEqualTo(otherSecret.resolve(VALID_TOKEN).visitorHash());
@@ -103,6 +106,12 @@ class VisitorIdentityServiceTest {
     @Test
     void cookieSecureReflectsConfiguration() {
         assertThat(service.cookieSecure()).isFalse();
-        assertThat(new VisitorIdentityService(store, "test-secret", true).cookieSecure()).isTrue();
+        assertThat(service("test-secret", true).cookieSecure()).isTrue();
+        assertThat(service.identityTtl()).isEqualTo(Duration.ofHours(24));
+    }
+
+    private VisitorIdentityService service(String secret, boolean secure) {
+        return new VisitorIdentityService(store, secret,
+                new VisitorProperties(Duration.ofHours(24), secure));
     }
 }

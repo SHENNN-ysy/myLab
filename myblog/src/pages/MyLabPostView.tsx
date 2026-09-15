@@ -73,14 +73,14 @@ export default function MyLabPostView() {
   /* 正文加载中：有 postKey 且尚无正文与错误（渲染期重置保证切文后回到加载态） */
   const markdownLoading = Boolean(postKey) && !markdownContent && !markdownError
 
-  /* 上报浏览（切换文章时取消上一次请求） */
+  /* 上报浏览：请求本身不中断，切换文章时只禁止旧请求回写当前页面错误。 */
   useEffect(() => {
     if (!postKey) return
-    const controller = new AbortController()
-    recordView(postKey, controller.signal).catch((error: Error) => {
-      if (error.name !== 'AbortError') setInteractionError('互动统计暂不可用')
+    let active = true
+    recordView(postKey).catch(() => {
+      if (active) setInteractionError('互动统计暂不可用')
     })
-    return () => controller.abort()
+    return () => { active = false }
   }, [postKey, recordView])
 
   /* 加载并渲染 Markdown 正文（切换文章时取消上一次请求） */

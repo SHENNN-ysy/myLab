@@ -1,6 +1,7 @@
 package com.myblog.infrastructure.cache;
 
 import com.myblog.application.port.DistributedLock;
+import com.myblog.common.constant.RedisKeyPrefix;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
@@ -11,7 +12,7 @@ import java.util.List;
 /** Redis SET NX PX 分布式锁适配器，使用 token 比较删除防止误释放。 */
 @Component
 public class RedisDistributedLock implements DistributedLock {
-    public static final String LOCK_PREFIX = "myblog:content:v1:lock:";
+    public static final String LOCK_PREFIX = RedisKeyPrefix.CONTENT + "v1:lock:";
     private static final DefaultRedisScript<Long> RELEASE_SCRIPT = new DefaultRedisScript<>("""
             if redis.call('GET', KEYS[1]) == ARGV[1] then
                 return redis.call('DEL', KEYS[1])

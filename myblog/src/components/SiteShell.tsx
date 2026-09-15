@@ -52,9 +52,13 @@ function ScrollManager() {
 export default function SiteShell() {
   const location = useLocation()
 
-  // 访问登记：每次路由切换上报一次站点访问
+  // 首页与 MyLab 列表在路由切换时上报；详情页由 MyLabPostView 携带 postKey 上报。
   useEffect(() => {
-    void useSiteStatisticsStore.getState().registerVisit()
+    if (location.pathname === '/') {
+      void useSiteStatisticsStore.getState().recordPageView('home')
+    } else if (location.pathname === '/mylab') {
+      void useSiteStatisticsStore.getState().recordPageView('mylab')
+    }
   }, [location.pathname])
 
   return (

@@ -1,6 +1,7 @@
 package com.myblog;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.myblog.common.constant.RedisKeyPrefix;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -52,17 +53,17 @@ class AuthApiIT extends AbstractApiIntegrationTest {
         assertThat(lastLoginAt).as("登录成功后 last_login_at 应落库").isNotNull();
 
         // Redis 会话以令牌的 SHA-256 摘要为键（不落明文令牌），并按用户 ZSet 反向索引
-        Set<String> sessionKeys = redis.keys("auth:session:*");
+        Set<String> sessionKeys = redis.keys(RedisKeyPrefix.AUTH + "session:*");
         assertThat(sessionKeys).hasSize(1);
         String sessionKey = sessionKeys.iterator().next();
         assertThat(sessionKey).doesNotContain(accessToken);
-        assertThat(sessionKey).matches("auth:session:[0-9a-f]{64}");
+        assertThat(sessionKey).matches("mylab:auth:session:[0-9a-f]{64}");
         Map<Object, Object> session = redis.opsForHash().entries(sessionKey);
         assertThat(session).containsKeys("user_id", "created_at", "last_seen_at");
         assertThat(session.get("user_id")).isEqualTo(userId.toString());
-        assertThat(redis.opsForZSet().size("auth:user-sessions:" + userId)).isEqualTo(1L);
-        String digest = sessionKey.substring("auth:session:".length());
-        assertThat(redis.opsForZSet().range("auth:user-sessions:" + userId, 0, -1))
+        assertThat(redis.opsForZSet().size(RedisKeyPrefix.AUTH + "user-sessions:" + userId)).isEqualTo(1L);
+        String digest = sessionKey.substring((RedisKeyPrefix.AUTH + "session:").length());
+        assertThat(redis.opsForZSet().range(RedisKeyPrefix.AUTH + "user-sessions:" + userId, 0, -1))
                 .containsExactly(digest);
 
         // 先把 TTL 压短，再访问 /me 验证滑动续期会重置回完整 8 小时
@@ -80,7 +81,7 @@ class AuthApiIT extends AbstractApiIntegrationTest {
                         new HttpEntity<>(authHeaders(accessToken)), JsonNode.class),
                 HttpStatus.OK, 0);
         assertThat(redis.hasKey(sessionKey)).isFalse();
-        assertThat(redis.hasKey("auth:user-sessions:" + userId)).isFalse();
+        assertThat(redis.hasKey(RedisKeyPrefix.AUTH + "user-sessions:" + userId)).isFalse();
         assertUnauthorized(accessToken);
     }
 

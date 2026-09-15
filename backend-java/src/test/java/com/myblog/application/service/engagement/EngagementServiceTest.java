@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -148,11 +149,13 @@ class EngagementServiceTest {
     /** 已发布索引命中时不再查询数据库，直接放行互动。 */
     @Test
     void interactionSkipsDatabaseCheckWhenPublishedIndexHits() {
-        EngagementDtos.EngagementView view = view("post-a", 5, 1, false);
+        EngagementDtos.PageViewResult view = pageView("post-a", 5, 1, false);
         when(publishedPosts.contains("post-a")).thenReturn(true);
-        when(store.registerView(eq("visitor"), eq("post-a"), any())).thenReturn(view);
+        when(store.registerPageView(eq("visitor"), eq(EngagementDtos.PageType.MYLAB_DETAIL),
+                eq("post-a"), any())).thenReturn(view);
 
-        assertThat(service.registerView("visitor", "post-a")).isEqualTo(view);
+        assertThat(service.registerPageView("visitor",
+                new EngagementDtos.PageViewRequest("mylab_detail", "post-a"))).isEqualTo(view);
         verify(repository, never()).publishedPostExists(any());
     }
 
@@ -177,24 +180,60 @@ class EngagementServiceTest {
         verify(publishedPosts).rebuild(List.of("post-a", "post-b"));
     }
 
-    /** 已发布文章的浏览登记委托给 Redis 存储。 */
+    /** 已发布详情页浏览委托给 Redis 存储。 */
     @Test
-    void registerViewDelegatesToStoreForPublishedPost() {
-        EngagementDtos.EngagementView view = view("post-a", 5, 1, false);
+    void registerPageViewDelegatesToStoreForPublishedPost() {
+        EngagementDtos.PageViewResult view = pageView("post-a", 5, 1, false);
         when(repository.publishedPostExists("post-a")).thenReturn(true);
-        when(store.registerView(eq("visitor"), eq("post-a"), any())).thenReturn(view);
+        when(store.registerPageView(eq("visitor"), eq(EngagementDtos.PageType.MYLAB_DETAIL),
+                eq("post-a"), any())).thenReturn(view);
 
-        assertThat(service.registerView("visitor", "post-a")).isEqualTo(view);
+        assertThat(service.registerPageView("visitor",
+                new EngagementDtos.PageViewRequest("mylab_detail", " post-a "))).isEqualTo(view);
     }
 
-    /** 未发布文章登记浏览报不存在，且不触达 Redis。 */
+    /** 未发布详情页登记浏览报不存在，且不触达 Redis。 */
     @Test
-    void registerViewRejectsUnpublishedPost() {
+    void registerPageViewRejectsUnpublishedPost() {
         when(repository.publishedPostExists("draft-post")).thenReturn(false);
 
-        assertThatThrownBy(() -> service.registerView("visitor", "draft-post"))
+        assertThatThrownBy(() -> service.registerPageView("visitor",
+                new EngagementDtos.PageViewRequest("mylab_detail", "draft-post")))
                 .isInstanceOf(NotFoundException.class);
-        verify(store, never()).registerView(eq("visitor"), eq("draft-post"), any());
+        verify(store, never()).registerPageView(eq("visitor"), any(), eq("draft-post"), any());
+    }
+
+    /** 首页浏览不携带文章标识，直接委托统一页面接口。 */
+    @Test
+    void registerHomePageViewDoesNotValidatePost() {
+        EngagementDtos.PageViewResult view = new EngagementDtos.PageViewResult(
+                "home", null, null, null, null,
+                new EngagementDtos.SiteStatisticsView(1, 1, 0, OffsetDateTime.now()));
+        when(store.registerPageView(eq("visitor"), eq(EngagementDtos.PageType.HOME), isNull(), any()))
+                .thenReturn(view);
+
+        assertThat(service.registerPageView("visitor",
+                new EngagementDtos.PageViewRequest("home", null))).isEqualTo(view);
+        verify(repository, never()).publishedPostExists(any());
+    }
+
+    /** 页面类型及 post_key 组合不合法时返回参数错误。 */
+    @Test
+    void registerPageViewRejectsInvalidTarget() {
+        assertThatThrownBy(() -> service.registerPageView("visitor",
+                new EngagementDtos.PageViewRequest("unknown", null)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.registerPageView("visitor",
+                new EngagementDtos.PageViewRequest("mylab_detail", null)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.registerPageView("visitor",
+                new EngagementDtos.PageViewRequest("mylab", "post-a")))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.registerPageView("visitor",
+                new EngagementDtos.PageViewRequest("home", "")))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.registerPageView("visitor", null))
+                .isInstanceOf(ValidationException.class);
     }
 
     /** 已发布文章的点赞委托给 Redis 存储。 */
@@ -219,19 +258,9 @@ class EngagementServiceTest {
     void unlikeDelegatesToStoreForPublishedPost() {
         EngagementDtos.EngagementView view = view("post-a", 5, 1, false);
         when(repository.publishedPostExists("post-a")).thenReturn(true);
-        when(store.unlike("visitor", "post-a")).thenReturn(view);
+        when(store.unlike(eq("visitor"), eq("post-a"), any())).thenReturn(view);
 
         assertThat(service.unlike("visitor", "post-a")).isEqualTo(view);
-    }
-
-    /** 站点访问登记直接委托给 Redis 存储。 */
-    @Test
-    void registerVisitDelegatesToStore() {
-        EngagementDtos.SiteStatisticsView statistics =
-                new EngagementDtos.SiteStatisticsView(10, 20, 3, OffsetDateTime.now());
-        when(store.registerVisit(eq("visitor"), any())).thenReturn(statistics);
-
-        assertThat(service.registerVisit("visitor")).isEqualTo(statistics);
     }
 
     /** Redis 可用时站点统计取实时值，不查 PG 快照。 */
@@ -281,6 +310,11 @@ class EngagementServiceTest {
 
     private EngagementDtos.EngagementView view(String postKey, long views, long likes, boolean liked) {
         return new EngagementDtos.EngagementView(postKey, views, likes, liked,
+                new EngagementDtos.SiteStatisticsView(10, 20, 3, OffsetDateTime.now()));
+    }
+
+    private EngagementDtos.PageViewResult pageView(String postKey, long views, long likes, boolean liked) {
+        return new EngagementDtos.PageViewResult("mylab_detail", postKey, views, likes, liked,
                 new EngagementDtos.SiteStatisticsView(10, 20, 3, OffsetDateTime.now()));
     }
 }
