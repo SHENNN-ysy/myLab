@@ -23,7 +23,6 @@ const stationName = (title: string) => {
 
 const ARRIVE_MS = 2600   // 列车减速进站时长，与 CSS .train.arrived transition 对齐
 const DEPART_MS = 1000   // 驶离时长，与 .train 基础 transition 对齐
-const MAX_STATION_NAME_LENGTH = 12 // 线路牌与站点详情统一最多展示 12 个字
 
 export function MyLabStation() {
   const { latestPosts } = useLatestLabPosts()
@@ -37,7 +36,7 @@ export function MyLabStation() {
 
   const cycleTimersRef = useRef<number[]>([])
 
-  /* 后台最新卡片（文章与项目混合）到达后映射为站点：按日期倒序取最新 5 个，站名取标题冒号后的文字（截断显示） */
+  /* 后台最新卡片（文章与项目混合）到达后映射为站点：按日期倒序取最新 5 个，站名取标题冒号后的全部文字 */
   const stations = useMemo<Station[]>(() => {
     if (!latestPosts.length) return []
     return [...latestPosts]
@@ -45,7 +44,7 @@ export function MyLabStation() {
       .slice(0, 5)
       .map(p => ({
       key: p.id || p.title,
-      name: Array.from(stationName(p.title || '未命名')).slice(0, MAX_STATION_NAME_LENGTH).join(''),
+      name: stationName(p.title || '未命名'),
       date: p.date || '',
       tags: (p.tags || []).slice(0, 2),
       summary: p.summary || '',
