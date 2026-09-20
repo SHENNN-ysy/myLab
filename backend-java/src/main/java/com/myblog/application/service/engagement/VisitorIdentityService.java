@@ -23,7 +23,9 @@ import java.util.regex.Pattern;
  */
 @Service
 public class VisitorIdentityService {
+    /** 浏览器端匿名身份 Cookie 名称。 */
     public static final String COOKIE_NAME = "myblog_visitor";
+    /** 32 字节随机数采用无填充 Base64URL 编码后固定为 43 个字符。 */
     private static final Pattern TOKEN_PATTERN = Pattern.compile("^[A-Za-z0-9_-]{43}$");
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -47,11 +49,13 @@ public class VisitorIdentityService {
     public EngagementDtos.VisitorIdentity resolve(String cookieToken) {
         if (cookieToken != null && TOKEN_PATTERN.matcher(cookieToken).matches()) {
             String visitorHash = hash(cookieToken);
+            // Redis Hash 已过期时不复用旧 Cookie，直接轮换新身份并重新开始去重窗口。
             if (store.visitorExists(visitorHash)) {
                 return new EngagementDtos.VisitorIdentity(cookieToken, visitorHash, false);
             }
         }
 
+        // 只把随机令牌交给浏览器，服务端存储不可逆的带密钥摘要。
         byte[] random = new byte[32];
         RANDOM.nextBytes(random);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
@@ -60,10 +64,12 @@ public class VisitorIdentityService {
         return new EngagementDtos.VisitorIdentity(token, visitorHash, true);
     }
 
+    /** 返回控制器写入访客 Cookie 时使用的 Secure 策略。 */
     public boolean cookieSecure() {
         return properties.visitorCookieSecure();
     }
 
+    /** 返回浏览器 Cookie Max-Age 与 Redis 滑动 TTL 共用的身份有效期。 */
     public Duration identityTtl() {
         return properties.visitorIdentityTtl();
     }

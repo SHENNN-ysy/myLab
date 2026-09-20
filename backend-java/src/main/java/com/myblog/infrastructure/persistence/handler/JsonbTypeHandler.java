@@ -26,11 +26,13 @@ public class JsonbTypeHandler extends BaseTypeHandler<Object> {
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, Object parameter, JdbcType jdbcType) throws SQLException {
         try {
+            // PG 驱动不会把 String 自动推断为 jsonb，必须包成 PGobject 显式声明列类型
             PGobject o = new PGobject();
             o.setType("jsonb");
             o.setValue(OM.writeValueAsString(parameter));
             ps.setObject(i, o);
         } catch (Exception e) {
+            // TypeHandler 契约只允许抛 SQLException，Jackson 序列化失败在此包装
             throw new SQLException(e);
         }
     }

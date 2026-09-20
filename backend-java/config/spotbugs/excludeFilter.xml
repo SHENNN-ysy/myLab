@@ -10,7 +10,7 @@
         <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
     <!-- Returning shared collections/singletons held by records and utility
-         holders (PageResult, ClaimedSnapshot, JacksonObjectMapper) is by design. -->
+         holders (PageResult, JacksonObjectMapper) is by design. -->
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
     </Match>

@@ -31,9 +31,11 @@ import java.util.UUID;
 public class RedisSessionService implements SessionService {
 
     private static final String SESSION_PREFIX = RedisKeyPrefix.AUTH + "session:";
+    // 用户会话反向索引 ZSet（member=令牌摘要，score=过期毫秒），支撑按用户批量吊销
     private static final String USER_SESSIONS_PREFIX = RedisKeyPrefix.AUTH + "user-sessions:";
     private static final long MILLIS_PER_SECOND = 1000L;
 
+    /** 签发脚本：写会话 Hash 并在用户索引登记（顺带清除已过期项，防止索引无限增长），两步原子完成。 */
     private static final DefaultRedisScript<Long> ISSUE_SCRIPT = new DefaultRedisScript<>("""
             redis.call('HSET', KEYS[1],
                 'user_id', ARGV[1],
@@ -46,6 +48,7 @@ public class RedisSessionService implements SessionService {
             return 1
             """, Long.class);
 
+    /** 认证脚本：命中会话则滑动续期（刷新 last_seen_at 与 TTL）并同步用户索引，未命中返回 nil。 */
     private static final DefaultRedisScript<String> AUTHENTICATE_SCRIPT = new DefaultRedisScript<>("""
             local userId = redis.call('HGET', KEYS[1], 'user_id')
             if not userId then
@@ -60,6 +63,7 @@ public class RedisSessionService implements SessionService {
             return userId
             """, String.class);
 
+    /** 注销脚本：删会话 Hash 并从用户索引移除；索引清空时连索引键一并删除，会话不存在返回 0 保持幂等。 */
     private static final DefaultRedisScript<Long> REVOKE_SCRIPT = new DefaultRedisScript<>("""
             local userId = redis.call('HGET', KEYS[1], 'user_id')
             if not userId then
@@ -74,6 +78,7 @@ public class RedisSessionService implements SessionService {
             return 1
             """, Long.class);
 
+    /** 吊销全部会话脚本：按用户索引逐个删除会话 Hash，最后删除索引本身，返回删除的会话数。 */
     private static final DefaultRedisScript<Long> REVOKE_ALL_SCRIPT = new DefaultRedisScript<>("""
             local tokens = redis.call('ZRANGE', KEYS[1], 0, -1)
             for _, digest in ipairs(tokens) do
@@ -118,6 +123,7 @@ public class RedisSessionService implements SessionService {
         try {
             return new SessionIdentity(UUID.fromString(userId));
         } catch (IllegalArgumentException exception) {
+            // user_id 由本服务写入，出现非法值说明 Redis 数据已损坏，降级为认证失败而非系统错误
             log.error("Redis 会话包含非法 user_id，session_digest={}", digest);
             throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, "会话身份无效");
         }

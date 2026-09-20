@@ -34,6 +34,7 @@ public class RedisEngagementEventStream implements EngagementEventStream {
     public static final String STREAM_KEY = RedisKeyPrefix.BLOG + "stream:engagement:v1";
     public static final String GROUP_NAME = "engagement-persistence-v1";
     public static final String DEAD_LETTER_KEY = RedisKeyPrefix.BLOG + "stream:engagement:dlq:v1";
+    // Stream 起始 ID；消费组从未投递过消息时 lastDeliveredId 即为此值
     private static final String ZERO_ID = "0-0";
     private static final int STREAM_ID_PARTS = 2;
 
@@ -54,6 +55,11 @@ public class RedisEngagementEventStream implements EngagementEventStream {
         }
     }
 
+    /**
+     * 以消费组 lastConsumed（">"）偏移读取从未投递的新消息，长轮询至多等待 blockTimeout。
+     *
+     * @return 读到的新消息；超时仍无消息时返回空列表
+     */
     @Override
     public List<Message> readNew(String consumer, int count, Duration blockTimeout) {
         StreamReadOptions options = StreamReadOptions.empty().count(count).block(blockTimeout);
@@ -79,6 +85,10 @@ public class RedisEngagementEventStream implements EngagementEventStream {
         return messages(claimed);
     }
 
+    /**
+     * XACK 批量确认：仅在落库成功或已转死信后调用，确认后消息离开 Pending 不再重投，
+     * 因此落库失败时绝不能确认（配合 claimStale 实现至少一次处理）。
+     */
     @Override
     public void acknowledge(Collection<String> messageIds) {
         if (!messageIds.isEmpty()) {
@@ -86,6 +96,7 @@ public class RedisEngagementEventStream implements EngagementEventStream {
         }
     }
 
+    /** 把消息拷贝进死信 Stream（保留原 ID、原因、失败时间与原始字段供排障）；本方法不确认原消息，调用方需另行 acknowledge。 */
     @Override
     public void deadLetter(Message message, String reason) {
         Map<String, String> fields = new LinkedHashMap<>();
@@ -116,6 +127,7 @@ public class RedisEngagementEventStream implements EngagementEventStream {
                 "XTRIM", bytes(STREAM_KEY), bytes("MINID"), bytes(trimId)));
     }
 
+    /** 返回 Stream 总长度与本消费组 Pending 数量；Stream 不存在时长度按 0 计。 */
     @Override
     public Status status() {
         Long length = operations().size(STREAM_KEY);
@@ -138,6 +150,7 @@ public class RedisEngagementEventStream implements EngagementEventStream {
         }).toList();
     }
 
+    /** 按保留期换算 Stream ID 阈值：Stream ID 首段即毫秒时间戳，早于该时间的消息已超出保留期。 */
     private static String cutoffId(Duration retention) {
         long timestamp = Instant.now().minus(retention).toEpochMilli();
         return Math.max(0, timestamp) + "-0";
@@ -147,6 +160,7 @@ public class RedisEngagementEventStream implements EngagementEventStream {
         return compareIds(left, right) <= 0 ? left : right;
     }
 
+    /** Stream ID 各段位数不固定，字典序不可靠，必须拆成 时间戳/序号 两段按数值比较。 */
     private static int compareIds(String left, String right) {
         String[] leftParts = left.split("-", STREAM_ID_PARTS);
         String[] rightParts = right.split("-", STREAM_ID_PARTS);

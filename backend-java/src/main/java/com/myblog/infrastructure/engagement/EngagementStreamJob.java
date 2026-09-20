@@ -10,7 +10,6 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,8 +20,6 @@ import java.util.concurrent.atomic.AtomicLong;
 /** Redis Stream 消费任务：恢复聚合快照、持续落库，并定期清理已确认历史。 */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "app.engagement-stream", name = "enabled",
-        havingValue = "true", matchIfMissing = true)
 public class EngagementStreamJob implements ApplicationRunner {
     private static final int DAILY_RETENTION_DAYS = 120;
     private static final int CONSUMER_ID_LENGTH = 8;

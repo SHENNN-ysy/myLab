@@ -15,6 +15,7 @@ final class CodecSql {
 
     /** 按条件为指定表的数据行打 deleted_at 标记（幂等） */
     static void softDelete(JdbcTemplate jdbc, String table, String condition, OffsetDateTime now, UUID releaseId) {
+        // table 与 condition 只允许传入包内硬编码常量，禁止拼接外部输入，避免 SQL 注入
         jdbc.update("UPDATE " + table + " SET deleted_at = ? WHERE " + condition + " AND deleted_at IS NULL",
                 now, releaseId);
     }
