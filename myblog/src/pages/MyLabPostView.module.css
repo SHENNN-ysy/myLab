@@ -150,14 +150,6 @@
   color: var(--accent-dark);
 }
 
-.post-summary {
-  margin-bottom: 2.2rem;
-  font-size: 1rem;
-  font-weight: 300;
-  line-height: 1.9;
-  color: var(--ink-light);
-}
-
 .post-actions {
   display: flex;
   align-items: center;

@@ -72,6 +72,7 @@ public class EngagementService {
         if (request == null) throw new ValidationException("请求体不能为空");
         EngagementDtos.PageType pageType = parsePageType(request.pageType());
         String postKey = normalizePagePostKey(pageType, request.postKey());
+        // 首页和列表页不绑定具体内容；只有详情页需要防止给未发布内容刷计数。
         if (pageType == EngagementDtos.PageType.MYLAB_DETAIL) validatePublishedPost(postKey);
         return store.registerPageView(visitorHash, pageType, postKey, today());
     }
@@ -103,6 +104,7 @@ public class EngagementService {
         }
     }
 
+    /** 管理端统计摘要：先执行角色校验，再复用公开统计的 Redis/PG 降级策略。 */
     public EngagementDtos.SiteStatisticsView adminSummary(CurrentUser actor) {
         Authorization.requireAdmin(actor);
         return siteStatistics();
@@ -175,6 +177,7 @@ public class EngagementService {
         }
     }
 
+    /** 将 API 字符串严格映射为页面类型，避免未知页面污染统计维度。 */
     private EngagementDtos.PageType parsePageType(String rawPageType) {
         String value = rawPageType == null ? "" : rawPageType.trim();
         for (EngagementDtos.PageType pageType : EngagementDtos.PageType.values()) {
@@ -183,6 +186,9 @@ public class EngagementService {
         throw new ValidationException("page_type 只允许 home、mylab 或 mylab_detail");
     }
 
+    /**
+     * 约束页面类型与 post_key 的组合：详情页必须携带合法标识，其他页面禁止携带标识。
+     */
     private String normalizePagePostKey(EngagementDtos.PageType pageType, String rawPostKey) {
         String postKey = rawPostKey == null ? null : rawPostKey.trim();
         if (pageType == EngagementDtos.PageType.MYLAB_DETAIL) {
@@ -195,6 +201,7 @@ public class EngagementService {
         return null;
     }
 
+    /** 按固定业务时区取统计日期，避免服务器时区差异造成每日数据跨日。 */
     private LocalDate today() {
         return ZonedDateTime.now(BUSINESS_ZONE).toLocalDate();
     }

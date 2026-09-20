@@ -293,6 +293,9 @@ class PublicEngagementApiIT extends AbstractApiIntegrationTest {
         assertThat(keys).isNotEmpty().allMatch(key -> key.startsWith(RedisKeyPrefix.ROOT));
         assertThat(keys).anyMatch(key -> key.startsWith(RedisKeyPrefix.RATE));
         assertThat(keys).anyMatch(key -> key.startsWith(RedisKeyPrefix.BLOG));
+        assertThat(keys).noneMatch(key -> key.startsWith(RedisKeyPrefix.BLOG + "dirty:"));
+        assertThat(keys).noneMatch(key -> key.startsWith(RedisKeyPrefix.BLOG + "processing:"));
+        assertThat(keys).doesNotContain(RedisKeyPrefix.BLOG + "lock:snapshot");
     }
 
     /** 未产生互动的合法 post_key 批量查询按 0 兜底。 */

@@ -27,8 +27,6 @@
     <suppress files="ContentModuleServiceImpl.java" message=".*'6'.*"/>
     <suppress files="ContentModuleServiceImpl.java" message=".*'8'.*"/>
     <suppress files="EngagementService.java" message=".*'100'.*"/>
-    <suppress files="EngagementSnapshotJob.java" message=".*'119'.*"/>
-    <suppress files="EngagementSnapshotJob.java" message=".*'60_000'.*"/>
     <suppress files="FileServiceImpl.java" message=".*'1024L'.*"/>
     <suppress files="FileServiceImpl.java" message=".*'3600'.*"/>
     <suppress files="FileServiceImpl.java" message=".*'7'.*"/>

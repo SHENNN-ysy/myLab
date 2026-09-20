@@ -321,11 +321,11 @@ JWT 双令牌切换到 Redis 会话的版本必须让 backend 与 admin 使用�
 
 ### 8.4 Redis Stream 互动统计版本上线
 
-互动统计版本默认设置 `ENGAGEMENT_STREAM_ENABLED=true`。写请求会在原有 Redis Lua 事务内同时更新实时聚合 Hash、兼容 dirty 集合并追加 Stream 消息；新消费任务按批读取 Redis 最新绝对值，PostgreSQL 提交成功后再确认消息。上线不修改数据库结构和公开 API，前后端不要求同时发布。
+互动统计写请求会在 Redis Lua 事务内同时更新实时聚合 Hash 并追加 Stream 消息；消费任务按批读取 Redis 最新绝对值，PostgreSQL 提交成功后再确认消息。Stream 是唯一落库通知链路，不再写入 dirty/processing 兼容集合。上线不修改数据库结构和公开 API，前后端不要求同时发布。
 
 上线后重点观察 Actuator 指标 `engagement.stream.length`、`engagement.stream.pending`、`engagement.stream.messages.processed`、`engagement.stream.consume.failures`、`engagement.stream.batch.duration` 和 `engagement.stream.last.success.epoch.millis`。`pending` 持续增长或最后成功时间长期不更新时，应先检查 Redis、PostgreSQL 和消费失败日志，不要直接清空 Stream。
 
-需要应用级回滚时，将 `deploy/.env` 设置为 `ENGAGEMENT_STREAM_ENABLED=false` 并重建 backend。旧 `EngagementSnapshotJob` 会恢复运行，继续消费迁移期同步保留的 dirty 集合；确认回滚后再排查 Stream，禁止在切换期间同时运行新旧版本 backend。详细数据结构、恢复和排障命令见《Redis Stream 互动统计落库改造说明》。
+需要应用级回滚时，应先让当前版本消费完 Stream，确认 Pending 为 0 且 PostgreSQL 快照与 Redis 一致，再停止全部 backend 并回滚到已验证的 Stream 版本。项目不再提供切换旧 `EngagementSnapshotJob` 的配置开关；禁止在切换期间同时运行仍写 dirty Set 的旧版本 backend。详细数据结构、恢复和排障命令见《Redis Stream 互动统计落库改造说明》。
 
 ### 8.5 访客与页面浏览统计版本上线
 

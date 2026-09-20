@@ -24,6 +24,7 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
         this.jdbc = jdbc;
     }
 
+    /** 首页项目区：仅取参与展示（project_show_order 非空）的 PROJECT 卡片，按展示位次排序，标签已在仓储层展开为名称。 */
     @Override
     public Map<String, Object> readProjects(UUID releaseId) {
         List<Map<String, Object>> cards = cards(releaseId, null, false, true, false, false, null);
@@ -43,6 +44,7 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
         return root;
     }
 
+    /** MyLab 全量列表：卡片只带 tag_ids，另附全局启用标签字典，由服务层按字典展开为标签名。 */
     @Override
     public Map<String, Object> readSummary(UUID releaseId) {
         return root(cards(releaseId, null, false, false, true, false, null));
@@ -65,6 +67,11 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
         return root;
     }
 
+    /**
+     * 按开关组合查询卡片：includeMarkdown 决定是否投影 Markdown 正文，projectsOnly 限定首页展示项目，
+     * includeTagIds 决定是否批量回填 tag_ids，enabledOnly 与 limit 配合实现"最新 N 条启用卡片"。
+     * SQL 片段均为硬编码常量，仅 releaseId/postKey/limit 走占位符，参数顺序必须与占位符出现顺序一致。
+     */
     private List<Map<String, Object>> cards(UUID releaseId, String postKey, boolean includeMarkdown,
                                              boolean projectsOnly, boolean includeTagIds,
                                              boolean enabledOnly, Integer limit) {
@@ -96,6 +103,7 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
         return cards;
     }
 
+    /** 批量回填每张卡片引用的 tag_id 列表（保持卡片内标签顺序），供全量摘要按标签字典展开为名称。 */
     private void attachTagIds(List<Map<String, Object>> cards) {
         if (cards.isEmpty()) return;
         List<UUID> cardIds = cards.stream().map(card -> (UUID) card.get("row_id")).toList();
@@ -132,6 +140,7 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
         cards.forEach(card -> card.put("tags", tagNames.getOrDefault(card.get("row_id"), List.of())));
     }
 
+    /** 全局启用标签字典：供列表页把卡片上的 tag_ids 解析为标签名。 */
     private List<Map<String, Object>> activeTags() {
         return jdbc.query("""
                 SELECT id, tag_key, name, enabled
@@ -148,6 +157,10 @@ public class JdbcMylabPublicRepository implements MylabPublicRepository {
         });
     }
 
+    /**
+     * 行映射：row_id 是行级主键，用于关联标签与行级标识，随草稿落库前由服务层统一剥离；
+     * 标题、摘要、日期同时输出两套键名（如 title 与 card_title），兼容消费方的双键回退读取。
+     */
     private static Map<String, Object> card(ResultSet rs, boolean includeMarkdown) throws SQLException {
         Map<String, Object> card = new LinkedHashMap<>();
         String postKey = rs.getString("post_key");

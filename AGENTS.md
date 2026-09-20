@@ -203,8 +203,8 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 | 数据库设计 | [docs/数据库表结构重设计.md](docs/数据库表结构重设计.md) | 版本化内容系统表设计 |
 | 测试工作流 | [docs/测试工作流.md](docs/测试工作流.md) | 测试约定与流程 |
 | Redis 公开内容缓存 | [docs/Redis公开内容缓存开发说明.md](docs/Redis公开内容缓存开发说明.md) | 前台公开内容缓存、分布式锁与失效机制 |
-| Redis Stream 互动落库 | [article/Redis Stream互动统计落库改造说明.md](article/Redis Stream互动统计落库改造说明.md) | 浏览、点赞、访问统计的异步落库、一致性、监控与回滚 |
-| Redis Key 命名空间 | [article/Redis Key命名空间说明.md](article/Redis Key命名空间说明.md) | `mylab:` 统一顶层、三类子空间与发布迁移注意事项 |
+| Redis Stream 互动落库 | `article/Redis Stream互动统计落库改造说明.md`（本地资料，未入库） | 浏览、点赞、访问统计的异步落库、一致性、监控与回滚 |
+| Redis Key 命名空间 | `article/Redis Key命名空间说明.md`（本地资料，未入库） | `mylab:` 统一顶层、三类子空间与发布迁移注意事项 |
 | 部署说明 | [deploy/README.md](deploy/README.md) | Nginx/SSL/域名配置细节 |
 | CI 内存耗尽事故复盘 | [docs/事故复盘-CI构建内存耗尽.md](docs/事故复盘-CI构建内存耗尽.md) | 2026-09-07 事故经过、根因、修复与独立 CI 服务器规划 |
 | 本地环境变量模板 | [.env.example](.env.example) | 本地一键部署配置 |

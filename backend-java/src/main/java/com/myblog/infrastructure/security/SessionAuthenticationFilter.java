@@ -45,6 +45,7 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
         this.objectMapper = objectMapper;
     }
 
+    /** 登录、健康检查、接口文档与公开接口直接跳过，公开流量不触达 Redis 会话。 */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
@@ -58,6 +59,10 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/v1/public/");
     }
 
+    /**
+     * 无令牌或令牌无效时不写错误，按匿名请求放行（是否 401 交给后续授权规则决定）；
+     * 仅 Redis 会话不可用（503）与用户查询失败（500）时直接输出统一错误响应。
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
@@ -69,6 +74,7 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
         try {
             SessionIdentity identity = sessions.authenticate(token);
             User user = users.selectById(identity.userId());
+            // 账号已删除或停用时吊销其全部会话，阻止该用户其他已签发令牌继续通行
             if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
                 sessions.revokeAll(identity.userId());
                 throw new UnauthorizedException(ErrorCode.AUTHENTICATION_FAILED, "账号不存在或已停用");
@@ -80,6 +86,7 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             chain.doFilter(request, response);
         } catch (UnauthorizedException exception) {
+            // 认证失败仅记 DEBUG 并放行：未认证请求是否拦截由 Spring Security 授权规则统一处理
             log.debug("管理会话被拒绝：{}", exception.getDetail());
             chain.doFilter(request, response);
         } catch (AuthenticationUnavailableException exception) {

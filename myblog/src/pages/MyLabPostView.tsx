@@ -207,9 +207,6 @@ export default function MyLabPostView() {
               ))}
             </div>
 
-            <p className={styles['post-summary']}>
-              {post.summary}
-            </p>
 
             {markdownLoading ? (
               <p className={styles['post-content-state']}>

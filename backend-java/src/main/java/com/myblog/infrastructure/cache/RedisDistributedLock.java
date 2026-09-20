@@ -12,7 +12,9 @@ import java.util.List;
 /** Redis SET NX PX 分布式锁适配器，使用 token 比较删除防止误释放。 */
 @Component
 public class RedisDistributedLock implements DistributedLock {
+    /** 锁键前缀：v1 为版本段，锁语义或结构变更时升级，避免新旧版本共用同一把锁键。 */
     public static final String LOCK_PREFIX = RedisKeyPrefix.CONTENT + "v1:lock:";
+    /** 释放脚本：服务端原子比较并删除，token 不匹配返回 0，防止误删锁过期后新持有者的锁。 */
     private static final DefaultRedisScript<Long> RELEASE_SCRIPT = new DefaultRedisScript<>("""
             if redis.call('GET', KEYS[1]) == ARGV[1] then
                 return redis.call('DEL', KEYS[1])

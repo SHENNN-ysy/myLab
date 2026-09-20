@@ -42,7 +42,7 @@ class EngagementPersistenceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = service(true);
+        service = service();
     }
 
     /** 新消息按文章、站点和日期去重读取绝对值，事务保存成功后批量确认。 */
@@ -129,16 +129,9 @@ class EngagementPersistenceServiceTest {
         verify(lease).release("lease-token");
     }
 
-    /** 关闭 Stream 或未抢到租约时不读取队列。 */
+    /** 未抢到租约时不读取队列。 */
     @Test
-    void disabledOrLeaseContentionSkipsConsumption() {
-        EngagementPersistenceService disabled = service(false);
-        assertThat(disabled.synchronize("consumer")).isZero();
-        disabled.initialize();
-        disabled.trimAcknowledged();
-        assertThat(disabled.status()).isEqualTo(new EngagementEventStream.Status(0, 0));
-        verify(stream, never()).ensureGroup();
-
+    void leaseContentionSkipsConsumption() {
         when(lease.tryAcquire(Duration.ofSeconds(30))).thenReturn(null);
         assertThat(service.synchronize("consumer")).isZero();
         verify(stream, never()).readNew(any(), eq(500), any());
@@ -172,9 +165,9 @@ class EngagementPersistenceServiceTest {
         when(lease.tryAcquire(Duration.ofSeconds(30))).thenReturn("lease-token");
     }
 
-    private EngagementPersistenceService service(boolean enabled) {
+    private EngagementPersistenceService service() {
         EngagementStreamProperties properties = new EngagementStreamProperties(
-                enabled, 500, Duration.ofSeconds(2), Duration.ofSeconds(30), RETENTION,
+                500, Duration.ofSeconds(2), Duration.ofSeconds(30), RETENTION,
                 Duration.ofSeconds(30), Duration.ofSeconds(1), Duration.ofHours(1));
         return new EngagementPersistenceService(stream, lease, store, repository, properties);
     }

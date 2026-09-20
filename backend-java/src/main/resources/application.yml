@@ -58,7 +58,6 @@ app:
     lock-ttl: ${CONTENT_CACHE_LOCK_TTL:5s}
     wait-timeout: ${CONTENT_CACHE_WAIT_TIMEOUT:1s}
   engagement-stream:
-    enabled: ${ENGAGEMENT_STREAM_ENABLED:true}
     batch-size: ${ENGAGEMENT_STREAM_BATCH_SIZE:500}
     block-timeout: ${ENGAGEMENT_STREAM_BLOCK_TIMEOUT:2s}
     claim-idle: ${ENGAGEMENT_STREAM_CLAIM_IDLE:30s}

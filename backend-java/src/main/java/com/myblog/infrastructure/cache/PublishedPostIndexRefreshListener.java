@@ -20,6 +20,7 @@ public class PublishedPostIndexRefreshListener {
     public void onPublishedContentChanged(PublishedContentChangedEvent event) {
         // 只有 mylab 模块的发布/下线会影响互动索引，其他模块直接忽略
         if (!"mylab".equals(event.moduleKey())) return;
+        // rebuild 在 Redis 不可用时静默降级：缺失索引由互动写路径回源数据库补写，无需补偿重试
         engagement.refreshPublishedPostIndex();
     }
 }
