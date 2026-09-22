@@ -116,7 +116,8 @@ export default function MyLabPostView() {
   }, [post, labPosts])
 
   const tocItems = useMemo<MarkdownHeading[]>(() => {
-    if (markdownHeadings.length) return markdownHeadings
+    // 目录只展示到二级标题，避免长文下三级标题把目录撑得过长
+    if (markdownHeadings.length) return markdownHeadings.filter(h => h.level <= 2)
     return (post?.sections ?? []).map((section, index) => ({
       id: `sec-${index}`,
       text: `${index + 1}. ${section.heading}`,
