@@ -37,10 +37,11 @@
   min-width: 0;
 }
 
-/* 头图：骨架扫光占位 + 加载后淡入（与 myLab 卡片一致） */
+/* 头图：骨架扫光占位 + 加载后淡入（与 myLab 卡片一致）；
+   比例与封面图原始尺寸 2400×1500（8:5）一致，完整展示不裁切 */
 .post-hero {
   position: relative;
-  aspect-ratio: 16 / 8;
+  aspect-ratio: 8 / 5;
   overflow: hidden;
   border-radius: 20px;
   background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(91, 164, 230, 0.16) 100%);
