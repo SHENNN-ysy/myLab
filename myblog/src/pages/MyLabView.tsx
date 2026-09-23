@@ -1,11 +1,19 @@
 /* MyLab 列表页：标签筛选 + 中枢链路/矩阵网格双视图（等价 MyLabView.vue） */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { LabCard } from '@/components/LabCard'
 import { useLabPosts } from '@/hooks/useLabPosts'
+import { useEngagementStore } from '@/stores/engagementStore'
 import styles from './MyLabView.module.css'
 
 export default function MyLabView() {
-  const { mylab, labPosts } = useLabPosts()
+  const { mylab, labPosts, loaded } = useLabPosts()
+
+  /* 列表数据就绪后一次性加载全部卡片的浏览/点赞数，整页只发一次批量请求 */
+  const loadEngagement = useEngagementStore(state => state.loadMany)
+  useEffect(() => {
+    if (!loaded) return
+    void loadEngagement(labPosts.map(post => post.id))
+  }, [loaded, labPosts, loadEngagement])
 
   /* ============ 筛选状态 ============ */
   const [keyword, setKeyword] = useState('')
@@ -183,7 +191,7 @@ export default function MyLabView() {
               >
                 <span className={styles['lab-tl-node']} aria-hidden="true" />
                 <div className={styles['lab-tl-card']}>
-                  <LabCard post={post} />
+                  <LabCard post={post} deferEngagement />
                 </div>
               </div>
             ))}
@@ -197,7 +205,7 @@ export default function MyLabView() {
                 className={styles['lab-grid-cell']}
                 style={{ '--i': index } as CSSProperties}
               >
-                <LabCard post={post} />
+                <LabCard post={post} deferEngagement />
               </div>
             ))}
           </div>

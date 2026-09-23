@@ -11,11 +11,13 @@ interface LabCardProps {
   onSelect?: (post: LabPost) => void
   /** 标签最多展示个数，默认 Infinity 不截断（对应旧版 tag-limit） */
   tagLimit?: number
+  /** 为 true 时卡片不自行排队加载互动数据，由父页面统一批量加载（避免整页多次批量请求） */
+  deferEngagement?: boolean
 }
 
 const formatNumber = (value: number) => new Intl.NumberFormat('zh-CN').format(value)
 
-export function LabCard({ post, onSelect, tagLimit = Number.POSITIVE_INFINITY }: LabCardProps) {
+export function LabCard({ post, onSelect, tagLimit = Number.POSITIVE_INFINITY, deferEngagement = false }: LabCardProps) {
   const navigate = useNavigate()
 
   // 头图加载完成前 / 未配图时显示骨架占位
@@ -27,10 +29,11 @@ export function LabCard({ post, onSelect, tagLimit = Number.POSITIVE_INFINITY }:
   const engagement = useEngagementStore(selectEngagement(post.id))
   const queueEngagement = useEngagementStore(state => state.queue)
 
-  // 对应旧版 watch(post.id, queueEngagement, { immediate: true })
+  // 对应旧版 watch(post.id, queueEngagement, { immediate: true })；父页面统一批量加载时跳过
   useEffect(() => {
+    if (deferEngagement) return
     queueEngagement(post.id)
-  }, [post.id, queueEngagement])
+  }, [post.id, queueEngagement, deferEngagement])
 
   const selectPost = () => {
     if (onSelect) {
