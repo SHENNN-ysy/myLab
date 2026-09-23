@@ -120,11 +120,19 @@ public class ContentModuleServiceImpl implements ContentModuleService {
         return publicData(moduleKey, releases.readData(release));
     }
 
-    /** MyLab 列表缓存未命中时读取当前发布版本的卡片摘要与标签字典。 */
+    /** MyLab 列表缓存未命中时读取当前发布版本的卡片摘要与标签字典，并附带导航头像。 */
     private Map<String, Object> loadPublicMylabSummary() {
         ContentRelease release = releases.findPublished("mylab");
         if (release == null) throw new NotFoundException(ErrorCode.CONTENT_MODULE_OFFLINE, "mylab");
-        return mylabPublic.readSummary(release.getId());
+        Map<String, Object> summary = mylabPublic.readSummary(release.getId());
+        // 前台 MyLab 页面不再请求首页聚合接口，导航头像改由本接口携带；缓存只存原始 key，URL 每次响应时生成
+        ContentRelease aboutRelease = releases.findPublished("about");
+        if (aboutRelease != null && releases.readData(aboutRelease) instanceof Map<?, ?> aboutData
+                && aboutData.get("profile") instanceof Map<?, ?> profile
+                && profile.get("avatar_object_key") instanceof String avatarKey && !avatarKey.isBlank()) {
+            summary.put("profile", Map.of("avatar_object_key", avatarKey));
+        }
+        return summary;
     }
 
     /**
@@ -752,10 +760,15 @@ public class ContentModuleServiceImpl implements ContentModuleService {
                         putUrl(item, "image_object_key", "image_url");
                         if (item.get("image_url") != null) item.put("image", item.get("image_url"));
                     });
-            case "mylab", "myproject" -> ((List<Map<String, Object>>) root.getOrDefault("cards", List.of()))
-                    .forEach(item -> {
-                        putUrl(item, "image_object_key", "image_url");
-                    });
+            case "mylab", "myproject" -> {
+                ((List<Map<String, Object>>) root.getOrDefault("cards", List.of()))
+                        .forEach(item -> {
+                            putUrl(item, "image_object_key", "image_url");
+                        });
+                // MyLab 公开摘要额外携带导航头像（前台 /mylab 页面不再请求首页聚合接口）
+                Map<String, Object> profile = (Map<String, Object>) root.get("profile");
+                if (profile != null) putUrl(profile, "avatar_object_key", "avatar_url");
+            }
             default -> { }
         }
         return root;

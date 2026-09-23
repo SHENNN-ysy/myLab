@@ -155,5 +155,6 @@ MyBlog/
 | [backend-java/README.md](backend-java/README.md) | Java 后端构建与运行说明 |
 | [docs/API接口文档.md](docs/API接口文档.md) | REST API |
 | [docs/错误码文档.md](docs/错误码文档.md) | API 错误码 |
+| [docs/系统测试与Redis性能评估方案-基础版.md](docs/系统测试与Redis性能评估方案-基础版.md) | 新手可执行的系统测试与 Redis 性能对比方案 |
 | [.env.example](.env.example) | 本地一键部署配置模板 |
 | [deploy/.env.example](deploy/.env.example) | 生产 CI/CD 配置模板 |

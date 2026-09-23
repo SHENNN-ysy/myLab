@@ -10,6 +10,8 @@ interface EngagementState {
   values: Record<string, EngagementView>
   /** 把 postKey 加入批量摘要加载队列（已有数据的跳过） */
   queue: (postKey: string) => void
+  /** 一次性加载全部指定 key 的互动摘要（整页一次批量请求；未返回的 key 填零值占位） */
+  loadMany: (postKeys: string[]) => Promise<void>
   /** 上报浏览并返回最新互动数据 */
   recordView: (postKey: string) => Promise<EngagementView>
   /** 点赞 / 取消点赞并返回最新互动数据 */
@@ -58,6 +60,27 @@ export const useEngagementStore = create<EngagementState>()(() => ({
     if (!queuePending) {
       queuePending = true
       window.setTimeout(() => void flushQueue(), 0)
+    }
+  },
+  loadMany: async postKeys => {
+    // 只取未加载的 key 并先从逐卡队列中剔除，保证整页只发一次批量请求
+    const missing = [...new Set(postKeys.filter(key => key && !useEngagementStore.getState().values[key]))]
+    if (!missing.length) return
+    missing.forEach(key => queuedKeys.delete(key))
+    try {
+      const result = await fetchEngagementSummaries(missing)
+      result.forEach(save)
+      // 后端未返回的 key（如内置兜底卡片）填零值，避免逐卡队列再次回退请求
+      const returned = new Set(result.map(item => item.post_key))
+      missing
+        .filter(key => !returned.has(key))
+        .forEach(key => save({ post_key: key, view_count: 0, like_count: 0, liked: false }))
+    } catch {
+      missing.forEach(key => {
+        if (!useEngagementStore.getState().values[key]) {
+          save({ post_key: key, view_count: 0, like_count: 0, liked: false })
+        }
+      })
     }
   },
   recordView: async postKey => {

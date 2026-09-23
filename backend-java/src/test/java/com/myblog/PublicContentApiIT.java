@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -159,6 +160,63 @@ class PublicContentApiIT extends AbstractApiIntegrationTest {
                 rest.getForEntity(CONTENT_URL + "/mylab", JsonNode.class), HttpStatus.OK, 0);
         assertThat(findCard(refreshed.path("data").path("cards"), postKey).path("title").asText())
                 .isEqualTo("列表数据库新标题");
+    }
+
+    /** MyLab 列表摘要附带 about 头像：前台 MyLab 页面不再请求首页聚合，导航头像由本接口返回。 */
+    @Test
+    void publicMylabSummaryIncludesAboutAvatar() {
+        ensurePublishedMylabCard(uniqueKey("apitest-avatar-"), "头像摘要测试文章", true);
+
+        // 自建头像资源；复用当前已发布 about 版本（基线无发布版本时自建一版），用例结束恢复原头像引用
+        UUID avatarId = UUID.randomUUID();
+        String objectKey = "apitest/avatar-" + UUID.randomUUID().toString().substring(0, 8) + ".png";
+        jdbc.update("INSERT INTO resources (id, object_key, bucket, original_name, mime_type, size)"
+                        + " VALUES (?, ?, 'apitest-bucket', 'avatar.png', 'image/png', 1)",
+                avatarId, objectKey);
+        UUID aboutReleaseId = jdbc.query(
+                "SELECT id FROM content_releases WHERE module_key = 'about' AND state = 'PUBLISHED' AND deleted_at IS NULL",
+                (rs, rowNum) -> rs.getObject(1, UUID.class)).stream().findFirst().orElseGet(() -> {
+                    UUID publisherId = ensureUser(uniqueKey("apitest-publisher-"), "It-passw0rd!", "admin");
+                    UUID releaseId = UUID.randomUUID();
+                    jdbc.update("INSERT INTO content_releases"
+                                    + " (id, module_key, version_no, version_name, version_description, state,"
+                                    + " published_by, published_at)"
+                                    + " VALUES (?, 'about',"
+                                    + " (SELECT COALESCE(MAX(version_no), 0) + 1 FROM content_releases"
+                                    + " WHERE module_key = 'about'),"
+                                    + " 'API 集成测试版本', '用于 MyLab 摘要头像测试', 'PUBLISHED', ?, now())",
+                            releaseId, publisherId);
+                    return releaseId;
+                });
+        List<UUID> aboutContentIds = jdbc.query(
+                "SELECT id FROM about_contents WHERE release_id = ? AND deleted_at IS NULL",
+                (rs, rowNum) -> rs.getObject(1, UUID.class), aboutReleaseId);
+        UUID previousAvatarId = null;
+        UUID aboutContentId;
+        if (aboutContentIds.isEmpty()) {
+            aboutContentId = UUID.randomUUID();
+            jdbc.update("INSERT INTO about_contents (id, release_id, avatar_resource_id) VALUES (?, ?, ?)",
+                    aboutContentId, aboutReleaseId, avatarId);
+        } else {
+            aboutContentId = aboutContentIds.getFirst();
+            previousAvatarId = jdbc.queryForObject(
+                    "SELECT avatar_resource_id FROM about_contents WHERE id = ?", UUID.class, aboutContentId);
+            jdbc.update("UPDATE about_contents SET avatar_resource_id = ? WHERE id = ?", avatarId, aboutContentId);
+        }
+        UUID restoreAvatarId = previousAvatarId;
+        try {
+            redis.delete(RedisPublicContentCache.MYLAB_SUMMARY_KEY);
+            JsonNode body = assertStatusAndCode(
+                    rest.getForEntity(CONTENT_URL + "/mylab", JsonNode.class), HttpStatus.OK, 0);
+            assertThat(body.path("data").path("profile").path("avatar_url").asText())
+                    .as("MyLab 摘要应携带 about 头像 URL").endsWith(objectKey);
+        } finally {
+            if (restoreAvatarId != null) {
+                jdbc.update("UPDATE about_contents SET avatar_resource_id = ? WHERE id = ?",
+                        restoreAvatarId, aboutContentId);
+            }
+            redis.delete(RedisPublicContentCache.MYLAB_SUMMARY_KEY);
+        }
     }
 
     /** 单篇详情返回 Markdown 正文并写入详情缓存。 */

@@ -122,10 +122,13 @@ export interface PublicMylabCard {
   enabled?: boolean
 }
 
-/** MyLab 列表接口：全部公开卡片摘要与标签字典。 */
+/** MyLab 列表接口：全部公开卡片摘要与标签字典；profile 携带导航头像（MyLab 页面不再请求首页聚合）。 */
 export interface PublicMylabContent {
   cards?: PublicMylabCard[]
   tags?: PublicMylabTag[]
+  profile?: {
+    avatar_url?: string
+  }
 }
 
 /** 首页项目投影：只含需在首页展示的项目卡片及其标签名称，不含全局标签字典与 Markdown。 */
