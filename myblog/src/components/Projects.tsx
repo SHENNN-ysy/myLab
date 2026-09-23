@@ -1,6 +1,5 @@
 /* 项目区块：展示标记为项目的 myLab 卡片，点击打开右侧详情弹层 */
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import type { LabPost } from '@/types'
 import { useProjectPosts } from '@/hooks/useLabPosts'
 import { LabCard } from './LabCard'
@@ -15,7 +14,6 @@ const section = {
 }
 
 export function Projects() {
-  const navigate = useNavigate()
   const { projectPosts } = useProjectPosts()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -53,11 +51,11 @@ export function Projects() {
     setIsModalOpen(true)
   }
 
+  // 查看项目：新标签页打开对应博客文章，当前页保持在项目弹层
   const viewProject = () => {
     const postId = selectedProject?.id
     if (!postId) return
-    setIsModalOpen(false)
-    navigate(`/mylab/post/${postId}`)
+    window.open(`/mylab/post/${postId}`, '_blank', 'noopener')
   }
 
   return (
