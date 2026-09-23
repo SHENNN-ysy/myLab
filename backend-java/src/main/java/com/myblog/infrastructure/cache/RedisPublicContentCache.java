@@ -21,7 +21,8 @@ import java.util.Optional;
 public class RedisPublicContentCache implements PublicContentCache {
     // 聚合契约 v3 为 myproject 卡片补充其实际标签，换 key 避免命中旧结构。
     public static final String ALL_KEY = RedisKeyPrefix.CONTENT + "v3:all";
-    public static final String MYLAB_SUMMARY_KEY = RedisKeyPrefix.CONTENT + "v1:mylab:summary";
+    // 摘要契约 v2 起附带 about 头像（profile.avatar_object_key），换 key 避免命中旧结构。
+    public static final String MYLAB_SUMMARY_KEY = RedisKeyPrefix.CONTENT + "v2:mylab:summary";
     public static final String MYLAB_DETAILS_KEY = RedisKeyPrefix.CONTENT + "v1:mylab:details";
     private static final ObjectMapper OBJECT_MAPPER = JacksonObjectMapper.get();
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() { };

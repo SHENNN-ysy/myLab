@@ -57,8 +57,11 @@ public class PublicContentCacheService {
     public void invalidate(String moduleKey) {
         if (!properties.enabled()) return;
         invalidateUnderLock(ALL_LOCK, cache::evictAll);
-        if ("mylab".equals(moduleKey)) {
+        // MyLab 摘要内嵌 about 头像，about 变更同样需要重建摘要缓存
+        if ("mylab".equals(moduleKey) || "about".equals(moduleKey)) {
             invalidateUnderLock(MYLAB_SUMMARY_LOCK, cache::evictMylabSummary);
+        }
+        if ("mylab".equals(moduleKey)) {
             invalidateUnderLock(MYLAB_DETAILS_LOCK, cache::evictMylabDetails);
         }
     }

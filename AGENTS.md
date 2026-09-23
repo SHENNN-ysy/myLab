@@ -100,7 +100,7 @@ starter ────────> application / common / infrastructure
 - MyLab 全局标签不再支持人工排序和后台启停；`mylab_tags.sort_order` 仅为历史兼容保留且应用不读写，前台按当前公开卡片引用次数降序展示，后台标签管理按当前草稿卡片引用次数降序展示；标签新增、显式保存名称和删除使用独立接口，MyLab 草稿保存只提交卡片
 - `mylab_cards.sort_order` 仅为历史兼容保留，程序不再读写；MyLab 管理视图与公开列表按 `post_date DESC`、`post_key ASC` 排序
 - MyLab PROJECT 卡片的 `project_show_order`为 null 表示不在首页项目区展示（卡片仍在 MyLab 列出）；仅参与展示的卡片校验位次（0-5）唯一且发布时必填侧边栏正文
-- 首页 `/public/content` 使用 `myproject` 返回展示项目摘要，并以 `mylab` 返回最新 5 张启用卡片摘要（文章与项目混合，按 `post_date DESC`、`post_key ASC`），两者均只带各卡片实际引用的标签名称，不返回全局标签字典；`/public/content/mylab` 通过独立 Redis Cache-Aside 返回全部公开 MyLab 卡片摘要与标签
+- 首页 `/public/content` 使用 `myproject` 返回展示项目摘要，并以 `mylab` 返回最新 5 张启用卡片摘要（文章与项目混合，按 `post_date DESC`、`post_key ASC`），两者均只带各卡片实际引用的标签名称，不返回全局标签字典；`/public/content/mylab` 通过独立 Redis Cache-Aside 返回全部公开 MyLab 卡片摘要与标签，并以 `profile.avatar_url` 附带 about 模块头像（前台 MyLab 页面不再请求首页聚合，导航头像由此接口提供）
 - `mylab_resources` 只保存卡片封面图片引用；Markdown 文件可在后台本地读取到编辑区，但不上传 OSS
 - 新上传 OSS 图片的 object key 固定为 `业务目录/UUID.扩展名`；不配置统一前缀和日期目录，历史 key 继续兼容读取
 - 前台 `/public/content`、`/public/content/mylab` 与 MyLab 单篇详情使用相互独立的 Redis Cache-Aside；其他公开单模块和后台管理接口直查 PG；发布/下线提交后失效缓存；MyLab 单篇详情先校验 post_key 格式（`ContentConstant.POST_KEY_PATTERN`），不存在/未发布的 key 以空详情做负缓存防穿透，负缓存随发布失效事件一并清除；缓存载荷结构变化（如聚合接口新增字段）时必须升级 key 版本号（如 `v3`→`v4`），否则旧结构缓存会存活至 TTL（最长 6 小时）导致新字段不生效

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { usePublicContentStore } from '@/stores/publicContentStore'
+import { useMylabContentStore } from '@/stores/mylabContentStore'
 import styles from './Navigation.module.css'
 
 /* ============ 导航头像：与"关于我"头像一致，未配置或加载失败时回退 404 默认图 ============ */
@@ -46,10 +47,11 @@ export default function Navigation() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  /* 导航头像：取自公开内容"关于我"头像，加载失败回退默认图 */
+  /* 导航头像：首页取聚合接口的"关于我"头像；MyLab 页面不请求聚合，改取 MyLab 列表接口携带的头像 */
   const content = usePublicContentStore(state => state.content)
+  const mylabProfile = useMylabContentStore(state => state.content.profile)
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false)
-  const avatarUrl = content.about?.profile?.avatar_url
+  const avatarUrl = content.about?.profile?.avatar_url ?? mylabProfile?.avatar_url
   const navAvatar = avatarUrl && !avatarLoadFailed ? avatarUrl : FALLBACK_AVATAR
 
   /* ============ 滚动方向检测：下滑收起 / 上滑显示 ============

@@ -130,7 +130,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/v1/public/content` | 聚合首页内容；MyLab 返回 `myproject` 项目摘要和 `mylab` 最新 5 张卡片摘要 |
-| GET | `/api/v1/public/content/mylab` | 获取 MyLab 全部公开卡片摘要与标签 |
+| GET | `/api/v1/public/content/mylab` | 获取 MyLab 全部公开卡片摘要与标签；`profile.avatar_url` 附带 about 模块头像（前台 MyLab 页面不再请求首页聚合） |
 | GET | `/api/v1/public/content/{moduleKey}` | 获取其他指定模块当前发布内容 |
 | GET | `/api/v1/public/mylab/{postKey}` | 获取当前发布版本中的指定 MyLab 卡片详情 |
 | GET | `/api/v1/public/mylab/engagement?post_keys={key1,key2}` | 批量查询文章浏览/点赞数 |
@@ -464,7 +464,7 @@ MyLab 全局标签不属于版本快照，通过独立标签接口管理。
 - `mylab_cards.sort_order` 仅为兼容历史数据保留，程序不再读写；管理端与公开 MyLab 列表均按 `post_date DESC`、`post_key ASC` 排序。
 - 后台编辑器可读取本地 `.md`、`.markdown` UTF-8 文件并覆盖编辑区，文件内容仍通过草稿接口保存，不上传 OSS。
 - 公开接口在 `tags` 中返回有效标签对象，并在卡片中同时返回解析后的标签名称数组。
-- `/api/v1/public/content` 返回首页项目摘要和最新 5 张 MyLab 卡片摘要（文章与项目混合），均只带各卡片实际引用的标签名称；`/api/v1/public/content/mylab` 通过独立缓存返回全部 MyLab 卡片摘要与标签，两者均不包含 `markdown_content`；`/api/v1/public/mylab/{postKey}` 返回单篇完整正文。
+- `/api/v1/public/content` 返回首页项目摘要和最新 5 张 MyLab 卡片摘要（文章与项目混合），均只带各卡片实际引用的标签名称；`/api/v1/public/content/mylab` 通过独立缓存返回全部 MyLab 卡片摘要与标签，并以 `profile.avatar_url` 附带 about 模块头像，两者均不包含 `markdown_content`；`/api/v1/public/mylab/{postKey}` 返回单篇完整正文。
 
 ## 6. MyLab 全局标签
 
