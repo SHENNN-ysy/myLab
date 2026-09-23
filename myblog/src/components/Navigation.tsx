@@ -19,6 +19,8 @@ interface NavItem {
   label: string
   hash?: string
   path?: string
+  /** 是否在新标签页打开（仅对 path 类型的独立路由生效） */
+  newTab?: boolean
 }
 
 const navLinks: NavItem[] = [
@@ -29,7 +31,8 @@ const navLinks: NavItem[] = [
   { label: '足迹', hash: '#hobbies' },
   { label: '爱好', hash: '#game' },
   { label: 'Vibe Coding', hash: '#aicoding' },
-  { label: 'MyLab', hash: '#mylab-station' }
+  { label: 'MyLab', hash: '#mylab-station' },
+  { label: '文章', path: '/mylab', newTab: true }
 ]
 
 /* 滚动方向检测阈值：顶部判定 / 方向死区 */
@@ -163,6 +166,8 @@ export default function Navigation() {
   /* ============ 导航点击：同页平滑滚动 / 跨页路由跳转 ============ */
   function onNavClick(item: NavItem, event: MouseEvent<HTMLAnchorElement>) {
     closeMobile()
+    // 新标签页链接交给浏览器原生处理，不拦截
+    if (item.newTab) return
     event.preventDefault()
     if (item.path) {
       navigate(item.path)
@@ -206,6 +211,8 @@ export default function Navigation() {
               <a
                 href={item.path ?? item.hash}
                 className={`${styles['nav-hover-btn']}${item.path !== undefined && item.path === location.pathname ? ` ${styles['is-active']}` : ''}`}
+                target={item.newTab ? '_blank' : undefined}
+                rel={item.newTab ? 'noopener noreferrer' : undefined}
                 onClick={event => onNavClick(item, event)}
               >
                 {item.label}
@@ -270,6 +277,8 @@ export default function Navigation() {
                   key={item.label}
                   href={item.path ?? item.hash}
                   className="nav-mobile-link"
+                  target={item.newTab ? '_blank' : undefined}
+                  rel={item.newTab ? 'noopener noreferrer' : undefined}
                   onClick={event => onNavClick(item, event)}
                 >
                   {item.label}
