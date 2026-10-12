@@ -125,6 +125,7 @@ starter ────────> application / common / infrastructure
 
 - Vue 3 Composition API + `<script setup>` + TypeScript；`@/` 映射 `src/`
 - 前台（myblog/）：GSAP 动效 + Tailwind CSS 4，七个内容模块展示
+- MyLab 正文 Markdown（react-markdown + remark-gfm）支持 ` ```mermaid ` 代码块：`MyLabPostView` 的 `pre` 组件识别后交给 `components/MermaidBlock` 懒加载 mermaid 渲染成 SVG（`securityLevel: 'antiscript'`，保留 `<br/>` 换行），语法错误回退为源码块
 - 后台（admin/）：Ant Design Vue 4 优先，避免自造组件；ECharts 仪表盘；vite base 由 `ADMIN_ROUTE` 注入
 - `npm run build` 内含 vue-tsc 类型检查，即编译验证；提交前至少跑 `lint` + `build`
 

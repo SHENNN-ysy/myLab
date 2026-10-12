@@ -1,0 +1,12 @@
+/* Mermaid 渲染容器：居中展示，过宽时可横向滚动 */
+.mermaid-block {
+  margin: 1.4rem 0;
+  overflow-x: auto;
+  text-align: center;
+}
+
+/* svg 由 mermaid 经 innerHTML 注入无法挂类名，容器内只会存在这一张图，用后代标签选择器约束尺寸 */
+.mermaid-block svg {
+  max-width: 100%;
+  height: auto;
+}
