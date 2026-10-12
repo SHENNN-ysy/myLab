@@ -1,10 +1,11 @@
 /* MyLab 详情页：由旧 MyLabPostView.vue 平移
  * 路由 /mylab/post/:id，id 即 post_key；正文 Markdown 走详情接口，互动走 engagementStore。
  */
-import { useEffect, useMemo, useState } from 'react'
+import { isValidElement, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import MermaidBlock from '@/components/MermaidBlock'
 import { useLabPosts } from '@/hooks/useLabPosts'
 import { fetchMylabDetail } from '@/api/public'
 import { selectEngagement, useEngagementStore } from '@/stores/engagementStore'
@@ -17,6 +18,13 @@ const formatNumber = (value: number) => numberFormatter.format(value)
 /* 标题 id 取起始行号，与 extractHeadings 的目录 id 规则一致（对 StrictMode 双渲染安全） */
 const headingId = (node?: { position?: { start: { line: number } } }) =>
   `heading-${node?.position?.start.line ?? 0}`
+
+/* 递归提取 code 子节点的纯文本（即 mermaid 源码） */
+const extractCodeText = (children: ReactNode): string => {
+  if (typeof children === 'string') return children
+  if (Array.isArray(children)) return children.map(extractCodeText).join('')
+  return ''
+}
 
 /** Markdown 渲染约定：标题带目录 id，链接新窗口打开，图片懒加载；原始 HTML 由 react-markdown 默认转义 */
 const markdownComponents: Components = {
@@ -33,6 +41,17 @@ const markdownComponents: Components = {
   img: ({ node, ...props }) => {
     void node
     return <img {...props} loading="lazy" />
+  },
+  pre: ({ node, children, ...props }) => {
+    void node
+    // 块级代码由 pre>code 包裹；language-mermaid 交给 MermaidBlock 渲染成图，其余保持默认样式
+    if (isValidElement(children)) {
+      const codeProps = children.props as { className?: string; children?: ReactNode }
+      if (codeProps.className?.includes('language-mermaid')) {
+        return <MermaidBlock code={extractCodeText(codeProps.children).trim()} />
+      }
+    }
+    return <pre {...props}>{children}</pre>
   },
 }
 
