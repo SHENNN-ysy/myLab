@@ -167,7 +167,7 @@ class PublicContentCacheServiceTest {
         PublicContentCache cache = mock(PublicContentCache.class);
         DistributedLock lock = mock(DistributedLock.class);
         ContentCacheProperties properties = new ContentCacheProperties(false, Duration.ofHours(6),
-                Duration.ofSeconds(5), Duration.ofSeconds(1));
+                Duration.ofSeconds(5), Duration.ofSeconds(1), Duration.ofSeconds(60), 512);
         PublicContentCacheService service = new PublicContentCacheService(cache, lock, properties);
         Map<String, Object> loaded = Map.of("home", Map.of());
 
@@ -269,7 +269,7 @@ class PublicContentCacheServiceTest {
     private PublicContentCacheService service(PublicContentCache cache, DistributedLock lock,
                                               Duration waitTimeout) {
         ContentCacheProperties properties = new ContentCacheProperties(true, Duration.ofHours(6),
-                Duration.ofSeconds(5), waitTimeout);
+                Duration.ofSeconds(5), waitTimeout, Duration.ofSeconds(60), 512);
         return new PublicContentCacheService(cache, lock, properties);
     }
 

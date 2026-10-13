@@ -57,6 +57,8 @@ app:
     ttl: ${CONTENT_CACHE_TTL:6h}
     lock-ttl: ${CONTENT_CACHE_LOCK_TTL:5s}
     wait-timeout: ${CONTENT_CACHE_WAIT_TIMEOUT:1s}
+    l1-ttl: ${CONTENT_CACHE_L1_TTL:60s}
+    l1-max-size: ${CONTENT_CACHE_L1_MAX_SIZE:512}
   engagement-stream:
     batch-size: ${ENGAGEMENT_STREAM_BATCH_SIZE:500}
     block-timeout: ${ENGAGEMENT_STREAM_BLOCK_TIMEOUT:2s}
@@ -78,8 +80,9 @@ app:
   initial-admin-password: ${INIT_ADMIN_PASSWORD:admin123} # 未配置时兜底 admin123，仅用于首次建号/种子接管，生产务必显式配置强口令
   engagement-hash-secret: ${ENGAGEMENT_HASH_SECRET}
   visitor-identity-ttl: ${VISITOR_IDENTITY_TTL:24h}
-  # 生产默认强制 Secure（仅 HTTPS 发送）；本地纯 HTTP 调试由 application-dev.yml 覆盖为 false
-  visitor-cookie-secure: true
+  # 生产默认强制 Secure（仅 HTTPS 发送）；本地纯 HTTP 调试由 application-dev.yml 覆盖为 false；
+  # 本地 docker 部署跑默认 profile，压测/调试时可经 VISITOR_COOKIE_SECURE=false 关闭
+  visitor-cookie-secure: ${VISITOR_COOKIE_SECURE:true}
 server.tomcat.threads:
   max: ${TOMCAT_MAX_THREADS:50}
   min-spare: ${TOMCAT_MIN_SPARE_THREADS:5}

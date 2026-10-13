@@ -12,5 +12,7 @@ public record ContentCacheProperties(
         boolean enabled,
         Duration ttl,
         Duration lockTtl,
-        Duration waitTimeout) {
+        Duration waitTimeout,
+        Duration l1Ttl,
+        long l1MaxSize) {
 }
