@@ -16,6 +16,7 @@ import java.util.function.Supplier;
 
 /**
  * 公开内容 Cache-Aside 协调服务：处理双重检查、锁等待、数据库回源与发布后失效。
+ * 缓存端口为两级结构（L1 Caffeine 本地 + L2 Redis），本类的第一次检查与锁内二次检查均覆盖两级。
  */
 @Slf4j
 @Service
@@ -72,7 +73,7 @@ public class PublicContentCacheService {
                                             String lockName) {
         // 开关关闭时完全绕过 Redis，便于故障排查和紧急降级。
         if (!properties.enabled()) return loader.get();
-        // 第一次检查覆盖正常缓存命中；Redis 异常时立即回源，不再尝试加锁。
+        // 第一次检查覆盖正常缓存命中（端口内部先 L1 后 L2）；缓存层异常时立即回源，不再尝试加锁。
         CacheRead cached = readCache(reader, lockName);
         if (!cached.available()) return loader.get();
         if (cached.value().isPresent()) return cached.value().get();

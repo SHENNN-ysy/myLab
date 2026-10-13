@@ -33,7 +33,7 @@ services:
       - --requirepass
       - ${REDIS_PASSWORD}
       - --maxmemory
-      - 128mb
+      - ${REDIS_MAXMEMORY:-128mb}
       - --maxmemory-policy
       - noeviction
     volumes: [redis_data:/data]
@@ -42,7 +42,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    mem_limit: 160m
+    # 容器内存上限必须大于 redis maxmemory（含 AOF 重写缓冲等开销），否则调高 maxmemory 后会被 OOM Kill 崩溃循环
+    mem_limit: ${REDIS_MEM_LIMIT:-160m}
     networks: [blog-net]
     restart: unless-stopped
 
@@ -69,6 +70,8 @@ services:
       CONTENT_CACHE_TTL: ${CONTENT_CACHE_TTL:-6h}
       CONTENT_CACHE_LOCK_TTL: ${CONTENT_CACHE_LOCK_TTL:-5s}
       CONTENT_CACHE_WAIT_TIMEOUT: ${CONTENT_CACHE_WAIT_TIMEOUT:-1s}
+      CONTENT_CACHE_L1_TTL: ${CONTENT_CACHE_L1_TTL:-60s}
+      CONTENT_CACHE_L1_MAX_SIZE: ${CONTENT_CACHE_L1_MAX_SIZE:-512}
       ENGAGEMENT_STREAM_BATCH_SIZE: ${ENGAGEMENT_STREAM_BATCH_SIZE:-500}
       ENGAGEMENT_STREAM_BLOCK_TIMEOUT: ${ENGAGEMENT_STREAM_BLOCK_TIMEOUT:-2s}
       ENGAGEMENT_STREAM_CLAIM_IDLE: ${ENGAGEMENT_STREAM_CLAIM_IDLE:-30s}
@@ -77,10 +80,15 @@ services:
       ENGAGEMENT_STREAM_POLL_DELAY: ${ENGAGEMENT_STREAM_POLL_DELAY:-1s}
       ENGAGEMENT_STREAM_TRIM_INTERVAL: ${ENGAGEMENT_STREAM_TRIM_INTERVAL:-1h}
       SESSION_IDLE_TIMEOUT: ${SESSION_IDLE_TIMEOUT:-8h}
+      # 限流阈值（次/分钟/IP），默认 60/5；压测期间可在 .env 临时调大
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+      LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-5}
       # 仅供旧镜像回滚，新版本不读取 JWT_SECRET。
       JWT_SECRET: ${JWT_SECRET}
       ENGAGEMENT_HASH_SECRET: ${ENGAGEMENT_HASH_SECRET}
       VISITOR_IDENTITY_TTL: ${VISITOR_IDENTITY_TTL:-24h}
+      # 本地纯 HTTP 压测/调试时设 false（JMeter/脚本不会经 HTTP 回传 Secure Cookie）
+      VISITOR_COOKIE_SECURE: ${VISITOR_COOKIE_SECURE:-true}
       CORS_ORIGINS: ${CORS_ORIGINS}
       OSS_ENDPOINT: ${OSS_ENDPOINT}
       OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID}
@@ -152,6 +160,10 @@ services:
     image: nginx:1.27-alpine
     environment:
       ADMIN_ROUTE: ${ADMIN_ROUTE:-/admin}
+      # API 限流阈值（单 IP），默认 10r/s、burst 20、并发连接 10；压测期间可在 .env 临时调大
+      NGINX_API_LIMIT_RATE: ${NGINX_API_LIMIT_RATE:-10r/s}
+      NGINX_API_LIMIT_BURST: ${NGINX_API_LIMIT_BURST:-20}
+      NGINX_API_CONN_LIMIT: ${NGINX_API_CONN_LIMIT:-10}
       TZ: ${TZ:-Asia/Shanghai}
     ports: ["80:80"]
     volumes:

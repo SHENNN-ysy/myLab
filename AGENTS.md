@@ -4,14 +4,14 @@
 
 MyBlog 个人博客系统：面向访客的博客前台 + 面向管理员的后台管理系统，前后端分离，Docker 容器化部署，Jenkins CI/CD。
 
-- **博客前台**：Vue 3 + TypeScript + Vite + GSAP + Tailwind CSS 4（localhost:5173）
-- **管理后台**：Vue 3 + TypeScript + Vite + Ant Design Vue 4 + ECharts 5（localhost:5174，vite base 由 `ADMIN_ROUTE` 构建）
+- **博客前台**：React 18 + TypeScript + Vite + GSAP + Tailwind CSS 4 + zustand（localhost:5173）
+- **管理后台**：React 18 + TypeScript + Vite + Ant Design 5（antd）+ ECharts 5 + zustand（localhost:5174，vite base 由 `ADMIN_ROUTE` 构建）
 - **后端**：Spring Boot 3.5 + Java 21 + MyBatis-Plus，模块化单体 + 端口适配器（localhost:8000）
 
 ```
 MyBlog/
-├── myblog/                  # 博客前台（Vue SPA）
-├── admin/                   # 管理后台前端（Vue SPA）
+├── myblog/                  # 博客前台（React SPA）
+├── admin/                   # 管理后台前端（React SPA）
 ├── backend-java/            # Spring Boot 后端
 │   └── src/main/java/com/myblog/
 │       ├── controller/      # REST 接口 + 全局异常处理（只做协议转换）
@@ -41,7 +41,7 @@ MyBlog/
 ```bash
 npm ci            # 安装依赖（CI 用，严格按 lock 文件）
 npm run dev       # 开发服务器（5173 / 5174，/api 自动代理到 :8000）
-npm run build     # vue-tsc 类型检查 + 构建（类型错误即失败）
+npm run build     # tsc -b 类型检查 + 构建（类型错误即失败）
 npm run lint      # ESLint
 ```
 
@@ -104,6 +104,7 @@ starter ────────> application / common / infrastructure
 - `mylab_resources` 只保存卡片封面图片引用；Markdown 文件可在后台本地读取到编辑区，但不上传 OSS
 - 新上传 OSS 图片的 object key 固定为 `业务目录/UUID.扩展名`；不配置统一前缀和日期目录，历史 key 继续兼容读取
 - 前台 `/public/content`、`/public/content/mylab` 与 MyLab 单篇详情使用相互独立的 Redis Cache-Aside；其他公开单模块和后台管理接口直查 PG；发布/下线提交后失效缓存；MyLab 单篇详情先校验 post_key 格式（`ContentConstant.POST_KEY_PATTERN`），不存在/未发布的 key 以空详情做负缓存防穿透，负缓存随发布失效事件一并清除；缓存载荷结构变化（如聚合接口新增字段）时必须升级 key 版本号（如 `v3`→`v4`），否则旧结构缓存会存活至 TTL（最长 6 小时）导致新字段不生效
+- 三个公开内容缓存为 L1 Caffeine（JVM 本地）+ L2 Redis 两级结构，由 `LayeredPublicContentCache` 组合适配器对 `PublicContentCache` 端口透明：读先 L1 后 L2 并回填 L1，写先 L2 后 L1，删先 L1 后 L2；协调服务 `PublicContentCacheService` 的首次检查与锁内二次检查均覆盖两级；发布/下线失效同时清两级；L1 默认 `CONTENT_CACHE_L1_TTL=60s` 短 TTL 兜底自愈，详情容量 `CONTENT_CACHE_L1_MAX_SIZE=512`；当前 backend 单实例部署，扩副本前 L1 失效须改为跨实例广播（如 Redis Pub/Sub）
 
 ### 认证与安全
 - 管理后台使用随机 UUID Bearer Token；Redis 仅保存 SHA-256 摘要和会话 Hash，并以用户 ZSet 反向索引全部会话；空闲 8 小时滑动过期
@@ -123,11 +124,11 @@ starter ────────> application / common / infrastructure
 
 ## 4. 前端架构
 
-- Vue 3 Composition API + `<script setup>` + TypeScript；`@/` 映射 `src/`
+- React 18 + TypeScript + zustand；`@/` 映射 `src/`
 - 前台（myblog/）：GSAP 动效 + Tailwind CSS 4，七个内容模块展示
 - MyLab 正文 Markdown（react-markdown + remark-gfm）支持 ` ```mermaid ` 代码块：`MyLabPostView` 的 `pre` 组件识别后交给 `components/MermaidBlock` 懒加载 mermaid 渲染成 SVG（`securityLevel: 'antiscript'`，保留 `<br/>` 换行），语法错误回退为源码块
-- 后台（admin/）：Ant Design Vue 4 优先，避免自造组件；ECharts 仪表盘；vite base 由 `ADMIN_ROUTE` 注入
-- `npm run build` 内含 vue-tsc 类型检查，即编译验证；提交前至少跑 `lint` + `build`
+- 后台（admin/）：Ant Design 5（antd）优先，避免自造组件；ECharts 仪表盘；vite base 由 `ADMIN_ROUTE` 注入
+- `npm run build` 内含 `tsc -b` 类型检查，即编译验证；提交前至少跑 `lint` + `build`
 
 ## 5. 部署架构
 
@@ -148,6 +149,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 - 本地配置使用根目录 `.env`；生产配置使用 `deploy/.env`，两者不得混用
 - 管理后台路径由生产 `deploy/.env` 的 `ADMIN_ROUTE` 同时注入 CI 构建和 Nginx，修改后必须重新发布镜像
 - 镜像名可用环境变量覆盖：`API_IMAGE` / `WEB_IMAGE` / `ADMIN_IMAGE` / `POSTGRES_IMAGE` / `REDIS_IMAGE`
+- 限流与资源阈值均可经环境变量覆盖（默认值不变，压测时临时调大、测完恢复）：Nginx 侧 `NGINX_API_LIMIT_RATE` / `NGINX_API_LIMIT_BURST` / `NGINX_API_CONN_LIMIT`（默认 10r/s、20、10），后端 `RATE_LIMIT_PER_MINUTE` / `LOGIN_RATE_LIMIT_PER_MINUTE`（默认 60、5），Redis `REDIS_MAXMEMORY`（128mb）与容器 `REDIS_MEM_LIMIT`（160m，必须大于 maxmemory 否则 OOM 崩溃循环）；访客 Cookie Secure 可经 `VISITOR_COOKIE_SECURE=false` 关闭（仅本地纯 HTTP 压测/调试用，生产 HTTPS 不受影响）
 - 应用镜像由 CI 推送到 `registry:2`，生产 Compose 不含 `build`；CD 只允许指定不可变 tag 拉取部署
 - Registry 仅绑定 `127.0.0.1:5000`；每个仓库保留最近 5 个 tag，并额外保护当前成功部署 tag
 - 注意：`depends_on` 仅在 `docker compose up` 时生效；服务器重启后 Docker 按 `restart: unless-stopped` 自行拉起容器，backend 可能先于 postgres 启动失败几轮后自愈，属预期行为
@@ -181,7 +183,7 @@ Internet → nginx 网关（80 仅 301，443 HTTPS，唯一对外入口）
 8. **Redis key 命名**：统一使用 `mylab:` 顶层命名空间，下分 `auth:`、`blog:`、`rate:`；公开内容缓存在 `mylab:blog:content:`。带动态段（如 `mylab:blog:engagement:{postKey}`）的 key 空间下不得再放固定命名的其他类型 key，须用独立子前缀隔离（已发布索引用 `mylab:blog:engagement:index:published-posts`；曾因与计数 Hash 撞名，post_key 为 `published-posts` 时会 WRONGTYPE）
 
 ### 前端硬性规则
-1. 优先使用既有技术栈组件（后台用 Ant Design Vue），避免自造轮子
+1. 优先使用既有技术栈组件（后台用 Ant Design 5 即 antd），避免自造轮子
 2. `build` 即类型检查，类型错误不许绕过（不用 `@ts-ignore` 掩盖）
 3. 后台前端所有资源路径基于 `ADMIN_ROUTE` 生成的 Vite base
 4. CSS Modules 会把 `animation` 引用的 keyframes 名一并作用域化：`.module.css` 里引用的 `@keyframes` 必须定义在同一模块内，定义在全局 CSS 里的同名 keyframes 匹配不上（动画静默失效，构建不报错）
